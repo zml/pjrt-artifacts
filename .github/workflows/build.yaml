@@ -13,6 +13,11 @@ jobs:
       - name: "Checking out repository"
         uses: actions/checkout@v4
 
+      - name: Archive Test Results
+        if: always()
+        run: |
+          docker rm -f pjrt-${{ matrix.backend }}
+
       - name: "Build ${{ matrix.backend }} image"
         run: bazel run //${{ matrix.backend }}:${{ matrix.backend }}_stripped_tarball
 
