@@ -1,0 +1,70 @@
+name: PJRT GPU library
+on:
+  push:
+  pull_request:
+
+jobs:
+  pjrt-artifacts:
+    strategy:
+      matrix:
+        backend: [rocm, cuda]
+    runs-on: self-hosted
+    steps:
+      - name: "Checking out repository"
+        uses: actions/checkout@v4
+
+      - name: "Build ${{ matrix.backend }} image"
+        run: bazel run //${{ matrix.backend }}:${{ matrix.backend }}_stripped_tarball
+
+      - name: "Run ${{ matrix.backend }} image"
+        run: |
+          docker run \
+            --name=pjrt-${{ matrix.backend }} \
+            -w=/xla \
+            distroless/${{ matrix.backend }}_builder:latest \
+              bazelisk --output_user_root=/tmp/cache build \
+              --config=${{ matrix.backend }}  \
+              --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
+              //xla/pjrt/c:pjrt_c_api_gpu
+
+      - name: "Retrieve artifacts"
+        run: |
+            docker cp pjrt-${{ matrix.backend }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu.lo .
+            docker cp pjrt-${{ matrix.backend }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu.pic.lo .
+            docker cp pjrt-${{ matrix.backend }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu.so .
+            docker rm -f pjrt-${{ matrix.backend }}
+
+      - name: Create compressed release file
+        uses: a7ul/tar-action@v1.1.0
+        id: compress
+        with:
+          command: c
+          cwd: .
+          files: |
+            ./libpjrt_c_api_gpu.lo
+            ./libpjrt_c_api_gpu.pic.lo
+            ./libpjrt_c_api_gpu.so
+          outPath: ${{ matrix.backend }}.tar.gz
+      
+      - name: Upload ROCM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.backend }}.tar.gz
+          path: ${{ matrix.backend }}.tar.gz
+
+  release:
+    needs: ["pjrt-artifacts"]
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        path: release
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          rocm.tar.gz
+          cuda.tar.gz
