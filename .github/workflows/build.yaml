@@ -2,7 +2,9 @@ name: PJRT GPU library
 on:
   push:
   pull_request:
-
+  
+permissions:
+        contents: write
 jobs:
   pjrt-artifacts:
     strategy:
