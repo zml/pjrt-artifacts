@@ -1,0 +1,3 @@
+load("targets.bzl", "create_openxla_targets")
+
+create_openxla_targets()

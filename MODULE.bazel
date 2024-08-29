@@ -1,0 +1,54 @@
+module(
+    name = "pjrt_plugins",
+)
+
+bazel_dep(name = "aspect_bazel_lib", version = "2.7.9")
+bazel_dep(name = "rules_oci", version = "2.0.0-beta1", dev_dependency = True)
+bazel_dep(name = "container_structure_test", version = "1.16.0", dev_dependency = True)
+bazel_dep(name = "rules_pkg", version = "1.0.1")
+bazel_dep(name = "zstd", version = "1.5.6")
+bazel_dep(name = "rules_distroless", version = "0.3.3")
+git_override(
+    module_name = "rules_distroless",
+    commit = "c469ab3239d0dbe0b49a251ce75971259bf7a242",
+    remote = "https://github.com/zml/rules_distroless",
+)
+
+bazel_lib_toolchains = use_extension("@aspect_bazel_lib//lib:extensions.bzl", "toolchains")
+use_repo(bazel_lib_toolchains, "zstd_toolchains")
+
+xla_layer = use_extension("//third_party/openxla:xla.bzl", "xla")
+use_repo(xla_layer, "openxla")
+
+oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
+oci.pull(
+    name = "cuda_base",
+    digest = "sha256:8cecfe099315f73127d6d5cc43fce32c7ffff4ea0460eefac48f2b7d811ce857",
+    image = "docker.io/nvidia/cuda:12.3.2-base-ubuntu22.04",
+    platforms = [
+        "linux/amd64",
+    ],
+)
+use_repo(oci, "cuda_base","cuda_base_linux_amd64")
+
+apt = use_extension("@rules_distroless//apt:extensions.bzl", "apt")
+apt.install(
+    name = "ubuntu_base",
+    manifest = "//base:ubuntu_base.yaml",
+)
+apt.install(
+    name = "rocm_ubuntu",
+    manifest = "//rocm:rocm_ubuntu.yaml",
+)
+apt.install(
+    name = "cuda_ubuntu",
+    manifest = "//cuda:cuda_ubuntu.yaml",
+)
+
+use_repo(apt, "rocm_ubuntu", "ubuntu_base", "cuda_ubuntu")
+
+bazelisk = use_extension("//utils/bazel/bazelisk:bazelisk.bzl", "bazelisk")
+use_repo(
+    bazelisk,
+    "bazelisk",
+)
