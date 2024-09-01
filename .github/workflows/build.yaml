@@ -9,37 +9,49 @@ jobs:
   pjrt-artifacts:
     strategy:
       matrix:
-        backend: [rocm, cuda]
+        backend:
+          - platform: rocm
+            target: //xla/pjrt/c:pjrt_c_api_gpu
+          - platform: cuda
+            target: //xla/pjrt/c:pjrt_c_api_gpu
+          - platform: cpu
+            target: //xla/pjrt/c:pjrt_c_api_cpu
     runs-on: self-hosted
     steps:
       - name: "Checking out repository"
         uses: actions/checkout@v4
 
-      - name: Archive Test Results
+      - name: Force remove container
         if: always()
         run: |
-          docker rm -f pjrt-${{ matrix.backend }}
+          docker rm -f pjrt-${{ matrix.backend.platform }}
 
-      - name: "Build ${{ matrix.backend }} image"
-        run: bazel run //${{ matrix.backend }}:${{ matrix.backend }}_stripped_tarball
+      - name: "Set GPU target"
+        if: ${{ matrix.backend.platform == 'Monday' }}
+        run: echo "$Greeting $First_Name. Today is $DAY_OF_WEEK!"
+        env:
+          First_Name: Mona
 
-      - name: "Run ${{ matrix.backend }} image"
+      - name: "Build ${{ matrix.backend.platform }} image"
+        run: bazel run //${{ matrix.backend.platform }}:${{ matrix.backend.platform }}_stripped_tarball
+
+      - name: "Run ${{ matrix.backend.platform }} image"
         run: |
           docker run \
-            --name=pjrt-${{ matrix.backend }} \
+            --name=pjrt-${{ matrix.backend.platform }} \
             -w=/xla \
-            distroless/${{ matrix.backend }}_builder:latest \
+            distroless/${{ matrix.backend.platform }}_builder:latest \
               bazelisk --output_user_root=/tmp/cache build \
-              --config=${{ matrix.backend }}  \
+              --config=${{ matrix.backend.platform }}  \
               --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
-              //xla/pjrt/c:pjrt_c_api_gpu
+              ${{ matrix.backend.target }}
 
       - name: "Retrieve artifacts"
         run: |
-            docker cp pjrt-${{ matrix.backend }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu.lo .
-            docker cp pjrt-${{ matrix.backend }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu.pic.lo .
-            docker cp pjrt-${{ matrix.backend }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu.so .
-            docker rm -f pjrt-${{ matrix.backend }}
+            docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu.lo .
+            docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu.pic.lo .
+            docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu.so .
+            docker rm -f pjrt-${{ matrix.backend.platform }}
 
       - name: Create compressed release file
         uses: a7ul/tar-action@v1.1.0
@@ -51,13 +63,13 @@ jobs:
             ./libpjrt_c_api_gpu.lo
             ./libpjrt_c_api_gpu.pic.lo
             ./libpjrt_c_api_gpu.so
-          outPath: ${{ matrix.backend }}.tar.gz
+          outPath: ${{ matrix.backend.platform }}.tar.gz
       
       - name: Upload ROCM artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.backend }}.tar.gz
-          path: ${{ matrix.backend }}.tar.gz
+          name: ${{ matrix.backend.platform }}.tar.gz
+          path: ${{ matrix.backend.platform }}.tar.gz
 
   release:
     needs: ["pjrt-artifacts"]
@@ -75,3 +87,4 @@ jobs:
         files: |
           rocm.tar.gz
           cuda.tar.gz
+          cpu.tar.gz
