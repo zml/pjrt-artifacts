@@ -47,8 +47,6 @@ jobs:
 
       - name: "Retrieve artifacts"
         run: |
-            docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_${{ matrix.backend.platform }}.lo .
-            docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_${{ matrix.backend.platform }}.pic.lo .
             docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_${{ matrix.backend.platform }}.so .
             docker rm -f pjrt-${{ matrix.backend.platform }}
 
