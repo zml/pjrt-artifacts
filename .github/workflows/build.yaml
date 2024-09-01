@@ -10,7 +10,14 @@ jobs:
     strategy:
       matrix:
         backend:
-          # --config=${{ matrix.backend.platform }}  \
+          - platform: cuda
+            config: "--config=cuda"
+            artifact: gpu
+            target: //xla/pjrt/c:pjrt_c_api_gpu
+          - platform: rocm
+            config: "--config=rocm"
+            artifact: gpu
+            target: //xla/pjrt/c:pjrt_c_api_gpu
           - platform: cpu
             config: ""
             artifact: cpu
