@@ -21,6 +21,35 @@ tar(
     ],
 )
 
+
+cpu_PACKAGES = [
+    "@cpu_ubuntu//autoconf",
+    "@cpu_ubuntu//automake",
+    "@cpu_ubuntu//build-essential",
+    "@cpu_ubuntu//ca-certificates",
+    "@cpu_ubuntu//llvm-18",
+    "@cpu_ubuntu//clang-18",
+    "@cpu_ubuntu//clang-tidy-18",
+    "@cpu_ubuntu//lld-18",
+    "@cpu_ubuntu//clang-format-18",
+    "@cpu_ubuntu//wget",
+    "@cpu_ubuntu//zlib1g-dev",
+]
+
+flatten(
+    name = "cpu_packages",
+    tars = [
+        "%s/amd64" % package
+        for package in cpu_PACKAGES
+    ],
+)
+
+dedupe_tar(
+    name = "strip_packages",
+    src = ":cpu_packages",
+    strip_directory = 0,
+)
+
 oci_image(
     name = "cpu_stripped",
     architecture = "amd64",
@@ -31,6 +60,7 @@ oci_image(
         "//base:passwd",
         "//base:group",
         "//base:packages",
+        ":strip_packages",
         ":symlinks",
         "//third_party/openxla:openxla_layer_cpu",
     ],
