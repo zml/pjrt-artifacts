@@ -13,6 +13,7 @@ jobs:
           # --config=${{ matrix.backend.platform }}  \
           - platform: cpu
             config: ""
+            artifact: cpu
             target: //xla/pjrt/c:pjrt_c_api_cpu
     runs-on: self-hosted
     steps:
@@ -39,9 +40,9 @@ jobs:
 
       - name: "Retrieve artifacts"
         run: |
-            docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu.lo .
-            docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu.pic.lo .
-            docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu.so .
+            docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_${{ matrix.backend.platform }}.lo .
+            docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_${{ matrix.backend.platform }}.pic.lo .
+            docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_${{ matrix.backend.platform }}.so .
             docker rm -f pjrt-${{ matrix.backend.platform }}
 
       - name: Create compressed release file
@@ -51,9 +52,9 @@ jobs:
           command: c
           cwd: .
           files: |
-            ./libpjrt_c_api_gpu.lo
-            ./libpjrt_c_api_gpu.pic.lo
-            ./libpjrt_c_api_gpu.so
+            ./libpjrt_c_api_${{ matrix.backend.platform }}.lo
+            ./libpjrt_c_api_${{ matrix.backend.platform }}.pic.lo
+            ./libpjrt_c_api_${{ matrix.backend.platform }}.so
           outPath: ${{ matrix.backend.platform }}.tar.gz
       
       - name: Upload ROCM artifact
