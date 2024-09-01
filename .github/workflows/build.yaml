@@ -10,10 +10,6 @@ jobs:
     strategy:
       matrix:
         backend:
-          - platform: rocm
-            target: //xla/pjrt/c:pjrt_c_api_gpu
-          - platform: cuda
-            target: //xla/pjrt/c:pjrt_c_api_gpu
           - platform: cpu
             target: //xla/pjrt/c:pjrt_c_api_cpu
     runs-on: self-hosted
@@ -25,12 +21,6 @@ jobs:
         if: always()
         run: |
           docker rm -f pjrt-${{ matrix.backend.platform }}
-
-      - name: "Set GPU target"
-        if: ${{ matrix.backend.platform == 'Monday' }}
-        run: echo "$Greeting $First_Name. Today is $DAY_OF_WEEK!"
-        env:
-          First_Name: Mona
 
       - name: "Build ${{ matrix.backend.platform }} image"
         run: bazel run //${{ matrix.backend.platform }}:${{ matrix.backend.platform }}_stripped_tarball
