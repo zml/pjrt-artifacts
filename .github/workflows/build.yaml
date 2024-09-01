@@ -10,7 +10,9 @@ jobs:
     strategy:
       matrix:
         backend:
+          # --config=${{ matrix.backend.platform }}  \
           - platform: cpu
+            config: ""
             target: //xla/pjrt/c:pjrt_c_api_cpu
     runs-on: self-hosted
     steps:
@@ -31,9 +33,8 @@ jobs:
             --name=pjrt-${{ matrix.backend.platform }} \
             -w=/xla \
             distroless/${{ matrix.backend.platform }}_builder:latest \
-              bazelisk --output_user_root=/tmp/cache build \
-              --config=${{ matrix.backend.platform }}  \
-              --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
+              bazelisk build \
+              ${{ matrix.backend.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
               ${{ matrix.backend.target }}
 
       - name: "Retrieve artifacts"
