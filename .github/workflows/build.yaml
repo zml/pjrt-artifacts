@@ -52,8 +52,6 @@ jobs:
           command: c
           cwd: .
           files: |
-            ./libpjrt_c_api_${{ matrix.backend.platform }}.lo
-            ./libpjrt_c_api_${{ matrix.backend.platform }}.pic.lo
             ./libpjrt_c_api_${{ matrix.backend.platform }}.so
           outPath: ${{ matrix.backend.platform }}.tar.gz
       
