@@ -47,7 +47,7 @@ jobs:
 
       - name: "Retrieve artifacts"
         run: |
-            docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_${{ matrix.backend.platform }}.so .
+            docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_${{ matrix.backend.artifact }}.so .
             docker rm -f pjrt-${{ matrix.backend.platform }}
 
       - name: Create compressed release file
@@ -57,10 +57,10 @@ jobs:
           command: c
           cwd: .
           files: |
-            ./libpjrt_c_api_${{ matrix.backend.platform }}.so
+            ./libpjrt_c_api_${{ matrix.backend.artifact }}.so
           outPath: ${{ matrix.backend.platform }}.tar.gz
       
-      - name: Upload ROCM artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.backend.platform }}.tar.gz
