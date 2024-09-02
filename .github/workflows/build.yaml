@@ -33,8 +33,9 @@ jobs:
 
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
         run: |
-          bazelisk --output_user_root=/tmp/cache \
+          bazelisk \
               build \
+              --disk_cache=/tmp/cache \
               ${{ matrix.pjrt.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
               ${{ matrix.pjrt.bazel_target }}
 
@@ -95,8 +96,9 @@ jobs:
             -w=/xla \
             -v=/tmp/cache:/tmp/cache \
             distroless/${{ matrix.pjrt.target }}_builder:latest \
-              bazelisk --output_user_root=/tmp/cache \
+              bazelisk \
               build \
+              --disk_cache=/tmp/cache \
               ${{ matrix.pjrt.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
               ${{ matrix.pjrt.bazel_target }}
 
