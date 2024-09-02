@@ -9,20 +9,39 @@ jobs:
   pjrt-artifacts:
     strategy:
       matrix:
-        backend:
-          - platform: cuda
+        pjrt:
+          - target: cuda
             config: "--config=cuda"
-            artifact: gpu
-            target: //xla/pjrt/c:pjrt_c_api_gpu
-          - platform: rocm
+            artifact: libpjrt_c_api_gpu.so
+            runs_on: self-hosted
+            platform: linux-amd64
+            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu
+          - target: rocm
             config: "--config=rocm"
-            artifact: gpu
-            target: //xla/pjrt/c:pjrt_c_api_gpu
-          - platform: cpu
+            artifact: libpjrt_c_api_gpu.so
+            runs_on: self-hosted
+            platform: linux-amd64
+            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu
+          - target: cpu
             config: ""
-            artifact: cpu
-            target: //xla/pjrt/c:pjrt_c_api_cpu
-    runs-on: self-hosted
+            artifact: libpjrt_c_api_gpu.so
+            runs_on: self-hosted
+            platform: linux-amd64
+            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu
+          - target: cpu
+            config: ""
+            artifact: libpjrt_c_api_gpu.dylib
+            runs_on: macos-14
+            platform: darwin-arm64
+            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu
+          - target: cpu
+            config: ""
+            artifact: libpjrt_c_api_gpu.dylib
+            runs_on: macos-14
+            platform: darwin-arm64
+            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu
+
+    runs-on: ${{ matrix.pjrt.runs_on }}
     steps:
       - name: "Checking out repository"
         uses: actions/checkout@v4
@@ -30,41 +49,41 @@ jobs:
       - name: Force remove container
         if: always()
         run: |
-          docker rm -f pjrt-${{ matrix.backend.platform }}
+          docker rm -f pjrt-${{ matrix.pjrt.target }}
 
-      - name: "Build ${{ matrix.backend.platform }} image"
-        run: bazel run //${{ matrix.backend.platform }}:${{ matrix.backend.platform }}_stripped_tarball
+      - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
+        run: bazel run //${{ matrix.pjrt.target }}:${{ matrix.pjrt.target }}_stripped_tarball
 
-      - name: "Run ${{ matrix.backend.platform }} image"
+      - name: "Run ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
         run: |
           docker run \
-            --name=pjrt-${{ matrix.backend.platform }} \
+            --name=pjrt-${{ matrix.pjrt.target }} \
             -w=/xla \
-            distroless/${{ matrix.backend.platform }}_builder:latest \
+            distroless/${{ matrix.pjrt.target }}_builder:latest \
               bazelisk build \
-              ${{ matrix.backend.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
-              ${{ matrix.backend.target }}
+              ${{ matrix.pjrt.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
+              ${{ matrix.pjrt.bazel_target }}
 
-      - name: "Retrieve artifacts"
+      - name: "Retrieve ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts"
         run: |
-            docker cp pjrt-${{ matrix.backend.platform }}:/xla/bazel-bin/xla/pjrt/c/libpjrt_c_api_${{ matrix.backend.artifact }}.so .
-            docker rm -f pjrt-${{ matrix.backend.platform }}
+            docker cp pjrt-${{ matrix.pjrt.target }}:/xla/bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} .
+            docker rm -f pjrt-${{ matrix.pjrt.target }}
 
-      - name: Create compressed release file
+      - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
         uses: a7ul/tar-action@v1.1.0
         id: compress
         with:
           command: c
           cwd: .
           files: |
-            ./libpjrt_c_api_${{ matrix.backend.artifact }}.so
-          outPath: ${{ matrix.backend.platform }}.tar.gz
+            ./${{ matrix.pjrt.artifact }}
+          outPath: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
       
-      - name: Upload artifacts
+      - name: Upload ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.backend.platform }}.tar.gz
-          path: ${{ matrix.backend.platform }}.tar.gz
+          name: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
+          path: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
 
   release:
     needs: ["pjrt-artifacts"]
@@ -80,6 +99,7 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: |
-          rocm.tar.gz
-          cuda.tar.gz
-          cpu.tar.gz
+          pjrt-rocm_linux-amd64.tar.gz
+          pjrt-cuda_linux-amd64.tar.gz
+          pjrt-cpu_linux-amd64.tar.gz
+          pjrt-cpu_darwin-arm64.tar.gz
