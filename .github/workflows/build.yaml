@@ -24,30 +24,20 @@ jobs:
           repository: openxla/xla
           token: ${{ secrets.OPENXLA_READ_ONLY }}
 
-      - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
-        uses: a7ul/tar-action@v1.1.0
-        id: compress
-        with:
-          command: c
-          cwd: .
-          files: |
-            ./${{ matrix.pjrt.artifact }}
-          outPath: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
-
-      - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
-        uses: a7ul/tar-action@v1.1.0
-        with:
-          command: c
-          cwd: .
-          files: |
-            ./${{ matrix.pjrt.artifact }}
-          outPath: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
-
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
         run: |
           bazelisk build \
               ${{ matrix.pjrt.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
               ${{ matrix.pjrt.bazel_target }}
+
+      - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
+        uses: a7ul/tar-action@v1.1.0
+        with:
+          command: c
+          cwd: .
+          files: |
+            ./${{ matrix.pjrt.artifact }}
+          outPath: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
 
       - name: Upload ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts
         uses: actions/upload-artifact@v4
