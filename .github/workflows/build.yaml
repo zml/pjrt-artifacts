@@ -6,6 +6,24 @@ on:
 permissions:
         contents: write
 jobs:
+  pjrt-osx--artifacts:
+    strategy:
+      matrix:
+        pjrt:
+          - target: cpu
+            config: ""
+            artifact: libpjrt_c_api_gpu.dylib
+            runs_on: macos-14
+            platform: darwin-arm64
+            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu
+    runs-on: ${{ matrix.pjrt.runs_on }}
+    steps:
+      - name: "Checking out openxla repository"
+        uses: actions/checkout@v4
+        with:
+          repository: openxla/xla
+          token: ${{ secrets.OPENXLA_READ_ONLY }}
+        
   pjrt-artifacts:
     strategy:
       matrix:
@@ -28,36 +46,20 @@ jobs:
             runs_on: self-hosted
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu
-          - target: cpu
-            config: ""
-            artifact: libpjrt_c_api_gpu.dylib
-            runs_on: macos-14
-            platform: darwin-arm64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu
 
     runs-on: ${{ matrix.pjrt.runs_on }}
     steps:
       - name: "Checking out repository"
         uses: actions/checkout@v4
 
-      - name: Setup docker (missing on MacOS)
-        if: runner.os == 'macos'
-        run: |
-          bazelisk build \
-              ${{ matrix.pjrt.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
-              ${{ matrix.pjrt.bazel_target }}
-
       - name: Force remove container
-        if: runner.os != 'macos'
         run: |
           docker rm -f pjrt-${{ matrix.pjrt.target }}
 
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
-        if: runner.os != 'macos'
         run: bazel run //${{ matrix.pjrt.target }}:${{ matrix.pjrt.target }}_stripped_tarball
 
       - name: "Run ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
-        if: runner.os != 'macos'
         run: |
           docker run \
             --name=pjrt-${{ matrix.pjrt.target }} \
@@ -68,7 +70,6 @@ jobs:
               ${{ matrix.pjrt.bazel_target }}
 
       - name: "Retrieve ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts"
-        if: runner.os != 'macos'
         run: |
             docker cp pjrt-${{ matrix.pjrt.target }}:/xla/bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} .
             docker rm -f pjrt-${{ matrix.pjrt.target }}
