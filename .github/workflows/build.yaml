@@ -12,7 +12,7 @@ jobs:
         pjrt:
           - target: cpu
             config: ""
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu.so
+            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu.a
             runs_on: macos-14
             platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu
