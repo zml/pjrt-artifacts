@@ -6,13 +6,13 @@ on:
 permissions:
         contents: write
 jobs:
-  pjrt-osx--artifacts:
+  pjrt-osx-artifacts:
     strategy:
       matrix:
         pjrt:
           - target: cpu
             config: ""
-            artifact: libpjrt_c_api_gpu.dylib
+            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu.so
             runs_on: macos-14
             platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu
@@ -23,6 +23,38 @@ jobs:
         with:
           repository: openxla/xla
           token: ${{ secrets.OPENXLA_READ_ONLY }}
+
+      - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
+        uses: a7ul/tar-action@v1.1.0
+        id: compress
+        with:
+          command: c
+          cwd: .
+          files: |
+            ./${{ matrix.pjrt.artifact }}
+          outPath: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
+
+      - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
+        uses: a7ul/tar-action@v1.1.0
+        id: compress
+        with:
+          command: c
+          cwd: .
+          files: |
+            ./${{ matrix.pjrt.artifact }}
+          outPath: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
+
+      - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
+        run: |
+          bazelisk build \
+              ${{ matrix.pjrt.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
+              ${{ matrix.pjrt.bazel_target }}
+
+      - name: Upload ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
+          path: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
         
   pjrt-artifacts:
     strategy:
@@ -91,7 +123,7 @@ jobs:
           path: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
 
   release:
-    needs: ["pjrt-artifacts"]
+    needs: ["pjrt-artifacts","pjrt-osx-artifacts"]
     runs-on: ubuntu-22.04
     steps:
     - name: Download all artifacts
