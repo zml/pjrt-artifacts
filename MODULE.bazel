@@ -44,8 +44,12 @@ apt.install(
     name = "cuda_ubuntu",
     manifest = "//cuda:cuda_ubuntu.yaml",
 )
+apt.install(
+    name = "cpu_ubuntu",
+    manifest = "//cpu:cpu_ubuntu.yaml",
+)
 
-use_repo(apt, "rocm_ubuntu", "ubuntu_base", "cuda_ubuntu")
+use_repo(apt, "rocm_ubuntu", "ubuntu_base", "cuda_ubuntu", "cpu_ubuntu")
 
 bazelisk = use_extension("//utils/bazel/bazelisk:bazelisk.bzl", "bazelisk")
 use_repo(

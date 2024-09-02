@@ -7,6 +7,7 @@ def create_openxla_targets():
     configs = [
         {"name": "cuda"},
         {"name": "rocm"},
+        {"name": "cpu"},
     ]
 
     # Loop to create the pkg_tar rules

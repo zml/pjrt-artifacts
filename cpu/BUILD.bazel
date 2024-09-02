@@ -1,0 +1,78 @@
+load("@aspect_bazel_lib//lib:tar.bzl", "tar", "tar_rule")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@rules_distroless//distroless:defs.bzl", "flatten")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
+load("//utils/bazel/dedup_tar:defs.bzl", "dedupe_tar")
+
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+tar(
+    name = "symlinks",
+    mtree = [
+        "./usr/bin/sh type=link link=/usr/bin/bash",
+        "./bin/sh type=link link=/usr/bin/bash",
+        "./bin/bash type=link link=/usr/bin/bash",
+        "./usr/bin/which type=link link=/usr/bin/which.debianutils",
+        "./usr/bin/bazel type=link link=/usr/bin/bazelisk",
+        "./lib/x86_64-linux-gnu/libm.so.6 type=link link=/usr/lib/x86_64-linux-gnu/libm.so.6",
+        "./lib/x86_64-linux-gnu/libmvec.so.1 type=link link=/usr/lib/x86_64-linux-gnu/libmvec.so.1",
+        "./lib/x86_64-linux-gnu/libc.so.6 type=link link=/usr/lib/x86_64-linux-gnu/libc.so.6 ",
+        "./usr/bin/python type=link link=/usr/bin/python3",
+    ],
+)
+
+cpu_PACKAGES = [
+    "@cpu_ubuntu//autoconf",
+    "@cpu_ubuntu//automake",
+    "@cpu_ubuntu//build-essential",
+    "@cpu_ubuntu//ca-certificates",
+    "@cpu_ubuntu//llvm-18",
+    "@cpu_ubuntu//clang-18",
+    "@cpu_ubuntu//clang-tidy-18",
+    "@cpu_ubuntu//lld-18",
+    "@cpu_ubuntu//clang-format-18",
+    "@cpu_ubuntu//wget",
+    "@cpu_ubuntu//zlib1g-dev",
+]
+
+flatten(
+    name = "cpu_packages",
+    tars = [
+        "%s/amd64" % package
+        for package in cpu_PACKAGES
+    ],
+)
+
+dedupe_tar(
+    name = "strip_packages",
+    src = ":cpu_packages",
+    strip_directory = 0,
+)
+
+oci_image(
+    name = "cpu_stripped",
+    architecture = "amd64",
+    os = "linux",
+    tars = [
+        "//base:bazelisk",
+        "//base:cacerts",
+        "//base:passwd",
+        "//base:group",
+        "//base:packages",
+        ":strip_packages",
+        ":symlinks",
+        "//third_party/openxla:openxla_layer_cpu",
+    ],
+    env = {
+        "MAX_NUM_WORKERS": -1,
+        "TERM": "xterm",
+    },
+)
+
+oci_load(
+    name = "cpu_stripped_tarball",
+    image = ":cpu_stripped",
+    repo_tags = [
+        "distroless/cpu_builder:latest",
+    ],
+)
