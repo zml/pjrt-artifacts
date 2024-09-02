@@ -34,17 +34,16 @@ jobs:
             runs_on: macos-14
             platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu
-          - target: cpu
-            config: ""
-            artifact: libpjrt_c_api_gpu.dylib
-            runs_on: macos-14
-            platform: darwin-arm64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu
 
     runs-on: ${{ matrix.pjrt.runs_on }}
     steps:
       - name: "Checking out repository"
         uses: actions/checkout@v4
+
+      - name: Setup docker (missing on MacOS)
+        if: runner.os == 'macos'
+        run: |
+          brew install docker
 
       - name: Force remove container
         if: always()
