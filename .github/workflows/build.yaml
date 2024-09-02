@@ -44,6 +44,7 @@ jobs:
         if: runner.os == 'macos'
         run: |
           brew install docker
+          colima start
 
       - name: Force remove container
         if: always()
