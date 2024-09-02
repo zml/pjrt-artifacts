@@ -53,19 +53,19 @@ jobs:
           - target: cuda
             config: "--config=cuda"
             artifact: libpjrt_c_api_gpu.so
-            runs_on: self-hosted
+            runs_on: ['self-hosted', 'Linux']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu
           - target: rocm
             config: "--config=rocm"
             artifact: libpjrt_c_api_gpu.so
-            runs_on: self-hosted
+            runs_on: ['self-hosted', 'Linux']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu
           - target: cpu
             config: ""
             artifact: libpjrt_c_api_cpu.so
-            runs_on: self-hosted
+            runs_on: ['self-hosted', 'Linux']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu
 
