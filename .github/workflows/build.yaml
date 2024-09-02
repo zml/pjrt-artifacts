@@ -1,6 +1,7 @@
 name: PJRT GPU library
 on:
   push:
+    tags:
   pull_request:
   
 permissions:
@@ -32,7 +33,7 @@ jobs:
               ${{ matrix.pjrt.bazel_target }}
 
       - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
-        uses: a7ul/tar-action@v1.1.0
+        uses: a7ul/tar-action@v1.2.0
         with:
           command: c
           cwd: .
@@ -99,7 +100,7 @@ jobs:
             docker rm -f pjrt-${{ matrix.pjrt.target }}
 
       - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
-        uses: a7ul/tar-action@v1.1.0
+        uses: a7ul/tar-action@v1.2.0
         with:
           command: c
           cwd: .
