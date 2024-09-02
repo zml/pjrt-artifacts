@@ -43,8 +43,7 @@ jobs:
       - name: Setup docker (missing on MacOS)
         if: runner.os == 'macos'
         run: |
-          brew install docker
-          colima start
+          df -h
 
       - name: Force remove container
         if: always()
