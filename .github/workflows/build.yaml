@@ -13,7 +13,7 @@ jobs:
           - target: cpu
             config: ""
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu.a
-            runs_on: macos-14
+            runs_on: ['self-hosted', 'macOS']
             platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu
     runs-on: ${{ matrix.pjrt.runs_on }}
@@ -27,6 +27,7 @@ jobs:
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
         run: |
           bazelisk build \
+              --output_user_root=/tmp/cache \
               ${{ matrix.pjrt.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
               ${{ matrix.pjrt.bazel_target }}
 
@@ -85,8 +86,10 @@ jobs:
           docker run \
             --name=pjrt-${{ matrix.pjrt.target }} \
             -w=/xla \
+            -v=/tmp/cache:/tmp/cache \
             distroless/${{ matrix.pjrt.target }}_builder:latest \
               bazelisk build \
+              --output_user_root=/tmp/cache \
               ${{ matrix.pjrt.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
               ${{ matrix.pjrt.bazel_target }}
 
