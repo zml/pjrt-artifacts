@@ -43,17 +43,21 @@ jobs:
       - name: Setup docker (missing on MacOS)
         if: runner.os == 'macos'
         run: |
-          df -h
+          bazelisk build \
+              ${{ matrix.pjrt.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
+              ${{ matrix.pjrt.bazel_target }}
 
       - name: Force remove container
-        if: always()
+        if: runner.os != 'macos'
         run: |
           docker rm -f pjrt-${{ matrix.pjrt.target }}
 
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
+        if: runner.os != 'macos'
         run: bazel run //${{ matrix.pjrt.target }}:${{ matrix.pjrt.target }}_stripped_tarball
 
       - name: "Run ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
+        if: runner.os != 'macos'
         run: |
           docker run \
             --name=pjrt-${{ matrix.pjrt.target }} \
@@ -64,6 +68,7 @@ jobs:
               ${{ matrix.pjrt.bazel_target }}
 
       - name: "Retrieve ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts"
+        if: runner.os != 'macos'
         run: |
             docker cp pjrt-${{ matrix.pjrt.target }}:/xla/bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} .
             docker rm -f pjrt-${{ matrix.pjrt.target }}
