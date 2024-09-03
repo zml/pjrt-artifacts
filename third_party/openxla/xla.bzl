@@ -1,13 +1,15 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 
-OPENXLA_COMMIT = "83d4db83e4e7d6dd2200fc2e7acf18e361e8c5a0"
-OPENXLA_SHA256 = "969dad5fdb76b0282255255ebe9d3708e30bd033fdbddb4b4de0d7ce42ace56b"
+OPENXLA_COMMIT = "9f7da682d8c1e4a4eae772104f4cfae3ae789b72"
+OPENXLA_SHA256 = "07a480bddfd6cd8021e7919dd218070c8e0ee3b7833378ee71415e2485fe512a"
 
 def _xla_impl(mctx):
     http_file(
         name = "openxla",
         sha256 = OPENXLA_SHA256,
-        url = "https://github.com/openxla/xla/archive/{}.tar.gz".format(OPENXLA_COMMIT[:7]),
+        # use this repository until PR is merged: https://github.com/openxla/xla/pull/16696
+        url = "https://github.com/zml/xla/archive/{}.tar.gz".format(OPENXLA_COMMIT[:7]),
+        # url = "https://github.com/openxla/xla/archive/{}.tar.gz".format(OPENXLA_COMMIT[:7]),
         downloaded_file_path = "openxla_github.tar.gz",
     )
 
