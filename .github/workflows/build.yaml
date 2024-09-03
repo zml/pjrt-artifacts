@@ -19,7 +19,7 @@ jobs:
       matrix:
         pjrt:
           - target: cpu
-            config: ""
+            config: "--config=release_macos_arm64"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
             runs_on: ['self-hosted', 'macOS']
             platform: darwin-arm64
@@ -40,13 +40,18 @@ jobs:
               ${{ matrix.pjrt.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
               ${{ matrix.pjrt.bazel_target }}
 
+      - name: Strip binary and rpath
+        run: |
+          strip -x -o libpjrt_cpu.dylib ${{ matrix.pjrt.artifact }}
+          install_name_tool -id '@rpath/libpjrt_cpu.dylib' libpjrt_cpu.dylib
+
       - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
         uses: a7ul/tar-action@v1.2.0
         with:
           command: c
           cwd: .
           files: |
-            ./${{ matrix.pjrt.artifact }}
+            ./libpjrt_cpu.dylib
           outPath: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
 
       - name: Upload ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts
