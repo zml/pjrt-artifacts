@@ -8679,7 +8679,7 @@
     "@@rules_oci~//oci:extensions.bzl%oci": {
       "general": {
         "bzlTransitiveDigest": "2w2afGzwYSb0YGVwKQeaIAnfxDCg5VkZ4ajLEqwdwRI=",
-        "usagesDigest": "QFmi3OAskif745vkaCpvTEvkBoY646p2o1fMItr08BY=",
+        "usagesDigest": "q9/DwPKHBRcWUuKt5P34z+zXg1p9w3vj0sCXqFtgerA=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -8826,7 +8826,7 @@
               "scheme": "https",
               "registry": "index.docker.io",
               "repository": "nvidia/cuda",
-              "identifier": "sha256:8cecfe099315f73127d6d5cc43fce32c7ffff4ea0460eefac48f2b7d811ce857",
+              "identifier": "sha256:47181750209e68cab2e36c3e0e8ab0ab8d76bdabbb418e56e4b0ac7b08b97d34",
               "platforms": {
                 "@@platforms//cpu:x86_64": "@cuda_base_linux_amd64"
               },
@@ -9102,7 +9102,7 @@
               "scheme": "https",
               "registry": "index.docker.io",
               "repository": "nvidia/cuda",
-              "identifier": "sha256:8cecfe099315f73127d6d5cc43fce32c7ffff4ea0460eefac48f2b7d811ce857",
+              "identifier": "sha256:47181750209e68cab2e36c3e0e8ab0ab8d76bdabbb418e56e4b0ac7b08b97d34",
               "platform": "linux/amd64",
               "target_name": "cuda_base_linux_amd64",
               "bazel_tags": []
