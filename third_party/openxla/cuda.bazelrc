@@ -16,5 +16,5 @@ build --build_tag_filters -no_oss
 build --test_tag_filters -no_oss
 test --build_tag_filters -no_oss
 test --test_tag_filters -no_oss
-build:cuda --repo_env=HERMETIC_CUDA_VERSION="12.3.2"
-build:cuda --repo_env=HERMETIC_CUDNN_VERSION="9.1.1"
+build:cuda --repo_env=HERMETIC_CUDA_VERSION="12.6.0"
+build:cuda --repo_env=HERMETIC_CUDNN_VERSION="9.3.0"

@@ -23,8 +23,8 @@ use_repo(xla_layer, "openxla")
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 oci.pull(
     name = "cuda_base",
-    digest = "sha256:47181750209e68cab2e36c3e0e8ab0ab8d76bdabbb418e56e4b0ac7b08b97d34",
-    image = "docker.io/nvidia/cuda:12.5.1-base-ubuntu22.04",
+    digest = "sha256:5dca947f477ec8ea91624447bdad7cc5f6a0dfe038ef53642c884bf5416478a6",
+    image = "docker.io/nvidia/cuda:12.6.0-base-ubuntu22.04",
     platforms = [
         "linux/amd64",
     ],
