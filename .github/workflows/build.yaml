@@ -31,7 +31,7 @@ jobs:
         with:
           repository: zml/xla
           token: ${{ secrets.OPENXLA_READ_ONLY }}
-          ref: 653ae7c566aff19450b34d62980093880d3ad2f1
+          ref: 336122e2fb0e3d7dd93b5a4a30f7551d8e1a21b6
 
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
         run: |
