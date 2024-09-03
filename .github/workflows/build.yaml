@@ -20,10 +20,10 @@ jobs:
         pjrt:
           - target: cpu
             config: ""
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu.dylib
+            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
             runs_on: ['self-hosted', 'macOS']
             platform: darwin-arm64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu
+            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
     runs-on: ${{ matrix.pjrt.runs_on }}
     steps:
       - name: "Checking out openxla repository"
@@ -61,22 +61,22 @@ jobs:
         pjrt:
           - target: cuda
             config: "--config=cuda"
-            artifact: libpjrt_c_api_gpu.so
+            artifact: libpjrt_c_api_gpu_plugin.so
             runs_on: ['self-hosted', 'Linux']
             platform: linux-amd64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu
+            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             config: "--config=rocm"
-            artifact: libpjrt_c_api_gpu.so
+            artifact: libpjrt_c_api_gpu_plugin.so
             runs_on: ['self-hosted', 'Linux']
             platform: linux-amd64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu
+            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: cpu
             config: ""
-            artifact: libpjrt_c_api_cpu.so
+            artifact: libpjrt_c_api_cpu_plugin.so
             runs_on: ['self-hosted', 'Linux']
             platform: linux-amd64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu
+            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
 
     runs-on: ${{ matrix.pjrt.runs_on }}
     steps:

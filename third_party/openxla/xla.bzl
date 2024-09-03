@@ -1,7 +1,7 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 
-OPENXLA_COMMIT = "9f7da682d8c1e4a4eae772104f4cfae3ae789b72"
-OPENXLA_SHA256 = "07a480bddfd6cd8021e7919dd218070c8e0ee3b7833378ee71415e2485fe512a"
+OPENXLA_COMMIT = "653ae7c566aff19450b34d62980093880d3ad2f1"
+OPENXLA_SHA256 = "3da3e1156bd7543809a5061413e4328b8863ac1bb6becc1158b2bfb04d497d4c"
 
 def _xla_impl(mctx):
     http_file(
