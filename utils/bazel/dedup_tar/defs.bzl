@@ -1,5 +1,8 @@
 load("@aspect_bazel_lib//lib:tar.bzl", "mtree_spec", "tar", "tar_lib")
 
+# Basic implementation, we need to build a better solution
+# Effect of this is the effective build of a 30Gb image
+# will require at least 2x+ the disk space to make it work. 
 def _dedupe_tar_impl(ctx):
     """
     Remove duplicate entries in a tarball
@@ -33,12 +36,14 @@ def _dedupe_tar_impl(ctx):
     ctx.actions.run_shell(
         outputs = [output_tar],
         inputs = [src, filter],
+        # sed osx is a pain with -i and symbolic links
         command = """
             set -eu
             export TMP=$(mktemp -d || mktemp -d -t bazel-tmp)
             trap "rm -rf $TMP" EXIT
             mkdir $TMP/extracted
-            sed -i "s|^|.|g" {filter}
+            sed "s|^|.|g" {filter} > tmp.txt
+            mv tmp.txt {filter}
             {bsdtar} -xf {src} -C $TMP/extracted
             {bsdtar} -C $TMP/extracted --strip-components={strip_directory} -caf {output} -T {filter}
         """.format(
