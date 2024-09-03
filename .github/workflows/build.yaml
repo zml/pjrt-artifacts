@@ -29,8 +29,9 @@ jobs:
       - name: "Checking out openxla repository"
         uses: actions/checkout@v4
         with:
-          repository: openxla/xla
+          repository: zml/xla
           token: ${{ secrets.OPENXLA_READ_ONLY }}
+          ref: 653ae7c566aff19450b34d62980093880d3ad2f1
 
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
         run: |
