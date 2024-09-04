@@ -21,7 +21,7 @@ jobs:
           - target: cpu
             config: "--config=release_macos_arm64"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
-            runs_on: ['self-hosted', 'macOS']
+            runs-on: ["runs-on","family=mac2-m2.metal"]
             platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
     runs-on: ${{ matrix.pjrt.runs_on }}
@@ -68,19 +68,22 @@ jobs:
           - target: cuda
             config: "--config=cuda"
             artifact: libpjrt_c_api_gpu_plugin.so
-            runs_on: ['self-hosted', 'Linux']
+            renamed_artifact: libpjrt_cuda.so
+            runs_on: ['runs-on','runner=16cpu-linux-x64']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             config: "--config=rocm"
             artifact: libpjrt_c_api_gpu_plugin.so
-            runs_on: ['self-hosted', 'Linux']
+            renamed_artifact: libpjrt_rocm.so
+            runs_on: ['runs-on','runner=16cpu-linux-x64']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: cpu
             config: ""
             artifact: libpjrt_c_api_cpu_plugin.so
-            runs_on: ['self-hosted', 'Linux']
+            renamed_artifact: libpjrt_cpu.so
+            runs_on: ['runs-on','runner=16cpu-linux-x64']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
 
@@ -111,7 +114,7 @@ jobs:
 
       - name: "Retrieve ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts"
         run: |
-            docker cp pjrt-${{ matrix.pjrt.target }}:/xla/bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} .
+            docker cp pjrt-${{ matrix.pjrt.target }}:/xla/bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} ${{ matrix.pjrt.renamed_artifact }}
             docker rm -f pjrt-${{ matrix.pjrt.target }}
 
       - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
@@ -120,7 +123,7 @@ jobs:
           command: c
           cwd: .
           files: |
-            ./${{ matrix.pjrt.artifact }}
+            ./${{ matrix.pjrt.renamed_artifact }}
           outPath: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
       
       - name: Upload ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts
@@ -131,7 +134,7 @@ jobs:
 
   release:
     needs: ["pjrt-artifacts","pjrt-osx-artifacts"]
-    runs-on: ['self-hosted', 'Linux']
+    runs-on: ['runs-on','runner=16cpu-linux-x64']
     steps:
     - run: rm -rf pjrt*.tar.gz
     - name: Download all artifacts
