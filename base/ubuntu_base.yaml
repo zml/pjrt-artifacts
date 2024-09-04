@@ -9,11 +9,11 @@
 version: 1
 
 sources:
-  - channel: focal main
+  - channel: jammy main
     url: https://snapshot.ubuntu.com/ubuntu/20240301T030400Z
-  - channel: focal-security main
+  - channel: jammy-security main
     url: https://snapshot.ubuntu.com/ubuntu/20240301T030400Z
-  - channel: focal-updates main
+  - channel: jammy-updates main
     url: https://snapshot.ubuntu.com/ubuntu/20240301T030400Z
 
 archs:
