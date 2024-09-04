@@ -33,6 +33,11 @@ jobs:
           token: ${{ secrets.OPENXLA_READ_ONLY }}
           ref: 336122e2fb0e3d7dd93b5a4a30f7551d8e1a21b6
 
+      - name: Setup Bazel
+        run: |
+          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 -O /usr/local/bin/bazel
+          chmod +x /usr/local/bin/bazel
+
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
         run: |
           bazelisk \
@@ -91,6 +96,11 @@ jobs:
     steps:
       - name: "Checking out repository"
         uses: actions/checkout@v4
+
+      - name: Setup Bazel
+        run: |
+          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 -O /usr/local/bin/bazel
+          chmod +x /usr/local/bin/bazel
 
       - name: Force remove container
         run: |
