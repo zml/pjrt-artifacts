@@ -45,6 +45,7 @@ ROCM_PACKAGES = [
     "@rocm_ubuntu//hipsolver",
     "@rocm_ubuntu//hipsparse",
     "@rocm_ubuntu//rocsolver",
+    
 ]
 
 flatten(
