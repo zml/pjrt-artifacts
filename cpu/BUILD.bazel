@@ -9,17 +9,22 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 tar(
     name = "symlinks",
     mtree = [
-        "./usr/bin/sh type=link link=/usr/bin/bash",
-        "./bin/sh type=link link=/usr/bin/bash",
-        "./bin/bash type=link link=/usr/bin/bash",
+        "./usr/bin/sh type=link link=/bin/bash",
+        "./bin/sh type=link link=/bin/bash",
+        # Noble required
+        # "./bin/bash type=link link=/usr/bin/bash",
+        "./opt/rocm/ type=link link=/opt/rocm-6.2.0/",
         "./usr/bin/which type=link link=/usr/bin/which.debianutils",
         "./usr/bin/bazel type=link link=/usr/bin/bazelisk",
-        "./lib/x86_64-linux-gnu/libm.so.6 type=link link=/usr/lib/x86_64-linux-gnu/libm.so.6",
-        "./lib/x86_64-linux-gnu/libmvec.so.1 type=link link=/usr/lib/x86_64-linux-gnu/libmvec.so.1",
-        "./lib/x86_64-linux-gnu/libc.so.6 type=link link=/usr/lib/x86_64-linux-gnu/libc.so.6 ",
+        # Noble required
+        # "./lib/x86_64-linux-gnu/libm.so.6 type=link link=/usr/lib/x86_64-linux-gnu/libm.so.6",
+        # "./lib/x86_64-linux-gnu/libmvec.so.1 type=link link=/usr/lib/x86_64-linux-gnu/libmvec.so.1",
+        # "./lib/x86_64-linux-gnu/libc.so.6 type=link link=/usr/lib/x86_64-linux-gnu/libc.so.6 ",
+        "./opt/rocm-6.2.0/bin/targets.lst type=link link=/opt/targets.lst",
         "./usr/bin/python type=link link=/usr/bin/python3",
     ],
 )
+
 
 cpu_PACKAGES = [
     "@cpu_ubuntu//autoconf",
