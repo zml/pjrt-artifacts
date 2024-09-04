@@ -15,15 +15,17 @@ pkg_tar(
 tar(
     name = "symlinks",
     mtree = [
-        "./usr/bin/sh type=link link=/usr/bin/bash",
-        "./bin/sh type=link link=/usr/bin/bash",
-        "./bin/bash type=link link=/usr/bin/bash",
+        "./usr/bin/sh type=link link=/bin/bash",
+        "./bin/sh type=link link=/bin/bash",
+        # Noble required
+        # "./bin/bash type=link link=/usr/bin/bash",
         "./opt/rocm/ type=link link=/opt/rocm-6.2.0/",
         "./usr/bin/which type=link link=/usr/bin/which.debianutils",
         "./usr/bin/bazel type=link link=/usr/bin/bazelisk",
-        "./lib/x86_64-linux-gnu/libm.so.6 type=link link=/usr/lib/x86_64-linux-gnu/libm.so.6",
-        "./lib/x86_64-linux-gnu/libmvec.so.1 type=link link=/usr/lib/x86_64-linux-gnu/libmvec.so.1",
-        "./lib/x86_64-linux-gnu/libc.so.6 type=link link=/usr/lib/x86_64-linux-gnu/libc.so.6 ",
+        # Noble required
+        # "./lib/x86_64-linux-gnu/libm.so.6 type=link link=/usr/lib/x86_64-linux-gnu/libm.so.6",
+        # "./lib/x86_64-linux-gnu/libmvec.so.1 type=link link=/usr/lib/x86_64-linux-gnu/libmvec.so.1",
+        # "./lib/x86_64-linux-gnu/libc.so.6 type=link link=/usr/lib/x86_64-linux-gnu/libc.so.6 ",
         "./opt/rocm-6.2.0/bin/targets.lst type=link link=/opt/targets.lst",
         "./usr/bin/python type=link link=/usr/bin/python3",
     ],
@@ -43,6 +45,7 @@ ROCM_PACKAGES = [
     "@rocm_ubuntu//hipsolver",
     "@rocm_ubuntu//hipsparse",
     "@rocm_ubuntu//rocsolver",
+    
 ]
 
 flatten(
@@ -56,7 +59,7 @@ flatten(
 dedupe_tar(
     name = "strip_packages",
     src = ":rocm_packages",
-    filter = "stripped.txt",
+    filter = "stripped_focal.txt",
 )
 
 oci_image(
@@ -64,11 +67,11 @@ oci_image(
     architecture = "amd64",
     os = "linux",
     tars = [
-        "//base:cacerts",
-        "//base:passwd",
-        "//base:group",
-        "//base:packages",
-        "//base:bazelisk",
+        "//base/focal:cacerts",
+        "//base/focal:passwd",
+        "//base/focal:group",
+        "//base/focal:packages",
+        "//base/focal:bazelisk",
         ":strip_packages",
         ":targets",
         ":symlinks",

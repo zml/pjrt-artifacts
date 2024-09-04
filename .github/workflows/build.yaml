@@ -33,6 +33,11 @@ jobs:
           token: ${{ secrets.OPENXLA_READ_ONLY }}
           ref: 336122e2fb0e3d7dd93b5a4a30f7551d8e1a21b6
 
+      - name: Setup Bazel
+        run: |
+          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 -O /usr/local/bin/bazel
+          chmod +x /usr/local/bin/bazel
+
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
         run: |
           bazelisk \
@@ -68,19 +73,22 @@ jobs:
           - target: cuda
             config: "--config=cuda"
             artifact: libpjrt_c_api_gpu_plugin.so
-            runs_on: ['self-hosted', 'Linux']
+            renamed_artifact: libpjrt_cuda.so
+            runs_on: ['runs-on','runner=32cpu-linux-x64']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             config: "--config=rocm"
             artifact: libpjrt_c_api_gpu_plugin.so
-            runs_on: ['self-hosted', 'Linux']
+            renamed_artifact: libpjrt_rocm.so
+            runs_on: ['runs-on','runner=32cpu-linux-x64']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: cpu
             config: ""
             artifact: libpjrt_c_api_cpu_plugin.so
-            runs_on: ['self-hosted', 'Linux']
+            renamed_artifact: libpjrt_cpu.so
+            runs_on: ['runs-on','runner=32cpu-linux-x64']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
 
@@ -88,6 +96,11 @@ jobs:
     steps:
       - name: "Checking out repository"
         uses: actions/checkout@v4
+
+      - name: Setup Bazel
+        run: |
+          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 -O /usr/local/bin/bazel
+          chmod +x /usr/local/bin/bazel
 
       - name: Force remove container
         run: |
@@ -111,7 +124,7 @@ jobs:
 
       - name: "Retrieve ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts"
         run: |
-            docker cp pjrt-${{ matrix.pjrt.target }}:/xla/bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} .
+            docker cp pjrt-${{ matrix.pjrt.target }}:/xla/bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} ${{ matrix.pjrt.renamed_artifact }}
             docker rm -f pjrt-${{ matrix.pjrt.target }}
 
       - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
@@ -120,7 +133,7 @@ jobs:
           command: c
           cwd: .
           files: |
-            ./${{ matrix.pjrt.artifact }}
+            ./${{ matrix.pjrt.renamed_artifact }}
           outPath: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
       
       - name: Upload ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts
@@ -131,7 +144,7 @@ jobs:
 
   release:
     needs: ["pjrt-artifacts","pjrt-osx-artifacts"]
-    runs-on: ['self-hosted', 'Linux']
+    runs-on: ['runs-on','runner=2cpu-linux-x64']
     steps:
     - run: rm -rf pjrt*.tar.gz
     - name: Download all artifacts
