@@ -9,15 +9,15 @@
 version: 1
 
 sources:
-  - channel: noble main
+  - channel: focal main
     url: https://snapshot.ubuntu.com/ubuntu/20240301T030400Z
-  - channel: noble-security main
+  - channel: focal-security main
     url: https://snapshot.ubuntu.com/ubuntu/20240301T030400Z
-  - channel: noble-updates main
+  - channel: focal-updates main
     url: https://snapshot.ubuntu.com/ubuntu/20240301T030400Z
-  - channel: noble main
+  - channel: focal main
     url: https://repo.radeon.com/rocm/apt/6.2/
-  - channel: noble main
+  - channel: focal main
     url: https://repo.radeon.com/amdgpu/6.2/ubuntu
 
 archs:
