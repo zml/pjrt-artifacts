@@ -33,8 +33,12 @@ use_repo(oci, "cuda_base","cuda_base_linux_amd64")
 
 apt = use_extension("@rules_distroless//apt:extensions.bzl", "apt")
 apt.install(
-    name = "ubuntu_base",
-    manifest = "//base:ubuntu_base.yaml",
+    name = "noble_ubuntu",
+    manifest = "//base/noble:packages.yaml",
+)
+apt.install(
+    name = "focal_ubuntu",
+    manifest = "//base/noble:packages.yaml",
 )
 apt.install(
     name = "rocm_ubuntu",
@@ -49,7 +53,7 @@ apt.install(
     manifest = "//cpu:cpu_ubuntu.yaml",
 )
 
-use_repo(apt, "rocm_ubuntu", "ubuntu_base", "cuda_ubuntu", "cpu_ubuntu")
+use_repo(apt, "rocm_ubuntu", "noble_ubuntu", "focal_ubuntu", "cuda_ubuntu", "cpu_ubuntu")
 
 bazelisk = use_extension("//utils/bazel/bazelisk:bazelisk.bzl", "bazelisk")
 use_repo(
