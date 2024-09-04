@@ -74,21 +74,21 @@ jobs:
             config: "--config=cuda"
             artifact: libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
-            runs_on: ['runs-on','runner=16cpu-linux-x64']
+            runs_on: ['runs-on','runner=32cpu-linux-x64']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             config: "--config=rocm"
             artifact: libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
-            runs_on: ['runs-on','runner=16cpu-linux-x64']
+            runs_on: ['runs-on','runner=32cpu-linux-x64']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: cpu
             config: ""
             artifact: libpjrt_c_api_cpu_plugin.so
             renamed_artifact: libpjrt_cpu.so
-            runs_on: ['runs-on','runner=16cpu-linux-x64']
+            runs_on: ['runs-on','runner=32cpu-linux-x64']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
 
@@ -144,7 +144,7 @@ jobs:
 
   release:
     needs: ["pjrt-artifacts","pjrt-osx-artifacts"]
-    runs-on: ['runs-on','runner=16cpu-linux-x64']
+    runs-on: ['runs-on','runner=2cpu-linux-x64']
     steps:
     - run: rm -rf pjrt*.tar.gz
     - name: Download all artifacts
