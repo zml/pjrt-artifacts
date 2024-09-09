@@ -83,7 +83,7 @@ oci_image(
         "PATH": "/usr/local/bin:/opt/rocm/opencl/bin:/opt/rocm/bin:/opt/rocm/hcc/bin:/opt/rocm/hip/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
         "ROCM_PATH": "/opt/rocm-6.2.0/",
         "TERM": "xterm",
-        "TF_ROCM_AMDGPU_TARGETS": "gfx900\\ngfx906\\ngfx908",
+        "TF_ROCM_AMDGPU_TARGETS": "gfx900,gfx906,gfx908,gfx90a,gfx940,gfx941,gfx942,gfx1030,gfx1100",
     },
 )
 
