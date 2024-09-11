@@ -71,7 +71,7 @@ jobs:
       matrix:
         pjrt:
           - target: cuda
-            config: "--config=cuda --//flags:enable_libnvptxcompiler_support --//flags:enable_libnvjitlink_support"
+            config: "--config=cuda"
             artifact: libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
             runs_on: ['runs-on','runner=32cpu-linux-x64']
