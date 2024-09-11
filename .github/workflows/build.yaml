@@ -71,7 +71,7 @@ jobs:
       matrix:
         pjrt:
           - target: cuda
-            config: "--config=cuda"
+            config: "--config=cuda --//flags:enable_libnvptxcompiler_support --//flags:enable_libnvjitlink_support"
             artifact: libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
             runs_on: ['runs-on','runner=32cpu-linux-x64']
@@ -85,7 +85,7 @@ jobs:
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: cpu
-            config: ""
+            config: "--config=mkl"
             artifact: libpjrt_c_api_cpu_plugin.so
             renamed_artifact: libpjrt_cpu.so
             runs_on: ['runs-on','runner=32cpu-linux-x64']
