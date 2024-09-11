@@ -32,19 +32,19 @@ tar(
 )
 
 ROCM_PACKAGES = [
-    "@rocm_ubuntu//rccl",
-    "@rocm_ubuntu//rocfft",
-    "@rocm_ubuntu//miopen-hip",
-    "@rocm_ubuntu//hip-dev",
-    "@rocm_ubuntu//rocm-dev",
-    "@rocm_ubuntu//rocm-core",
-    "@rocm_ubuntu//rocm-llvm",
-    "@rocm_ubuntu//rocm-libs",
-    "@rocm_ubuntu//rocm-device-libs",
-    "@rocm_ubuntu//hipfft",
-    "@rocm_ubuntu//hipsolver",
-    "@rocm_ubuntu//hipsparse",
-    "@rocm_ubuntu//rocsolver",
+    # "@rocm_ubuntu//rccl",
+    # "@rocm_ubuntu//rocfft",
+    # "@rocm_ubuntu//miopen-hip",
+    # "@rocm_ubuntu//hip-dev",
+    # "@rocm_ubuntu//rocm-dev",
+    # "@rocm_ubuntu//rocm-core",
+    # "@rocm_ubuntu//rocm-llvm",
+    # "@rocm_ubuntu//rocm-libs",
+    # "@rocm_ubuntu//rocm-device-libs",
+    # "@rocm_ubuntu//hipfft",
+    # "@rocm_ubuntu//hipsolver",
+    # "@rocm_ubuntu//hipsparse",
+    # "@rocm_ubuntu//rocsolver",
     
 ]
 
@@ -64,23 +64,13 @@ dedupe_tar(
 
 oci_image(
     name = "rocm_stripped",
-    architecture = "amd64",
-    os = "linux",
+    base = "@rocm_base",
     tars = [
-        "//base/focal:cacerts",
-        "//base/focal:passwd",
-        "//base/focal:group",
-        "//base/focal:packages",
         "//base/focal:bazelisk",
-        ":strip_packages",
-        ":targets",
-        ":symlinks",
         "//third_party/openxla:openxla_layer_rocm",
     ],
     env = {
         "MAX_NUM_WORKERS": -1,
-        "OPENCL_ROOT": "/opt/rocm/opencl",
-        "PATH": "/usr/local/bin:/opt/rocm/opencl/bin:/opt/rocm/bin:/opt/rocm/hcc/bin:/opt/rocm/hip/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
         "ROCM_PATH": "/opt/rocm-6.2.0/",
         "TERM": "xterm",
         "TF_ROCM_AMDGPU_TARGETS": "gfx900,gfx906,gfx908,gfx90a,gfx940,gfx941,gfx942,gfx1030,gfx1100",

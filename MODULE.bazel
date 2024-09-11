@@ -29,7 +29,16 @@ oci.pull(
         "linux/amd64",
     ],
 )
-use_repo(oci, "cuda_base","cuda_base_linux_amd64")
+
+oci.pull(
+    name = "rocm_base",
+    digest = "sha256:f160ad7a77d59ec22506d6909e7d79aa8f86173e1f84f8e39223fa53e19122e7",
+    image = "docker.io/rocm/tensorflow-build:latest-jammy-python3.9-rocm6.2.0",
+    platforms = [
+        "linux/amd64",
+    ],
+)
+use_repo(oci, "cuda_base","cuda_base_linux_amd64", "rocm_base", "rocm_base_linux_amd64")
 
 apt = use_extension("@rules_distroless//apt:extensions.bzl", "apt")
 apt.install(
