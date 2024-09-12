@@ -74,21 +74,21 @@ jobs:
             config: "--config=cuda"
             artifact: libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
-            runs_on: ['runs-on','runner=32cpu-linux-x64']
+            runs_on: ['runs-on','runner=32cpu-linux-x64', 'image=ubuntu24-amd64']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             config: "--config=rocm"
             artifact: libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
-            runs_on: ['runs-on','runner=32cpu-linux-x64']
+            runs_on: ['runs-on','runner=32cpu-linux-x64', 'image=ubuntu24-amd64']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: cpu
             config: ""
             artifact: libpjrt_c_api_cpu_plugin.so
             renamed_artifact: libpjrt_cpu.so
-            runs_on: ['runs-on','runner=32cpu-linux-x64']
+            runs_on: ['runs-on','runner=32cpu-linux-x64', 'image=ubuntu24-amd64']
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
 
@@ -99,25 +99,28 @@ jobs:
 
       - name: Setup Bazel
         run: |
-          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 -O /usr/local/bin/bazel
-          chmod +x /usr/local/bin/bazel
+          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 -O ~/bin/bazel
+          chmod +x ~/bin/bazel
 
       - name: Force remove container
         run: |
           docker rm -f pjrt-${{ matrix.pjrt.target }}
 
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
-        run: bazel run //${{ matrix.pjrt.target }}:${{ matrix.pjrt.target }}_stripped_tarball
+        run: |
+          ~/bin/bazel run //${{ matrix.pjrt.target }}:${{ matrix.pjrt.target }}_stripped_tarball
 
       - name: "Run ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
         run: |
           docker run \
             --name=pjrt-${{ matrix.pjrt.target }} \
             -w=/xla \
+            --net=host \
             -v=/tmp/cache:/tmp/cache \
             distroless/${{ matrix.pjrt.target }}_builder:latest \
               bazelisk \
               build \
+              --remote_cache=grpc://127.0.0.1:15501 \
               --disk_cache=/tmp/cache \
               ${{ matrix.pjrt.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
               ${{ matrix.pjrt.bazel_target }}
