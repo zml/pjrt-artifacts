@@ -1,0 +1,54 @@
+# Packages for examples/debian_snapshot.
+#
+#  Anytime this file is changed, the lockfile needs to be regenerated.
+#
+#  To generate the ubuntu_base.lock.json run the following command
+#
+#     bazel run @buntu_base//:lock
+#
+version: 1
+
+sources:
+  - channel: jammy main
+    url: https://snapshot.ubuntu.com/ubuntu/20240301T030400Z
+  - channel: jammy universe
+    url: https://snapshot.ubuntu.com/ubuntu/20240301T030400Z
+  - channel: jammy-security main
+    url: https://snapshot.ubuntu.com/ubuntu/20240301T030400Z
+  - channel: jammy-updates main
+    url: https://snapshot.ubuntu.com/ubuntu/20240301T030400Z
+
+archs:
+  - "amd64"
+
+packages:
+  - "wget"
+  - "apt"
+  - "bash"
+  - "ca-certificates"
+  - "coreutils" 
+  - "dpkg"
+  - "gawk"
+  - "libncurses6"
+  - "perl"
+  - "python3"
+  - "tzdata"
+  - "strace"
+  - "grep"
+  - "openssl"
+  - "build-essential"
+  - "gcc"
+  - "g++"
+  - "gzip"
+  - "findutils"
+  - "sed"
+  - "libelf1"
+  - "libdrm2"
+  - "libdrm-amdgpu1"
+  - "libnuma1"
+  - "libxml2"
+  - "libexpat1"
+  - "libexpat1-dev"
+  - "libomp-dev"
+    
+  

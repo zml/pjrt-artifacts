@@ -1,0 +1,104 @@
+load("@aspect_bazel_lib//lib:tar.bzl", "tar")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@container_structure_test//:defs.bzl", "container_structure_test")
+load("@rules_distroless//apt:defs.bzl", "dpkg_status")
+load("@rules_distroless//distroless:defs.bzl", "group", "passwd", "flatten", "cacerts")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
+load("//utils/bazel/dedup_tar:defs.bzl", "dedupe_tar")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+
+passwd(
+    name = "passwd",
+    entries = [
+        {
+            "uid": 0,
+            "gid": 0,
+            "home": "/root",
+            "shell": "/bin/bash",
+            "username": "r00t",
+        },
+        {
+            "uid": 100,
+            "gid": 65534,
+            "home": "/home/_apt",
+            "shell": "/usr/sbin/nologin",
+            "username": "_apt",
+        },
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cacerts(
+    name = "cacerts",
+    package = "@jammy_ubuntu//ca-certificates/amd64:data",
+    visibility = ["//visibility:public"],
+)
+
+group(
+    name = "group",
+    entries = [
+        {
+            "name": "root",
+            "gid": 0,
+        },
+        {
+            "name": "_apt",
+            "gid": 65534,
+        },
+    ],
+    visibility = ["//visibility:public"],
+)
+
+
+pkg_tar(
+    name = "bazelisk",
+    package_dir = "/usr/bin",
+    srcs = [
+        "@bazelisk//file",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+PACKAGES = [
+    "@jammy_ubuntu//wget",
+    "@jammy_ubuntu//apt",
+    "@jammy_ubuntu//bash",
+    "@jammy_ubuntu//ca-certificates",
+    "@jammy_ubuntu//coreutils" ,
+    "@jammy_ubuntu//dpkg",
+    "@jammy_ubuntu//gawk",
+    "@jammy_ubuntu//libncurses6",
+    "@jammy_ubuntu//perl",
+    "@jammy_ubuntu//python3",
+    "@jammy_ubuntu//tzdata",
+    "@jammy_ubuntu//strace",
+    "@jammy_ubuntu//grep",
+    "@jammy_ubuntu//openssl",
+    "@jammy_ubuntu//build-essential",
+    "@jammy_ubuntu//gcc",
+    "@jammy_ubuntu//g++",
+    "@jammy_ubuntu//gzip",
+    "@jammy_ubuntu//findutils",
+    "@jammy_ubuntu//sed",
+    "@jammy_ubuntu//libelf1",
+    "@jammy_ubuntu//libdrm2",
+    "@jammy_ubuntu//libdrm-amdgpu1",
+    "@jammy_ubuntu//libnuma1",
+    "@jammy_ubuntu//libxml2",
+    "@jammy_ubuntu//libexpat1",
+    "@jammy_ubuntu//libexpat1-dev",
+]
+
+flatten(
+    name = "flatten_packages",
+    tars =  [
+        "%s/amd64" % package
+        for package in PACKAGES
+    ],
+)
+
+dedupe_tar(
+    name = "packages",
+    src = ":flatten_packages",
+    visibility = ["//visibility:public"],
+)

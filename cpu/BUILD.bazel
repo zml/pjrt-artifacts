@@ -11,14 +11,15 @@ tar(
     mtree = [
         "./usr/bin/sh type=link link=/bin/bash",
         "./bin/sh type=link link=/bin/bash",
-        "./bin/bash type=link link=/usr/bin/bash",
+        # Noble required
+        # "./bin/bash type=link link=/usr/bin/bash",
         "./opt/rocm/ type=link link=/opt/rocm-6.2.0/",
         "./usr/bin/which type=link link=/usr/bin/which.debianutils",
         "./usr/bin/bazel type=link link=/usr/bin/bazelisk",
-        "./lib/x86_64-linux-gnu/libm.so.6 type=link link=/usr/lib/x86_64-linux-gnu/libm.so.6",
-        "./lib/x86_64-linux-gnu/libmvec.so.1 type=link link=/usr/lib/x86_64-linux-gnu/libmvec.so.1",
-        "./lib/x86_64-linux-gnu/libc.so.6 type=link link=/usr/lib/x86_64-linux-gnu/libc.so.6 ",
-        "./opt/rocm-6.2.0/bin/targets.lst type=link link=/opt/targets.lst",
+        # Noble required
+        # "./lib/x86_64-linux-gnu/libm.so.6 type=link link=/usr/lib/x86_64-linux-gnu/libm.so.6",
+        # "./lib/x86_64-linux-gnu/libmvec.so.1 type=link link=/usr/lib/x86_64-linux-gnu/libmvec.so.1",
+        # "./lib/x86_64-linux-gnu/libc.so.6 type=link link=/usr/lib/x86_64-linux-gnu/libc.so.6 ",
         "./usr/bin/python type=link link=/usr/bin/python3",
     ],
 )
@@ -57,11 +58,11 @@ oci_image(
     architecture = "amd64",
     os = "linux",
     tars = [
-        "//base/noble:bazelisk",
-        "//base/noble:cacerts",
-        "//base/noble:passwd",
-        "//base/noble:group",
-        "//base/noble:packages",
+        "//base/jammy:bazelisk",
+        "//base/jammy:cacerts",
+        "//base/jammy:passwd",
+        "//base/jammy:group",
+        "//base/jammy:packages",
         ":strip_packages",
         ":symlinks",
         "//third_party/openxla:openxla_layer_cpu",

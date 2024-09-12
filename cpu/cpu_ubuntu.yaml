@@ -9,10 +9,10 @@
 version: 1
 
 sources:
-  - channel: noble main
+  - channel: jammy main
     url: https://snapshot.ubuntu.com/ubuntu/20240301T030400Z
-  - channel: llvm-toolchain-noble-18 main
-    url: https://apt.llvm.org/noble/
+  - channel: llvm-toolchain-jammy-18 main
+    url: https://apt.llvm.org/jammy/
     
 archs:
   - "amd64"
