@@ -1,7 +1,12 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 
-OPENXLA_COMMIT = "336122e2fb0e3d7dd93b5a4a30f7551d8e1a21b6"
-OPENXLA_SHA256 = "9ea232552b417dac4a16481692291e82f012b81876393f52712b695b57869ac4"
+# While https://github.com/openxla/xla/pull/16696 isn't merge
+# we use fork of xla with the patch applied.
+# This version was chosen because it contains the gather/scatter broadcasting dims.
+# https://github.com/zml/xla/tree/gw/2024_09_19
+# Reference commit on xla@main: https://github.com/zml/xla/commit/d391119197eab771a84c1f8a59a7f50b7da4b43d
+OPENXLA_COMMIT = "754750ed6957592e646a6a21eee091711d50f9a7"
+OPENXLA_SHA256 = "9f84729849642b94d158c776128c76d5c61932117cc04cfceb54fa5e72c827fe"
 
 def _xla_impl(mctx):
     http_file(
