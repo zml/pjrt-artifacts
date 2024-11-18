@@ -5,8 +5,8 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 # This version was chosen because it contains the gather/scatter broadcasting dims.
 # https://github.com/zml/xla/tree/gw/2024_09_19
 # Reference commit on xla@main: https://github.com/zml/xla/commit/d391119197eab771a84c1f8a59a7f50b7da4b43d
-OPENXLA_COMMIT = "7018a84922e775445bcae422363703d2abe8d571"
-OPENXLA_SHA256 = "3b01091dc340c4803b0ce9c57635ca37d0671a89bbaea0b788e45f364967fa1d"
+OPENXLA_COMMIT = "69fbcc7a8ba46ebf5ecde60e8e8ad684e75f55c6"
+OPENXLA_SHA256 = "742b91b77e9ed80795d059fd4c76269e83c9e914ce2b0c8c7b0454fd492ce7bc"
 
 def _xla_impl(mctx):
     http_file(

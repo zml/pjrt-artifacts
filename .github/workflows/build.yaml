@@ -29,7 +29,7 @@ jobs:
         with:
           repository: zml/xla
           token: ${{ secrets.OPENXLA_READ_ONLY }}
-          ref: 7018a84922e775445bcae422363703d2abe8d571
+          ref: 69fbcc7a8ba46ebf5ecde60e8e8ad684e75f55c6
 
       - name: Setup Bazel
         run: |
