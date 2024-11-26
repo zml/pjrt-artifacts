@@ -16,18 +16,18 @@ jobs:
     strategy:
       matrix:
         pjrt:
-          #          - target: cpu
-          #            config: "--config=release_macos_arm64"
-          #            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
-          #            runs_on: ["macos-15-arm64"]
-          #            platform: darwin-arm64
-          #            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
-            config: "--config=release_macos_amd64"
+            config: "--config=release_macos_arm64"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
             runs_on: ["macos-15"]
-            platform: darwin-amd64
+            platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+          # - target: cpu
+          #   config: "--config=release_macos_amd64"
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
+          #   runs_on: ["macos-15"]
+          #   platform: darwin-amd64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
 
     runs-on: ${{ matrix.pjrt.runs_on }}
     steps:
@@ -151,22 +151,22 @@ jobs:
   #        with:
   #          name: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
   #          path: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
-
-  release:
-    # needs: ["pjrt-artifacts","pjrt-osx-artifacts"]
-    needs: ["pjrt-osx-artifacts"]
-    runs-on: ["runs-on", "runner=2cpu-linux-x64"]
-    steps:
-      - run: rm -rf pjrt*.tar.gz
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        if: startsWith(github.ref, 'refs/tags/')
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            pjrt-cpu_darwin-amd64.tar.gz/pjrt-cpu_darwin-amd64.tar.gz
+##### RELEASE #####
+#  release:
+#    # needs: ["pjrt-artifacts","pjrt-osx-artifacts"]
+#    needs: ["pjrt-osx-artifacts"]
+#    runs-on: ["runs-on", "runner=2cpu-linux-x64"]
+#    steps:
+#      - run: rm -rf pjrt*.tar.gz
+#      - name: Download all artifacts
+#        uses: actions/download-artifact@v4
+#        if: startsWith(github.ref, 'refs/tags/')
+#      - name: Release
+#        uses: softprops/action-gh-release@v2
+#        if: startsWith(github.ref, 'refs/tags/')
+#        with:
+#          files: |
+#            pjrt-cpu_darwin-amd64.tar.gz/pjrt-cpu_darwin-amd64.tar.gz
 
 #            pjrt-cpu_darwin-arm64.tar.gz/pjrt-cpu_darwin-arm64.tar.gz
 #            pjrt-cpu_darwin-amd64.tar.gz/pjrt-cpu_darwin-amd64.tar.gz
