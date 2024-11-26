@@ -37,10 +37,10 @@ jobs:
           repository: zml/xla
           ref: 97a3db78e4db918033d4f3c5934026c5f3c531e7
 
-      - name: Setup Bazel
-        run: |
-          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 -O /usr/local/bin/bazel
-          chmod +x /usr/local/bin/bazel
+      #      - name: Setup Bazel
+      #        run: |
+      #          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 -O /usr/local/bin/bazel
+      #          chmod +x /usr/local/bin/bazel
 
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
         run: |
