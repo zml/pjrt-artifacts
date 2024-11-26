@@ -22,12 +22,12 @@ jobs:
             runs_on: ["macos-latest"]
             platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
-          - target: cpu
-            config: "--config=release_macos_amd64"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
-            runs_on: ["macos-latest"]
-            platform: darwin-amd64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+    #          - target: cpu
+    #            config: "--config=release_macos_amd64"
+    #            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
+    #            runs_on: ["macos-latest"]
+    #            platform: darwin-amd64
+    #            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
 
     runs-on: ${{ matrix.pjrt.runs_on }}
     steps:
@@ -166,9 +166,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            pjrt-cpu_darwin-amd64.tar.gz/pjrt-cpu_darwin-amd64.tar.gz
             pjrt-cpu_darwin-arm64.tar.gz/pjrt-cpu_darwin-arm64.tar.gz
 
+#            pjrt-cpu_darwin-amd64.tar.gz/pjrt-cpu_darwin-amd64.tar.gz
 #            pjrt-rocm_linux-amd64.tar.gz/pjrt-rocm_linux-amd64.tar.gz
 #            pjrt-cuda_linux-amd64.tar.gz/pjrt-cuda_linux-amd64.tar.gz
 #            pjrt-cpu_linux-amd64.tar.gz/pjrt-cpu_linux-amd64.tar.gz
