@@ -38,7 +38,7 @@ jobs:
           ref: 97a3db78e4db918033d4f3c5934026c5f3c531e7
 
       - name: Setup Bazel
-        if: ${{ 'self-hosted' in matrix.pjrt.runs_on }} # Run only for self-hosted macOS
+        if: ${{ contains(matrix.pjrt.runs_on, 'self-hosted') }} # Run only for self-hosted macOS
         run: |
           wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 -O /usr/local/bin/bazel
           chmod +x /usr/local/bin/bazel
