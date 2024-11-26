@@ -19,7 +19,7 @@ jobs:
           - target: cpu
             config: "--config=release_macos_arm64"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
-            runs_on: ["macos-15"]
+            runs_on: ["macos-12"]
             platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           # - target: cpu
