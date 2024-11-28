@@ -69,7 +69,7 @@ jobs:
       matrix:
         pjrt:
           - target: cuda
-            config: "--config=cuda"
+            config: "--config=cuda --repo_env=HERMETIC_CUDA_VERSION=\"12.6.3\"  --repo_env=HERMETIC_CUDNN_VERSION=\"9.5.1\""
             artifact: libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
             runs_on: ['runs-on','runner=32cpu-linux-x64', 'image=ubuntu24-amd64']
@@ -111,17 +111,17 @@ jobs:
       - name: "Run ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
         run: |
           docker run \
-            --name=pjrt-${{ matrix.pjrt.target }} \
+            --name=pjrt-cuda \
             -w=/xla \
             --net=host \
             -v=/tmp/cache:/tmp/cache \
-            distroless/${{ matrix.pjrt.target }}_builder:latest \
+            distroless/cuda_builder:latest \
               bazelisk \
               build \
               --remote_cache=grpc://127.0.0.1:15501 \
               --disk_cache=/tmp/cache \
-              ${{ matrix.pjrt.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
-              ${{ matrix.pjrt.bazel_target }}
+              --config=cuda_clang_official --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
+              //xla/pjrt/c:pjrt_c_api_gpu_plugin
 
       - name: "Retrieve ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts"
         run: |
