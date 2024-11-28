@@ -3,7 +3,6 @@ build --repo_env CC=/usr/lib/llvm-18/bin/clang
 build --repo_env BAZEL_COMPILER=/usr/lib/llvm-18/bin/clang
 build --config nvcc_clang
 build --action_env CLANG_CUDA_COMPILER_PATH=/usr/lib/llvm-18/bin/clang
-build:cuda --repo_env HERMETIC_CUDA_COMPUTE_CAPABILITIES=8.9
 build --action_env PYTHON_BIN_PATH=/usr/bin/python3
 build --python_path /usr/bin/python3
 test --test_env LD_LIBRARY_PATH
@@ -17,3 +16,7 @@ test --build_tag_filters -no_oss
 test --test_tag_filters -no_oss
 build:cuda --repo_env=HERMETIC_CUDA_VERSION="12.6.0"
 build:cuda --repo_env=HERMETIC_CUDNN_VERSION="9.3.0"
+build:cuda --repo_env HERMETIC_CUDA_COMPUTE_CAPABILITIES="sm_50,sm_60,sm_70,sm_80,compute_90"
+# build:cuda --linkopt=-Wl,--disable-new-dtags
+build:cuda --@local_config_cuda//cuda:include_cuda_libs=true
+
