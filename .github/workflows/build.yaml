@@ -24,27 +24,48 @@ jobs:
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
     runs-on: ${{ matrix.pjrt.runs_on }}
     steps:
+      - name: "Checking out repository"
+        uses: actions/checkout@v4
+        with:
+          path: 'pjrt-artifacts'
+
+      - name: Extract OpenXLA commit id
+        id: extract
+        run: |
+          commitid=`grep "OPENXLA_COMMIT = " ./pjrt-artifacts/third_party/openxla/xla.bzl | awk -F ' = ' '{print $2}' | sed 's/"//g'`
+          echo "commitid=$commitid" >> $GITHUB_OUTPUT
+
       - name: "Checking out openxla repository"
         uses: actions/checkout@v4
         with:
-          repository: zml/xla
-          token: ${{ secrets.OPENXLA_READ_ONLY }}
-          ref: a7dacdc504ed0183cb26af47e41294c45a6d5b70
+          repository: openxla/xla
+          path: 'xla'
+          ref: ${{ steps.extract.outputs.commitid }}
+  
+      - name: Apply patches
+        working-directory: ./xla
+        run: |
+          for patch in $(ls ../pjrt-artifacts/third_party/openxla/patches/*.patch | sort); do
+              echo "Applying patch $patch"
+              git apply "$patch"
+          done
 
       - name: Setup Bazel
         run: |
-          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 -O /usr/local/bin/bazel
+          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-amd64 -O /usr/local/bin/bazel
           chmod +x /usr/local/bin/bazel
 
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
+        working-directory: ./xla
         run: |
           bazelisk \
               build \
               --disk_cache=/tmp/cache \
-              ${{ matrix.pjrt.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
+              ${{ matrix.pjrt.config }} \
               ${{ matrix.pjrt.bazel_target }}
 
       - name: Strip binary and rpath
+        working-directory: ./xla
         run: |
           strip -x -o libpjrt_cpu.dylib ${{ matrix.pjrt.artifact }}
           install_name_tool -id '@rpath/libpjrt_cpu.dylib' libpjrt_cpu.dylib
@@ -53,7 +74,7 @@ jobs:
         uses: a7ul/tar-action@v1.2.0
         with:
           command: c
-          cwd: .
+          cwd: ./xla
           files: |
             ./libpjrt_cpu.dylib
           outPath: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
@@ -97,7 +118,7 @@ jobs:
 
       - name: Setup Bazel
         run: |
-          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 -O ~/bin/bazel
+          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-amd64 -O ~/bin/bazel
           chmod +x ~/bin/bazel
 
       - name: Force remove container
@@ -120,7 +141,7 @@ jobs:
               build \
               --remote_cache=grpc://127.0.0.1:15501 \
               --disk_cache=/tmp/cache \
-              ${{ matrix.pjrt.config }} --repo_env=HERMETIC_PYTHON_VERSION=3.11 \
+              ${{ matrix.pjrt.config }} \
               ${{ matrix.pjrt.bazel_target }}
 
       - name: "Retrieve ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts"

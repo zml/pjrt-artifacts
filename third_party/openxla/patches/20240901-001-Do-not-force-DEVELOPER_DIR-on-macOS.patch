@@ -1,0 +1,37 @@
+From 68af1b30f8d69d7a63f5cd68ee9d37ccf1ed428f Mon Sep 17 00:00:00 2001
+From: Steeve Morin <steeve.morin@gmail.com>
+Date: Sun, 1 Sep 2024 14:53:08 +0200
+Subject: [PATCH] Do not force DEVELOPER_DIR on macOS
+
+It's is autodetected by Bazel and supports building using
+only the Apple Command Line Tools.
+---
+ tensorflow.bazelrc       | 1 -
+ third_party/tsl/.bazelrc | 1 -
+ 2 files changed, 2 deletions(-)
+
+diff --git a/tensorflow.bazelrc b/tensorflow.bazelrc
+index 8076f8e870..5d3b6f702e 100644
+--- a/tensorflow.bazelrc
++++ b/tensorflow.bazelrc
+@@ -686,7 +686,6 @@ test:release_arm64_linux --flaky_test_attempts=3
+ build:release_cpu_macos --config=avx_linux
+
+ # Base build configs for macOS
+-build:release_macos_base --action_env  DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+ build:release_macos_base --define=no_nccl_support=true --output_filter=^$
+
+ # Ensure release_base is set on mac
+
+ diff --git a/third_party/tsl/.bazelrc b/third_party/tsl/.bazelrc
+index 103f0b345d..42bd92af9f 100644
+--- a/third_party/tsl/.bazelrc
++++ b/third_party/tsl/.bazelrc
+@@ -686,7 +686,6 @@ test:release_arm64_linux --flaky_test_attempts=3
+ build:release_cpu_macos --config=avx_linux
+
+ # Base build configs for macOS
+-build:release_macos_base --action_env  DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+ build:release_macos_base --define=no_nccl_support=true --output_filter=^$
+
+ # Ensure release_base is set on mac
