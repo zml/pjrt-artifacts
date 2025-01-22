@@ -1,6 +1,6 @@
-load("xla.bzl", "OPENXLA_COMMIT")
 load("@aspect_bazel_lib//lib:copy_directory.bzl", "copy_directory")
 load("@aspect_bazel_lib//lib:tar.bzl", "tar", "mtree_spec", "mtree_mutate")
+load("xla.bzl", "OPENXLA_COMMIT")
 
 def create_openxla_targets():
     # List of configurations

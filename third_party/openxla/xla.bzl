@@ -1,5 +1,4 @@
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file" ,"http_archive")
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 OPENXLA_COMMIT = "cc075beb6148c2777da2b6749c63830856ee6c2a"
 OPENXLA_SHA256 = "a01f12dfc5992845c1b59eab011774a0bf5202d4a67ec3ccdb14ee8f7ca57b17"
