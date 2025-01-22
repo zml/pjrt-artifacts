@@ -29,7 +29,7 @@ filegroup(
             "patches/20240901-002-Set-the-macosx-deployment-target-via-the-bazel-command-line.patch", # PR: https://github.com/openxla/xla/pull/16696
             "patches/20240901-003-Only-export-GetPjrtApi-symbol-on-macOS.patch", # PR: https://github.com/openxla/xla/pull/16696
             "patches/20250120-001-Enable-nvptxcompiler-with-nvjitlink.patch", # Allow us to levarage technologies flagged for Google only
-            "20250122-001-Fix-LoadedNvJitLinkHasKnownIssues-check.patch", # PR: https://github.com/openxla/xla/pull/2172
+            "patches/20250122-001-Fix-LoadedNvJitLinkHasKnownIssues-check.patch", # PR: https://github.com/openxla/xla/pull/2172
         ],
     )
 
