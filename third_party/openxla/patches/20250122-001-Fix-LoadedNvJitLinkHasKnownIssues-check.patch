@@ -1,0 +1,24 @@
+From e0d67890aff6abe1087920efe49d6f6c4744f80f Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Wed, 22 Jan 2025 19:29:44 +0100
+Subject: [PATCH] Fix LoadedNvJitLinkHasKnownIssues check
+
+---
+ xla/stream_executor/cuda/nvjitlink_known_issues.cc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/xla/stream_executor/cuda/nvjitlink_known_issues.cc b/xla/stream_executor/cuda/nvjitlink_known_issues.cc
+index 100730bfbb..5b685a16b9 100644
+--- a/xla/stream_executor/cuda/nvjitlink_known_issues.cc
++++ b/xla/stream_executor/cuda/nvjitlink_known_issues.cc
+@@ -30,7 +30,7 @@ bool LoadedNvJitLinkHasKnownIssues() {
+   // Note that this needs to be a runtime version test because we load
+   // LibNvJitLink as a dynamic library and the version might vary and not be the
+   // same that we saw at compile time.
+-  return GetNvJitLinkVersion().value_or(NvJitLinkVersion{0, 0}) >=
++  return GetNvJitLinkVersion().value_or(NvJitLinkVersion{0, 0}) <
+          kMinVersionWithoutKnownIssues;
+ }
+ 
+-- 
+2.39.5 (Apple Git-154)

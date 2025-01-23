@@ -67,7 +67,8 @@ oci_image(
         "//base/noble:bazelisk",
         ":strip_packages",
         ":symlinks",
-        "//third_party/openxla:openxla_layer_cuda",
+        "//third_party/openxla:openxla_tar",
+        "//third_party/openxla:cuda_configuration_tar",
     ],
     env = {
         "MAX_NUM_WORKERS": -1,

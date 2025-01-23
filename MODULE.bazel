@@ -2,8 +2,9 @@ module(
     name = "pjrt_plugins",
 )
 
-bazel_dep(name = "aspect_bazel_lib", version = "2.7.9")
-bazel_dep(name = "rules_oci", version = "2.0.0-beta1", dev_dependency = True)
+bazel_dep(name = "aspect_bazel_lib", version = "2.11.0")
+bazel_dep(name = "rules_license", version = "1.0.0")
+bazel_dep(name = "rules_oci", version = "2.2.0", dev_dependency = True)
 bazel_dep(name = "container_structure_test", version = "1.16.0", dev_dependency = True)
 bazel_dep(name = "rules_pkg", version = "1.0.1")
 bazel_dep(name = "zstd", version = "1.5.6")
