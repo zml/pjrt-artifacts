@@ -1,0 +1,62 @@
+From 35bff62acbb118d5accd0b6435e0cdd681864c50 Mon Sep 17 00:00:00 2001
+From: Steeve Morin <steeve.morin@gmail.com>
+Date: Sun, 1 Sep 2024 10:56:23 +0200
+Subject: [PATCH] [PjRt] Only export GetPjrtApi symbol on macOS
+
+Also add missing macOS linkops, remove the .so suffix to the plugin targets
+and add additional_linker_inputs for the linker script instead of deps.
+---
+ xla/pjrt/c/BUILD | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
+
+diff --git a/xla/pjrt/c/BUILD b/xla/pjrt/c/BUILD
+index 67021589fb..18a56a43d4 100644
+--- a/xla/pjrt/c/BUILD
++++ b/xla/pjrt/c/BUILD
+@@ -255,9 +255,14 @@ cc_library(
+
+ # PJRT CPU plugin.
+ xla_cc_binary(
+-    name = "pjrt_c_api_cpu_plugin.so",
++    name = "pjrt_c_api_cpu_plugin",
++    additional_linker_inputs = if_macos([], [":pjrt_c_api_cpu_version_script.lds"]),
+     linkopts = if_macos(
+-        [],
++        [
++            "-Wl,-exported_symbol,_GetPjrtApi",
++            "-Wl,-install_name,@rpath/pjrt_c_api_cpu_plugin.dylib",
++            "-Wl,-undefined,error",
++        ],
+         [
+             "-Wl,--version-script,$(location :pjrt_c_api_cpu_version_script.lds)",
+             "-Wl,--no-undefined",
+@@ -270,10 +275,7 @@ xla_cc_binary(
+         "notsan",
+     ],
+     visibility = ["//visibility:public"],
+-    deps = [
+-        ":pjrt_c_api_cpu",
+-        ":pjrt_c_api_cpu_version_script.lds",
+-    ],
++    deps = [":pjrt_c_api_cpu"],
+ )
+
+ cc_library(
+@@ -339,7 +341,8 @@ cc_library(
+
+ # PJRT GPU plugin. Can be configured to be built for CUDA or ROCM.
+ xla_cc_binary(
+-    name = "pjrt_c_api_gpu_plugin.so",
++    name = "pjrt_c_api_gpu_plugin",
++    additional_linker_inputs = [":pjrt_c_api_gpu_version_script.lds"],
+     linkopts = [
+         "-Wl,--version-script,$(location :pjrt_c_api_gpu_version_script.lds)",
+         "-Wl,--no-undefined",
+@@ -353,7 +356,6 @@ xla_cc_binary(
+     ],
+     deps = [
+         ":pjrt_c_api_gpu",
+-        ":pjrt_c_api_gpu_version_script.lds",
+         "//xla/service:gpu_plugin",
+     ] + if_cuda_is_configured([
+         "//xla/stream_executor:cuda_platform",
