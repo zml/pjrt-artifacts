@@ -85,7 +85,7 @@ jobs:
           - target: cpu
             config: "--config=release_macos_arm64"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
-            runs_on: ["macos-15"]
+            runs_on: ["self-hosted", "macOS"]
             renamed_artifact: libpjrt_cpu.dylib
             platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
@@ -157,7 +157,7 @@ jobs:
           docker rm -f pjrt-${{ matrix.pjrt.target }}
 
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
-        if: matrix.pjrt.target == 'cpu'
+        if: matrix.pjrt.target == 'cpu' && github.event_name != 'schedule'
         working-directory: ./xla
         run: |
           ~/bin/bazel \
@@ -168,7 +168,7 @@ jobs:
               ${{ matrix.pjrt.bazel_target }}
 
       - name: Strip binary and rpath
-        if: matrix.pjrt.target == 'cpu'
+        if: matrix.pjrt.target == 'cpu' && github.event_name != 'schedule'
         working-directory: ./xla
         run: |
           strip -x -o ../${{ matrix.pjrt.renamed_artifact }} ${{ matrix.pjrt.artifact }}
