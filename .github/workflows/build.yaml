@@ -170,8 +170,8 @@ jobs:
         if: matrix.pjrt.target == 'cpu'
         working-directory: ./xla
         run: |
-          strip -x -o libpjrt_cpu.dylib ${{ matrix.pjrt.artifact }}
-          install_name_tool -id '@rpath/libpjrt_cpu.dylib' libpjrt_cpu.dylib
+          strip -x -o ../${{ matrix.pjrt.renamed_artifact }} ${{ matrix.pjrt.artifact }}
+          install_name_tool -id '@rpath/${{ matrix.pjrt.renamed_artifact }}' ../${{ matrix.pjrt.renamed_artifact }}
 
       - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
         uses: a7ul/tar-action@v1.2.0
