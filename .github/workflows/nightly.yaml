@@ -77,7 +77,6 @@ jobs:
               --bes_results_url=https://app.buildbuddy.io/invocation/ \
               --bes_backend=grpcs://remote.buildbuddy.io \
               --remote_cache=grpcs://remote.buildbuddy.io \
-              --remote_cache_compression \
               --experimental_remote_build_event_upload=minimal \
               --nolegacy_important_outputs \
               --remote_download_toplevel \
