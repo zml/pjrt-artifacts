@@ -31,6 +31,14 @@ jobs:
           path: "pjrt-artifacts"
       - name: "Checking out openxla repository"
         uses: actions/checkout@v4
+        if: ${{ github.event_name == 'schedule' }}
+        with:
+          ref: main
+          repository: openxla/xla
+          path: "xla"
+      - name: "Checking out openxla repository"
+        uses: actions/checkout@v4
+        if: ${{ github.event_name != 'schedule' }}
         with:
           ref: ${{ env.XLA_COMMIT }}
           repository: openxla/xla
