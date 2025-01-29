@@ -65,8 +65,6 @@ oci_image(
         "//base/jammy:packages",
         ":strip_packages",
         ":symlinks",
-        "//third_party/openxla:openxla_tar",
-        "//third_party/openxla:cpu_configuration_tar",
     ],
     env = {
         "MAX_NUM_WORKERS": -1,
