@@ -91,7 +91,7 @@ jobs:
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
             config: "--config=release_macos_base"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
+            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
             runs_on: ["macos-13"]
             platform: darwin-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
@@ -181,13 +181,13 @@ jobs:
         if: matrix.pjrt.target == 'cpu' && matrix.pjrt.platform != 'darwin-arm64' && matrix.pjrt.platform != 'darwin-amd64' && github.event_name != 'schedule'
         working-directory: ./xla
         run: |
-          cp bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} ../${{ matrix.pjrt.renamed_artifact }}
+          cp ${{ matrix.pjrt.artifact }} ../${{ matrix.pjrt.renamed_artifact }}
 
       - name: Strip binary and rpath
         if: matrix.pjrt.platform == 'darwin-arm64' || matrix.pjrt.platform == 'darwin-amd64' && github.event_name != 'schedule'
         working-directory: ./xla
         run: |
-          strip -x -o ../${{ matrix.pjrt.renamed_artifact }} bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }}
+          strip -x -o ../${{ matrix.pjrt.renamed_artifact }} ${{ matrix.pjrt.artifact }}
           install_name_tool -id '@rpath/${{ matrix.pjrt.renamed_artifact }}' ../${{ matrix.pjrt.renamed_artifact }}
 
       - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
