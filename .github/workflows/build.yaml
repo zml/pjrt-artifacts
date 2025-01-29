@@ -38,7 +38,7 @@ jobs:
       - name: Apply patches to openxla
         working-directory: ./xla
         run: |
-          echo "::notice Applying patches to openxla ${{ github.sha }}"
+          echo ::notice::Applying patches to openxla ${{ github.sha }}
 
           for patch in $(ls ../pjrt-artifacts/openxla/patches/*.patch | sort); do
               echo "Applying patch $patch"
@@ -79,11 +79,16 @@ jobs:
             platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
+            config: "--config=release_macos_base"
+            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
+            runs_on: ["macos-13"]
+            platform: darwin-amd64
+            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+          - target: cpu
             config: ""
             artifact: libpjrt_c_api_cpu_plugin.so
             renamed_artifact: libpjrt_cpu.so
-            runs_on:
-              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu24-amd64"]
+            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu24-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
     needs: ["setup_openxla"]
