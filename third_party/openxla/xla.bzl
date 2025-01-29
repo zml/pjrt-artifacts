@@ -30,6 +30,7 @@ filegroup(
             "patches/20240901-003-Only-export-GetPjrtApi-symbol-on-macOS.patch", # PR: https://github.com/openxla/xla/pull/16696
             "patches/20250120-001-Enable-nvptxcompiler-with-nvjitlink.patch", # Allow us to levarage technologies flagged for Google only
             "patches/20250122-001-Fix-LoadedNvJitLinkHasKnownIssues-check.patch", # PR: https://github.com/openxla/xla/pull/2172
+            "patches/20250128-001-PJRT-Expose-should_stage_host_to_device_transfers.patch", # PR: https://github.com/openxla/xla/pull/21965
         ],
     )
 
