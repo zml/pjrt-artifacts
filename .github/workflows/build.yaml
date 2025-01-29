@@ -4,6 +4,8 @@ on:
     tags:
       - "*"
   pull_request:
+  schedule:
+    - cron: '0 */12 * * *'
   workflow_dispatch:
     inputs:
       xla_commit:
@@ -203,3 +205,4 @@ jobs:
             pjrt-cuda_linux-amd64.tar.gz/pjrt-cuda_linux-amd64.tar.gz
             pjrt-cpu_linux-amd64.tar.gz/pjrt-cpu_linux-amd64.tar.gz
             pjrt-cpu_darwin-arm64.tar.gz/pjrt-cpu_darwin-arm64.tar.gz
+            pjrt-cpu_darwin-amd64.tar.gz/pjrt-cpu_darwin-amd64.tar.gz
