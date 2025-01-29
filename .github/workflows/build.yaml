@@ -178,7 +178,7 @@ jobs:
               ${{ matrix.pjrt.bazel_target }}
 
       - name: Set file at the right path
-        if: matrix.pjrt.target == 'cpu' && matrix.pjrt.platform != 'darwin-arm64' || matrix.pjrt.platform != 'darwin-amd64' && github.event_name != 'schedule'
+        if: matrix.pjrt.target == 'cpu' && matrix.pjrt.platform != 'darwin-arm64' && matrix.pjrt.platform != 'darwin-amd64' && github.event_name != 'schedule'
         working-directory: ./xla
         run: |
           cp bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} ../${{ matrix.pjrt.renamed_artifact }}
