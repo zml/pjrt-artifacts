@@ -4,8 +4,6 @@ on:
     tags:
       - "*"
   pull_request:
-  schedule:
-    - cron: '0 */12 * * *'
   workflow_dispatch:
     inputs:
       xla_commit:
@@ -33,14 +31,6 @@ jobs:
           path: "pjrt-artifacts"
       - name: "Checking out openxla repository"
         uses: actions/checkout@v4
-        if: ${{ github.event_name == 'schedule' }}
-        with:
-          ref: main
-          repository: openxla/xla
-          path: "xla"
-      - name: "Checking out openxla repository"
-        uses: actions/checkout@v4
-        if: ${{ github.event_name != 'schedule' }}
         with:
           ref: ${{ env.XLA_COMMIT }}
           repository: openxla/xla
@@ -149,6 +139,9 @@ jobs:
               --bes_results_url=https://app.buildbuddy.io/invocation/ \
               --bes_backend=grpcs://remote.buildbuddy.io \
               --remote_cache=grpcs://remote.buildbuddy.io \
+              --remote_cache_compression \
+              --experimental_remote_build_event_upload=minimal \
+              --nolegacy_important_outputs \
               --remote_download_toplevel \
               --remote_timeout=3600 \
               --remote_header=x-buildbuddy-api-key=${{ secrets.BUILDBUDDY_ORG_API_KEY }} \
@@ -163,7 +156,7 @@ jobs:
           docker rm -f pjrt-${{ matrix.pjrt.target }}
 
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
-        if: matrix.pjrt.target == 'cpu' && github.event_name != 'schedule'
+        if: matrix.pjrt.target == 'cpu'
         working-directory: ./xla
         run: |
           ~/bin/bazel \
@@ -172,6 +165,9 @@ jobs:
               --bes_results_url=https://app.buildbuddy.io/invocation/ \
               --bes_backend=grpcs://remote.buildbuddy.io \
               --remote_cache=grpcs://remote.buildbuddy.io \
+              --remote_cache_compression \
+              --experimental_remote_build_event_upload=minimal \
+              --nolegacy_important_outputs \
               --remote_download_toplevel \
               --remote_timeout=3600 \
               --remote_header=x-buildbuddy-api-key=${{ secrets.BUILDBUDDY_ORG_API_KEY }} \
@@ -179,13 +175,13 @@ jobs:
               ${{ matrix.pjrt.bazel_target }}
 
       - name: Set file at the right path
-        if: matrix.pjrt.target == 'cpu' && matrix.pjrt.platform == 'linux-amd64' && github.event_name != 'schedule'
+        if: matrix.pjrt.target == 'cpu' && matrix.pjrt.platform == 'linux-amd64'
         working-directory: ./xla
         run: |
           cp ${{ matrix.pjrt.artifact }} ../${{ matrix.pjrt.renamed_artifact }}
 
       - name: Strip binary and rpath
-        if: matrix.pjrt.platform == 'darwin-arm64' || matrix.pjrt.platform == 'darwin-amd64' && github.event_name != 'schedule'
+        if: matrix.pjrt.platform == 'darwin-arm64' || matrix.pjrt.platform == 'darwin-amd64'
         working-directory: ./xla
         run: |
           strip -x -o ../${{ matrix.pjrt.renamed_artifact }} ${{ matrix.pjrt.artifact }}
