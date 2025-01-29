@@ -146,6 +146,7 @@ jobs:
             distroless/${{ matrix.pjrt.target }}_builder:latest \
               bazelisk \
               build \
+              --remote_header=x-buildbuddy-api-key=${{ secrets.BUILDBUDDY_ORG_API_KEY }} \
               --disk_cache=/tmp/cache \
               ${{ matrix.pjrt.config }} \
               ${{ matrix.pjrt.bazel_target }}
@@ -163,6 +164,7 @@ jobs:
           ~/bin/bazel \
               build \
               --disk_cache=/tmp/cache \
+              --remote_header=x-buildbuddy-api-key=${{ secrets.BUILDBUDDY_ORG_API_KEY }} \
               ${{ matrix.pjrt.config }} \
               ${{ matrix.pjrt.bazel_target }}
 
