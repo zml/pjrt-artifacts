@@ -72,21 +72,20 @@ jobs:
             config: "--config=cuda"
             artifact: libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
-            runs_on: ["self-hosted", "Linux", "X64"]
+            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu24-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             config: "--config=rocm"
             artifact: libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
-            runs_on:
-              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu24-amd64"]
+            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu24-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: cpu
             config: "--config=release_macos_arm64"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
-            runs_on: ["self-hosted", "macOS"]
+            runs_on: ["macos-14"]
             renamed_artifact: libpjrt_cpu.dylib
             platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
