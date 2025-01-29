@@ -36,10 +36,12 @@ jobs:
           repository: openxla/xla
           path: "xla"
       - name: Apply patches to openxla
+        id: patches
         working-directory: ./xla
         run: |
-          echo ::notice::Applying patches to openxla ${{ github.sha }}
-
+          xla_commit=$(git rev-parse HEAD)
+          echo "XLA_COMMIT_ID=$xla_commit" >> $GITHUB_OUTPUT
+          echo ::notice::Applying patches to openxla $xla_commit
           for patch in $(ls ../pjrt-artifacts/openxla/patches/*.patch | sort); do
               echo "Applying patch $patch"
               git apply "$patch"
@@ -48,7 +50,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           include-hidden-files: true
-          name: xla-${{ env.XLA_COMMIT }}
+          name: xla-${{ steps.patches.outputs.XLA_COMMIT_ID }}
           path: ./xla
 
   pjrt-artifacts:
