@@ -178,10 +178,10 @@ jobs:
               ${{ matrix.pjrt.bazel_target }}
 
       - name: Strip binary and rpath
-        if: matrix.pjrt.target == 'cpu' && github.event_name != 'schedule'
+        if: matrix.pjrt.platform == 'darwin-arm64' || matrix.pjrt.platform == 'darwin-amd64' && github.event_name != 'schedule'
         working-directory: ./xla
         run: |
-          strip -x -o ../${{ matrix.pjrt.renamed_artifact }} ${{ matrix.pjrt.artifact }}
+          strip -x -o ../${{ matrix.pjrt.renamed_artifact }} bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }}
           install_name_tool -id '@rpath/${{ matrix.pjrt.renamed_artifact }}' ../${{ matrix.pjrt.renamed_artifact }}
 
       - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
