@@ -132,7 +132,6 @@ jobs:
             -w=/xla \
             --net=host \
             -v=$(pwd)/xla:/xla \
-            -v=/tmp/cache:/tmp/cache \
             distroless/${{ matrix.pjrt.target }}_builder:latest \
               bazelisk \
               build \
@@ -160,7 +159,6 @@ jobs:
         run: |
           ~/bin/bazel \
               build \
-              --disk_cache=/tmp/cache \
               --bes_results_url=https://app.buildbuddy.io/invocation/ \
               --bes_backend=grpcs://remote.buildbuddy.io \
               --remote_cache=grpcs://remote.buildbuddy.io \
