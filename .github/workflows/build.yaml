@@ -2,32 +2,40 @@ name: PJRT GPU library
 on:
   push:
     tags:
-    - '*'
+      - "*"
   pull_request:
-  
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
-        contents: write
+  contents: write
+
 jobs:
   pjrt-osx-artifacts:
     strategy:
       matrix:
         pjrt:
           - target: cpu
+            config: "--config=release_macos_base"
+            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
+            runs_on: ["macos-14"]
+            platform: darwin-amd64
+            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+          - target: cpu
             config: "--config=release_macos_arm64"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
-            runs_on: ['self-hosted', 'macOS']
+            runs_on: ["self-hosted", "macOS"]
             platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+
     runs-on: ${{ matrix.pjrt.runs_on }}
     steps:
       - name: "Checking out repository"
         uses: actions/checkout@v4
         with:
-          path: 'pjrt-artifacts'
+          path: "pjrt-artifacts"
 
       - name: Extract OpenXLA commit id
         id: extract
@@ -39,9 +47,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: openxla/xla
-          path: 'xla'
+          path: "xla"
           ref: ${{ steps.extract.outputs.commitid }}
-  
+
       - name: Apply patches
         working-directory: ./xla
         run: |
@@ -51,6 +59,7 @@ jobs:
           done
 
       - name: Setup Bazel
+        if: ${{ contains(matrix.pjrt.runs_on, 'self-hosted') }} # Run only for self-hosted macOS
         run: |
           wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-amd64 -O /usr/local/bin/bazel
           chmod +x /usr/local/bin/bazel
@@ -84,7 +93,7 @@ jobs:
         with:
           name: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
           path: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
-        
+
   pjrt-artifacts:
     strategy:
       matrix:
@@ -93,42 +102,40 @@ jobs:
             config: "--config=cuda"
             artifact: libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
-            runs_on: ['runs-on','runner=32cpu-linux-x64', 'image=ubuntu24-amd64']
+            runs_on:
+              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu24-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             config: "--config=rocm"
             artifact: libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
-            runs_on: ['runs-on','runner=32cpu-linux-x64', 'image=ubuntu24-amd64']
+            runs_on:
+              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu24-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: cpu
             config: ""
             artifact: libpjrt_c_api_cpu_plugin.so
             renamed_artifact: libpjrt_cpu.so
-            runs_on: ['runs-on','runner=32cpu-linux-x64', 'image=ubuntu24-amd64']
+            runs_on:
+              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu24-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
-
     runs-on: ${{ matrix.pjrt.runs_on }}
     steps:
       - name: "Checking out repository"
         uses: actions/checkout@v4
-
       - name: Setup Bazel
         run: |
           wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-amd64 -O ~/bin/bazel
           chmod +x ~/bin/bazel
-
       - name: Force remove container
         run: |
           docker rm -f pjrt-${{ matrix.pjrt.target }}
-
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
         run: |
           ~/bin/bazel run //${{ matrix.pjrt.target }}:${{ matrix.pjrt.target }}_stripped_tarball
-
       - name: "Run ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
         run: |
           docker run \
@@ -143,12 +150,10 @@ jobs:
               --disk_cache=/tmp/cache \
               ${{ matrix.pjrt.config }} \
               ${{ matrix.pjrt.bazel_target }}
-
       - name: "Retrieve ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts"
         run: |
-            docker cp pjrt-${{ matrix.pjrt.target }}:/xla/bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} ${{ matrix.pjrt.renamed_artifact }}
-            docker rm -f pjrt-${{ matrix.pjrt.target }}
-
+          docker cp pjrt-${{ matrix.pjrt.target }}:/xla/bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} ${{ matrix.pjrt.renamed_artifact }}
+          docker rm -f pjrt-${{ matrix.pjrt.target }}
       - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
         uses: a7ul/tar-action@v1.2.0
         with:
@@ -157,7 +162,6 @@ jobs:
           files: |
             ./${{ matrix.pjrt.renamed_artifact }}
           outPath: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
-      
       - name: Upload ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -165,19 +169,19 @@ jobs:
           path: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
 
   release:
-    needs: ["pjrt-artifacts","pjrt-osx-artifacts"]
-    runs-on: ['runs-on','runner=2cpu-linux-x64']
+    needs: ["pjrt-artifacts", "pjrt-osx-artifacts"]
+    runs-on: ["runs-on", "runner=2cpu-linux-x64"]
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
-    - run: rm -rf pjrt*.tar.gz
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      if: startsWith(github.ref, 'refs/tags/')
-    - name: Release
-      uses: softprops/action-gh-release@v2
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        files: |
-          pjrt-rocm_linux-amd64.tar.gz/pjrt-rocm_linux-amd64.tar.gz
-          pjrt-cuda_linux-amd64.tar.gz/pjrt-cuda_linux-amd64.tar.gz
-          pjrt-cpu_linux-amd64.tar.gz/pjrt-cpu_linux-amd64.tar.gz
-          pjrt-cpu_darwin-arm64.tar.gz/pjrt-cpu_darwin-arm64.tar.gz
+      - run: rm -rf pjrt*.tar.gz
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            pjrt-cpu_darwin-arm64.tar.gz/pjrt-cpu_darwin-arm64.tar.gz
+            pjrt-cpu_darwin-amd64.tar.gz/pjrt-cpu_darwin-amd64.tar.gz
+            pjrt-rocm_linux-amd64.tar.gz/pjrt-rocm_linux-amd64.tar.gz
+            pjrt-cuda_linux-amd64.tar.gz/pjrt-cuda_linux-amd64.tar.gz
+            pjrt-cpu_linux-amd64.tar.gz/pjrt-cpu_linux-amd64.tar.gz
