@@ -67,8 +67,6 @@ oci_image(
     base = "@rocm_base",
     tars = [
         "//base/focal:bazelisk",
-        "//third_party/openxla:openxla_tar",
-        "//third_party/openxla:rocm_configuration_tar",
     ],
     env = {
         "MAX_NUM_WORKERS": -1,

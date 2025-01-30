@@ -1,0 +1,107 @@
+name: nightly - PJRT CUDA library
+on:
+  pull_request:
+  schedule:
+    - cron: '0 */4 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  nightly-pjrt-artifacts:
+    strategy:
+      matrix:
+        pjrt:
+          - target: cuda
+            config: "--config=cuda"
+            artifact: libpjrt_c_api_gpu_plugin.so
+            renamed_artifact: libpjrt_cuda.so
+            runs_on: ["runs-on", "runner=32cpu-linux-x64"]
+            platform: linux-amd64
+            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checking out repository"
+        uses: actions/checkout@v4
+        with:
+          path: "pjrt-artifacts"
+      - name: "Checking out openxla repository"
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          repository: openxla/xla
+          path: "xla"
+      - name: Apply patches to openxla
+        id: patches
+        working-directory: ./xla
+        run: |
+          xla_commit=$(git rev-parse HEAD)
+          echo "XLA_COMMIT_ID=$xla_commit" >> $GITHUB_OUTPUT
+          echo ::notice::Applying patches to openxla $xla_commit
+          for patch in $(ls ../pjrt-artifacts/openxla/patches/*.patch | sort); do
+              echo "Applying patch $patch"
+              git apply "$patch"
+          done
+      - name: Setup Bazel
+        run: |
+          mkdir -p ~/bin/
+          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-${{ matrix.pjrt.platform }} -O ~/bin/bazel
+          chmod +x ~/bin/bazel
+
+      - name: "Setup bazelrc for openxla"
+        run: |
+          cp pjrt-artifacts/openxla/bazelrc/common.bazelrc xla/
+          cp pjrt-artifacts/openxla/bazelrc/${{ matrix.pjrt.target }}.bazelrc xla/xla_configure.bazelrc
+
+      - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
+        working-directory: ./pjrt-artifacts
+        run: |
+          docker rm -f pjrt-${{ matrix.pjrt.target }}
+          ~/bin/bazel run //${{ matrix.pjrt.target }}:${{ matrix.pjrt.target }}_stripped_tarball
+
+      - name: "Run ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
+        run: |
+          docker run \
+            --name=pjrt-${{ matrix.pjrt.target }} \
+            -w=/xla \
+            --net=host \
+            -v=$(pwd)/xla:/xla \
+            -v=/tmp/cache:/tmp/cache \
+            distroless/${{ matrix.pjrt.target }}_builder:latest \
+              bazelisk \
+              build \
+              --bes_results_url=https://app.buildbuddy.io/invocation/ \
+              --bes_backend=grpcs://remote.buildbuddy.io \
+              --remote_cache=grpcs://remote.buildbuddy.io \
+              --experimental_remote_build_event_upload=minimal \
+              --nolegacy_important_outputs \
+              --remote_download_toplevel \
+              --remote_timeout=3600 \
+              --remote_header=x-buildbuddy-api-key=${{ secrets.BUILDBUDDY_ORG_API_KEY }} \
+              --disk_cache=/tmp/cache \
+              ${{ matrix.pjrt.config }} \
+              ${{ matrix.pjrt.bazel_target }}
+
+      - name: "Retrieve ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts"
+        run: |
+          docker cp pjrt-${{ matrix.pjrt.target }}:/xla/bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} ${{ matrix.pjrt.renamed_artifact }}
+          docker rm -f pjrt-${{ matrix.pjrt.target }}
+
+      - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
+        uses: a7ul/tar-action@v1.2.0
+        with:
+          command: c
+          cwd: ./
+          files: |
+            ./${{ matrix.pjrt.renamed_artifact }}
+          outPath: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
+
+      - name: Upload ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
+          path: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
