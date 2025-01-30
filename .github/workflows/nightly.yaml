@@ -20,7 +20,7 @@ jobs:
             config: "--config=cuda"
             artifact: libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
-            runs_on: ["ubuntu-latest"]
+            runs_on: ["runs-on", "runner=32cpu-linux-x64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
     runs-on: ubuntu-latest
