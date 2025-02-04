@@ -23,6 +23,13 @@ jobs:
             runs_on: ["runs-on", "runner=32cpu-linux-x64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
+          - target: rocm
+            config: "--config=rocm"
+            artifact: libpjrt_c_api_gpu_plugin.so
+            renamed_artifact: libpjrt_rocm.so
+            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu24-amd64"]
+            platform: linux-amd64
+            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
     runs-on: ubuntu-latest
     steps:
       - name: "Checking out repository"
