@@ -159,7 +159,7 @@ jobs:
         working-directory: ./xla
         run: |
           ~/bin/bazel \
-              --output_base=/tmp/bazel_output_base_{{ matrix.pjrt.platform }} \
+              --output_base=/tmp/bazel_output_base_${{ matrix.pjrt.platform }} \
               build \
               --bes_results_url=https://app.buildbuddy.io/invocation/ \
               --bes_backend=grpcs://remote.buildbuddy.io \
