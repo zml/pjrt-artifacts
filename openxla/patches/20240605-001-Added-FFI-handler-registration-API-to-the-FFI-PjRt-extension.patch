@@ -1,13 +1,14 @@
-From 7aa2c597553dcdea73207eb30d3b2b9a63a624ef Mon Sep 17 00:00:00 2001
+From 9d77510c9624776654c11e661bd0c3874b8b85d3 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
-Date: Wed, 5 Feb 2025 16:39:34 +0100
-Subject: [PATCH] Added FFI handler registration API to the FFI PjRt extension
+Date: Wed, 5 Feb 2025 16:46:19 +0100
+Subject: [PATCH] [PATCH] Added FFI handler registration API to the FFI PjRt
+ extension
 
 ---
  xla/pjrt/c/BUILD                      |  5 ++++
  xla/pjrt/c/pjrt_c_api_ffi_extension.h | 15 ++++++++++++
- xla/pjrt/c/pjrt_c_api_ffi_internal.cc | 34 +++++++++++++++++++++++++--
- 3 files changed, 52 insertions(+), 2 deletions(-)
+ xla/pjrt/c/pjrt_c_api_ffi_internal.cc | 35 +++++++++++++++++++++++++--
+ 3 files changed, 53 insertions(+), 2 deletions(-)
 
 diff --git a/xla/pjrt/c/BUILD b/xla/pjrt/c/BUILD
 index ad1b3987fe..0598281ad1 100644
@@ -53,10 +54,10 @@ index c5766f2a19..9e7aaa97d4 100644
    size_t struct_size;
    PJRT_Extension_Type type;
 diff --git a/xla/pjrt/c/pjrt_c_api_ffi_internal.cc b/xla/pjrt/c/pjrt_c_api_ffi_internal.cc
-index 0375b39d0b..97f908bd44 100644
+index 0375b39d0b..3527a0756e 100644
 --- a/xla/pjrt/c/pjrt_c_api_ffi_internal.cc
 +++ b/xla/pjrt/c/pjrt_c_api_ffi_internal.cc
-@@ -13,15 +13,19 @@ See the License for the specific language governing permissions and
+@@ -13,15 +13,20 @@ See the License for the specific language governing permissions and
  limitations under the License.
  ==============================================================================*/
 
@@ -68,7 +69,8 @@ index 0375b39d0b..97f908bd44 100644
 +#include "xla/ffi/api/c_api.h"
 +#include "xla/ffi/api/ffi.h"
  #include "xla/ffi/execution_context.h"
- #include "xla/ffi/type_id_registry.h"
+-#include "xla/ffi/type_id_registry.h"
++ #include "xla/ffi/type_id_registry.h"
 +#include "xla/ffi/ffi_api.h"
  #include "xla/pjrt/c/pjrt_c_api.h"
  #include "xla/pjrt/c/pjrt_c_api_ffi_extension.h"
@@ -78,7 +80,7 @@ index 0375b39d0b..97f908bd44 100644
 
  namespace pjrt {
 
-@@ -55,6 +59,31 @@ static PJRT_Error* PJRT_FFI_UserData_Add(PJRT_FFI_UserData_Add_Args* args) {
+@@ -55,6 +60,31 @@ static PJRT_Error* PJRT_FFI_UserData_Add(PJRT_FFI_UserData_Add_Args* args) {
    return nullptr;
  }
 
@@ -110,7 +112,7 @@ index 0375b39d0b..97f908bd44 100644
  PJRT_FFI_Extension CreateFfiExtension(PJRT_Extension_Base* next) {
    return {
        /*struct_size=*/PJRT_FFI_Extension_STRUCT_SIZE,
-@@ -62,6 +91,7 @@ PJRT_FFI_Extension CreateFfiExtension(PJRT_Extension_Base* next) {
+@@ -62,6 +92,7 @@ PJRT_FFI_Extension CreateFfiExtension(PJRT_Extension_Base* next) {
        /*next=*/next,
        /*type_id_register=*/PJRT_FFI_TypeID_Register,
        /*user_data_add=*/PJRT_FFI_UserData_Add,
