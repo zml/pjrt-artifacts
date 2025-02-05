@@ -56,8 +56,8 @@ jobs:
   pjrt-artifacts:
     runs-on: ${{ matrix.pjrt.runs_on }}
     strategy:
+      fail-fast: false
       matrix:
-        fail-fast: false
         pjrt:
           - target: cuda
             config: "--config=cuda"
