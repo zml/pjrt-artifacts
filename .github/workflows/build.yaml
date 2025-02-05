@@ -162,6 +162,8 @@ jobs:
           ~/bin/bazel \
               --output_base=/tmp/bazel_output_base_${{ matrix.pjrt.platform }} \
               build \
+              --no-cache \
+              --no-remote-cache \
               --spawn_strategy=processwrapper-sandbox \
               --bes_results_url=https://app.buildbuddy.io/invocation/ \
               --bes_backend=grpcs://remote.buildbuddy.io \
