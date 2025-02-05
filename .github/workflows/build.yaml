@@ -97,6 +97,8 @@ jobs:
 
     needs: ["setup_openxla"]
     steps:
+      - name: df -h
+        run: df -h
       - name: "Checking out repository"
         uses: actions/checkout@v4
         with:
