@@ -6,6 +6,8 @@ Subject: [PATCH] [PJRT]  Expose should_stage_host_to_device_transfers  as
 
 Expose GPU option `should_stage_host_to_device_transfers `
 as configuration in PJRT client create func.
+
+PR: https://github.com/openxla/xla/pull/21965
 ---
  xla/pjrt/c/pjrt_c_api_gpu_internal.cc | 7 +++++++
  1 file changed, 7 insertions(+)

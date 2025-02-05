@@ -4,6 +4,8 @@ Date: Sun, 1 Sep 2024 14:53:15 +0200
 Subject: [PATCH] Set the macosx deployment target via the bazel command line
 
 Instead of via an action env.
+
+PR: https://github.com/openxla/xla/pull/16696
 ---
  tensorflow.bazelrc       | 4 ++--
  third_party/tsl/.bazelrc | 4 ++--

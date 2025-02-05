@@ -3,6 +3,7 @@ From: Hugo Mano <hugo@zml.ai>
 Date: Wed, 5 Feb 2025 19:25:03 +0100
 Subject: [PATCH] Added FFI handler registration API to the FFI PjRt
 
+PR: https://github.com/openxla/xla/pull/13420
 ---
  xla/pjrt/c/BUILD                      |  5 ++++
  xla/pjrt/c/pjrt_c_api_ffi_extension.h | 16 ++++++++++++
