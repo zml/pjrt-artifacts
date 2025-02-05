@@ -1,12 +1,28 @@
 From 86de695ba9579ace447bc6c4f5c54bc03d467f85 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Wed, 5 Feb 2025 16:28:27 +0100
-Subject: [PATCH] build: use hermetic cc toolchain for CPU (use glibc 2.32)
+Subject: [PATCH] build: use hermetic cc toolchain for CPU(use glibc 2.32)
 
 ---
+ .bazelrc  |  6 ++++++
  WORKSPACE | 24 ++++++++++++++++++++++++
- 1 files changed, 24 insertions(+)
+ 2 files changed, 30 insertions(+)
 
+diff --git a/.bazelrc b/.bazelrc
+index 12a89b719c..35d2e1185b 100644
+--- a/.bazelrc
++++ b/.bazelrc
+@@ -6,3 +6,9 @@ import %workspace%/tensorflow.bazelrc
+ import %workspace%/warnings.bazelrc
+
+ try-import %workspace%/xla_configure.bazelrc
++
++common          --enable_platform_specific_config
++build           --incompatible_strict_action_env
++build           --incompatible_enable_cc_toolchain_resolution
++build:linux     --repo_env BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
++build:linux     --sandbox_add_mount_pair=/tmp
+\ No newline at end of file
 diff --git a/WORKSPACE b/WORKSPACE
 index 028dcdc7ef..55b6ed691f 100644
 --- a/WORKSPACE
