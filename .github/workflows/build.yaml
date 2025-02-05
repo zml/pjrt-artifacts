@@ -162,14 +162,6 @@ jobs:
               --output_base=/tmp/bazel_output_base_${{ matrix.pjrt.platform }} \
               build \
               --verbose_failures --sandbox_debug --toolchain_resolution_debug='@bazel_tools//tools/cpp:toolchain_type' --spawn_strategy=processwrapper-sandbox \
-              --bes_results_url=https://app.buildbuddy.io/invocation/ \
-              --bes_backend=grpcs://remote.buildbuddy.io \
-              --remote_cache=grpcs://remote.buildbuddy.io \
-              --experimental_remote_build_event_upload=minimal \
-              --nolegacy_important_outputs \
-              --remote_download_toplevel \
-              --remote_timeout=3600 \
-              --remote_header=x-buildbuddy-api-key=${{ secrets.BUILDBUDDY_ORG_API_KEY }} \
               ${{ matrix.pjrt.config }} \
               ${{ matrix.pjrt.bazel_target }}
 
