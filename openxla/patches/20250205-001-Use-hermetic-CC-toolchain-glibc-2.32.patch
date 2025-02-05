@@ -53,7 +53,7 @@ index 028dcdc7ef..55b6ed691f 100644
 +zig_toolchains()
 +
 +register_toolchains(
-+    "@zig_sdk//toolchain:linux_amd64_gnu.2.35",
++    "@zig_sdk//toolchain:linux_amd64_gnu.2.32",
 +)
 --
 2.39.5 (Apple Git-154)
