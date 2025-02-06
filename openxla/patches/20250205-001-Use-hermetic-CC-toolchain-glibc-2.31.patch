@@ -1,0 +1,44 @@
+From 86de695ba9579ace447bc6c4f5c54bc03d467f85 Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Wed, 5 Feb 2025 16:28:27 +0100
+Subject: [PATCH] build: use hermetic cc toolchain for Linux CPU (use glibc 2.31)
+
+Only for ZML, no PR on XLA side.
+---
+ WORKSPACE | 24 ++++++++++++++++++++++++
+ 1 files changed, 24 insertions(+)
+
+diff --git a/WORKSPACE b/WORKSPACE
+index 028dcdc7ef..55b6ed691f 100644
+--- a/WORKSPACE
++++ b/WORKSPACE
+@@ -99,3 +99,27 @@ load(
+ )
+
+ nccl_configure(name = "local_config_nccl")
++
++load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
++
++HERMETIC_CC_TOOLCHAIN_VERSION = "v3.1.1"
++
++http_archive(
++    name = "hermetic_cc_toolchain",
++    sha256 = "907745bf91555f77e8234c0b953371e6cac5ba715d1cf12ff641496dd1bce9d1",
++    urls = [
++        "https://mirror.bazel.build/github.com/uber/hermetic_cc_toolchain/releases/download/{0}/hermetic_cc_toolchain-{0}.tar.gz".format(HERMETIC_CC_TOOLCHAIN_VERSION),
++        "https://github.com/uber/hermetic_cc_toolchain/releases/download/{0}/hermetic_cc_toolchain-{0}.tar.gz".format(HERMETIC_CC_TOOLCHAIN_VERSION),
++    ],
++)
++
++load("@hermetic_cc_toolchain//toolchain:defs.bzl", zig_toolchains = "toolchains")
++
++# Plain zig_toolchains() will pick reasonable defaults. See
++# toolchain/defs.bzl:toolchains on how to change the Zig SDK version and
++# download URL.
++zig_toolchains()
++
++register_toolchains(
++    "@zig_sdk//toolchain:linux_amd64_gnu.2.31",
++)
+--
+2.39.5 (Apple Git-154)

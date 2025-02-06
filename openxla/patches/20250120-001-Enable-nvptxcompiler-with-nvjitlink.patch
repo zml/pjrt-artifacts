@@ -4,6 +4,7 @@ Date: Tue, 21 Jan 2025 14:41:42 +0100
 Subject: [PATCH] Expose nvptxcompiler to link against in XLA if
  enable_libnvptxcompiler_support is set
 
+Only for ZML, no PR on XLA side.
 ---
  .../gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl           |  8 ++++++++
  xla/stream_executor/cuda/BUILD                       | 12 +++++++++++-

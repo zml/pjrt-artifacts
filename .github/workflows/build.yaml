@@ -19,7 +19,7 @@ permissions:
   contents: write
 
 env:
-  XLA_COMMIT: ${{ inputs.xla_commit || 'cc075beb6148c2777da2b6749c63830856ee6c2a' }}
+  XLA_COMMIT: ${{ inputs.xla_commit || '6789523d0a42c2cf83309a263f417122c4c63811' }}
 
 jobs:
   setup_openxla:
@@ -56,6 +56,7 @@ jobs:
   pjrt-artifacts:
     runs-on: ${{ matrix.pjrt.runs_on }}
     strategy:
+      fail-fast: false
       matrix:
         pjrt:
           - target: cuda
@@ -83,7 +84,7 @@ jobs:
             config: "--config=release_macos_base"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
             renamed_artifact: libpjrt_cpu.dylib
-            runs_on: ["macos-14"]
+            runs_on: ["self-hosted", "macOS"]
             platform: darwin-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
@@ -159,15 +160,9 @@ jobs:
         working-directory: ./xla
         run: |
           ~/bin/bazel \
+              --output_base=/tmp/bazel_output_base_${{ matrix.pjrt.platform }} \
               build \
-              --bes_results_url=https://app.buildbuddy.io/invocation/ \
-              --bes_backend=grpcs://remote.buildbuddy.io \
-              --remote_cache=grpcs://remote.buildbuddy.io \
-              --experimental_remote_build_event_upload=minimal \
-              --nolegacy_important_outputs \
-              --remote_download_toplevel \
-              --remote_timeout=3600 \
-              --remote_header=x-buildbuddy-api-key=${{ secrets.BUILDBUDDY_ORG_API_KEY }} \
+              --spawn_strategy=processwrapper-sandbox \
               ${{ matrix.pjrt.config }} \
               ${{ matrix.pjrt.bazel_target }}
 

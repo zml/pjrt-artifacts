@@ -5,6 +5,8 @@ Subject: [PATCH] Do not force DEVELOPER_DIR on macOS
 
 It's is autodetected by Bazel and supports building using
 only the Apple Command Line Tools.
+
+PR: https://github.com/openxla/xla/pull/16696
 ---
  tensorflow.bazelrc       | 1 -
  third_party/tsl/.bazelrc | 1 -

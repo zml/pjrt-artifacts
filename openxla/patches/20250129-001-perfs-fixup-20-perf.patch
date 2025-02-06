@@ -3,6 +3,7 @@ From: Jean-Baptiste Dalido <jb@zml.ai>
 Date: Wed, 29 Jan 2025 15:42:34 +0000
 Subject: [PATCH] perfs: fixup -20% perf
 
+PR: https://github.com/openxla/xla/pull/22081
 ---
  xla/service/gpu/gpu_compiler.cc | 1 +
  1 file changed, 1 insertion(+)

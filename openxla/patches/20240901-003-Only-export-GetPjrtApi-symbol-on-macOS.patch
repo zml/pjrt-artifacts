@@ -5,6 +5,8 @@ Subject: [PATCH] [PjRt] Only export GetPjrtApi symbol on macOS
 
 Also add missing macOS linkops, remove the .so suffix to the plugin targets
 and add additional_linker_inputs for the linker script instead of deps.
+
+PR: https://github.com/openxla/xla/pull/16696
 ---
  xla/pjrt/c/BUILD | 18 ++++++++++--------
  1 file changed, 10 insertions(+), 8 deletions(-)
