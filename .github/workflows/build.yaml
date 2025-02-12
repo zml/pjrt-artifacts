@@ -163,6 +163,7 @@ jobs:
               --output_base=/tmp/bazel_output_base_${{ matrix.pjrt.platform }} \
               build \
               --spawn_strategy=processwrapper-sandbox \
+              --remote_cache=grpc://127.0.0.1:15501 \
               ${{ matrix.pjrt.config }} \
               ${{ matrix.pjrt.bazel_target }}
 
