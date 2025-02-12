@@ -1,0 +1,104 @@
+From f59ff33447ea8312ed8c4bf7e87c7d5409f0d2b9 Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Wed, 12 Feb 2025 13:10:04 +0100
+Subject: [PATCH] Various macOS QOL enchancements
+
+This PR adds various small quality of life improvements to macOS builds:
+
+- drop the .so suffix for PjRt plugin targets (.dylib on macOS)
+- add compatibility with Apple Command Line Tools (no need for Xcode anymore)
+only export the GetPjrtApi symbol on macOS
+- leverage bazel's cc_binary.additional_linker_inputs instead of using deps
+
+PR: https://github.com/openxla/xla/pull/16696
+
+Co-authored-by: Steeve Morin <steeve@zml.ai>
+---
+ tensorflow.bazelrc |  5 ++---
+ xla/pjrt/c/BUILD   | 18 ++++++++++--------
+ 2 files changed, 12 insertions(+), 11 deletions(-)
+
+diff --git a/tensorflow.bazelrc b/tensorflow.bazelrc
+index f2ad3f6169..032cca5657 100644
+--- a/tensorflow.bazelrc
++++ b/tensorflow.bazelrc
+@@ -688,7 +688,6 @@ test:release_arm64_linux --flaky_test_attempts=3
+ build:release_cpu_macos --config=avx_linux
+ 
+ # Base build configs for macOS
+-build:release_macos_base --action_env  DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+ build:release_macos_base --define=no_nccl_support=true --output_filter=^$
+ 
+ # Ensure release_base is set on mac
+@@ -701,7 +700,7 @@ build:release_macos_x86 --config=avx_linux
+ build:release_macos_x86 --cpu=darwin
+ # Target Catalina as the minimum compatible OS version
+ build:release_macos_x86 --macos_minimum_os=10.15
+-build:release_macos_x86 --action_env MACOSX_DEPLOYMENT_TARGET=10.15
++build:release_macos_x86 --macos_sdk_version=10.15
+ 
+ # Build configs for macOS Arm64
+ build:release_macos_arm64 --config=release_macos_base
+@@ -709,7 +708,7 @@ build:release_macos_arm64 --cpu=darwin_arm64
+ build:release_macos_arm64 --define=tensorflow_mkldnn_contraction_kernel=0
+ # Target Moneterey as the minimum compatible OS version
+ build:release_macos_arm64 --macos_minimum_os=12.0
+-build:release_macos_arm64 --action_env MACOSX_DEPLOYMENT_TARGET=12.0
++build:release_macos_arm64 --macos_sdk_version=12.0
+ 
+ # Base test configs for macOS
+ test:release_macos_base --verbose_failures=true --local_test_jobs=HOST_CPUS
+diff --git a/xla/pjrt/c/BUILD b/xla/pjrt/c/BUILD
+index a0485b6a43..6f67ee6b78 100644
+--- a/xla/pjrt/c/BUILD
++++ b/xla/pjrt/c/BUILD
+@@ -321,9 +321,14 @@ cc_library(
+ 
+ # PJRT CPU plugin.
+ xla_cc_binary(
+-    name = "pjrt_c_api_cpu_plugin.so",
++    name = "pjrt_c_api_cpu_plugin",
++    additional_linker_inputs = if_macos([], [":pjrt_c_api_cpu_version_script.lds"]),
+     linkopts = if_macos(
+-        [],
++        [
++            "-Wl,-exported_symbol,_GetPjrtApi",
++            "-Wl,-install_name,@rpath/pjrt_c_api_cpu_plugin.dylib",
++            "-Wl,-undefined,error",
++        ],
+         [
+             "-Wl,--version-script,$(location :pjrt_c_api_cpu_version_script.lds)",
+             "-Wl,--no-undefined",
+@@ -336,10 +341,7 @@ xla_cc_binary(
+         "notsan",
+     ],
+     visibility = ["//visibility:public"],
+-    deps = [
+-        ":pjrt_c_api_cpu",
+-        ":pjrt_c_api_cpu_version_script.lds",
+-    ],
++    deps = [":pjrt_c_api_cpu"],
+ )
+ 
+ cc_library(
+@@ -408,7 +410,8 @@ cc_library(
+ 
+ # PJRT GPU plugin. Can be configured to be built for CUDA or ROCM.
+ xla_cc_binary(
+-    name = "pjrt_c_api_gpu_plugin.so",
++    name = "pjrt_c_api_gpu_plugin",
++    additional_linker_inputs = [":pjrt_c_api_gpu_version_script.lds"],
+     linkopts = [
+         "-Wl,--version-script,$(location :pjrt_c_api_gpu_version_script.lds)",
+         "-Wl,--no-undefined",
+@@ -422,7 +425,6 @@ xla_cc_binary(
+     ],
+     deps = [
+         ":pjrt_c_api_gpu",
+-        ":pjrt_c_api_gpu_version_script.lds",
+         "//xla/service:gpu_plugin",
+     ] + if_cuda_is_configured([
+         "//xla/stream_executor:cuda_platform",
+-- 
+2.39.5 (Apple Git-154)
+
