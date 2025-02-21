@@ -59,41 +59,55 @@ jobs:
       fail-fast: false
       matrix:
         pjrt:
-          - target: cuda
-            config: "--config=cuda"
-            artifact: libpjrt_c_api_gpu_plugin.so
-            renamed_artifact: libpjrt_cuda.so
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
-            platform: linux-amd64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
-          - target: rocm
-            config: "--config=rocm"
-            artifact: libpjrt_c_api_gpu_plugin.so
-            renamed_artifact: libpjrt_rocm.so
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
-            platform: linux-amd64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
+          # - target: cuda
+          #   config: "--config=cuda"
+          #   artifact: libpjrt_c_api_gpu_plugin.so
+          #   renamed_artifact: libpjrt_cuda.so
+          #   runs_on:
+          #     ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+          #   platform: linux-amd64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
+          # - target: rocm
+          #   config: "--config=rocm"
+          #   artifact: libpjrt_c_api_gpu_plugin.so
+          #   renamed_artifact: libpjrt_rocm.so
+          #   runs_on:
+          #     ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+          #   platform: linux-amd64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
+          # - target: cpu
+          #   config: "--config=release_macos_arm64"
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
+          #   runs_on: ["self-hosted", "macOS"]
+          #   renamed_artifact: libpjrt_cpu.dylib
+          #   platform: darwin-arm64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+          # - target: cpu
+          #   config: "--config=release_macos_base"
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
+          #   renamed_artifact: libpjrt_cpu.dylib
+          #   runs_on: ["self-hosted", "macOS"]
+          #   platform: darwin-amd64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+          # - target: cpu
+          #   config: "--remote_cache=grpc://127.0.0.1:15501"
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
+          #   renamed_artifact: libpjrt_cpu.so
+          #   runs_on:
+          #     ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+          #   platform: linux-amd64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
-            config: "--config=release_macos_arm64"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
-            runs_on: ["self-hosted", "macOS"]
-            renamed_artifact: libpjrt_cpu.dylib
-            platform: darwin-arm64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
-          - target: cpu
-            config: "--config=release_macos_base"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
-            renamed_artifact: libpjrt_cpu.dylib
-            runs_on: ["self-hosted", "macOS"]
-            platform: darwin-amd64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
-          - target: cpu
-            config: "--remote_cache=grpc://127.0.0.1:15501"
+            config: "--config=release_linux_armv7"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
             renamed_artifact: libpjrt_cpu.so
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
-            platform: linux-amd64
+            runs_on: ubuntu-latest
+            platform: linux-armv7
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+            use_arm_runner: true
+            arm_cpu: cortex-a7
+            arm_base_image: raspios_lite:latest
+            arm_cpu_info: raspberrypi_3b
 
     needs: ["setup_openxla"]
     steps:
@@ -108,6 +122,40 @@ jobs:
           name: xla-${{ env.XLA_COMMIT }}
           path: xla
 
+      - name: Setup ARM runner
+        if: ${{ matrix.pjrt.use_arm_runner }}
+        uses: pguyot/arm-runner-action@v2
+        with:
+          base_image: ${{ matrix.pjrt.arm_base_image }}
+          cpu: ${{ matrix.pjrt.arm_cpu }}
+          cpu_info: ${{ matrix.pjrt.arm_cpu_info }}
+          commands: |
+            # Install required dependencies for building
+            apt-get update
+            apt-get install -y wget git python3 gcc g++ unzip zip
+
+            # Install Go for building bazelisk
+            apt-get install -y golang-go
+
+            # Build bazelisk from source
+            export GOPATH=$HOME/go
+            go install github.com/bazelbuild/bazelisk@v1.25.0
+
+            # Setup Bazel
+            mkdir -p ~/bin/
+            cp $GOPATH/bin/bazelisk ~/bin/bazel
+            chmod +x ~/bin/bazel
+
+            # Build the target
+            cd /xla
+            ~/bin/bazel \
+              build \
+              --spawn_strategy=processwrapper-sandbox \
+              ${{ matrix.pjrt.config }} \
+              ${{ matrix.pjrt.bazel_target }}
+
+            # Copy the artifact to the output location
+            cp ${{ matrix.pjrt.artifact }} ../${{ matrix.pjrt.renamed_artifact }}
       - name: Setup Bazel
         run: |
           mkdir -p ~/bin/

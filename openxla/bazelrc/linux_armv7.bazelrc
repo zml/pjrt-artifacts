@@ -1,0 +1,42 @@
+# Base configuration
+build --config=release
+
+# Platform specific settings
+build --platforms=//platforms:linux_armv7
+build --cpu=armv7a
+build --distinct_host_configuration=true
+
+# Compiler settings
+build --copt=-march=armv7-a
+build --copt=-mcpu=cortex-a7
+build --copt=-mfpu=neon-vfpv4
+build --copt=-mfloat-abi=hard
+build --copt=-ftree-vectorize
+
+# Optimization settings
+build --copt=-O3
+build --copt=-fPIC
+build --cxxopt=-std=c++17
+build --host_cxxopt=-std=c++17
+
+# Memory settings - conservative for RPi3
+build --local_ram_resources=3072
+build --local_cpu_resources=4
+
+# Threading
+build --copt=-fopenmp
+build --linkopt=-fopenmp
+
+# Additional flags
+build:release --copt=-DNDEBUG
+build:release --linkopt=-Wl,--strip-all
+
+# Disable features not needed/supported
+build --define=no_aws_support=true
+build --define=no_gcp_support=true
+build --define=no_cuda_support=true
+build --define=no_rocm_support=true
+build --define=no_tpu_support=true
+
+# Enable features we want
+build --define=build_with_local_cpu_support=true
