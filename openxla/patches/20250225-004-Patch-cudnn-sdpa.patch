@@ -1,0 +1,42 @@
+From 407a8a6b491131396797d4c0ec74146fa73db48d Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Tue, 25 Feb 2025 15:45:04 +0000
+Subject: [PATCH] attempt
+
+---
+ xla/stream_executor/cuda/cuda_dnn.cc | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/xla/stream_executor/cuda/cuda_dnn.cc b/xla/stream_executor/cuda/cuda_dnn.cc
+index 9a7700ba46..7814d5e564 100644
+--- a/xla/stream_executor/cuda/cuda_dnn.cc
++++ b/xla/stream_executor/cuda/cuda_dnn.cc
+@@ -5025,6 +5025,11 @@ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionOperationGraph(
+   std::vector<int64_t> v_dims =
+       v_descriptor.GetCudnnCompatibleDimensions(false);
+
++
++  VLOG(4) << "\n GetCudnnCompatibleDimensions: q_dims: " << absl::StrJoin(q_dims, ",");
++  VLOG(4) << "\n GetCudnnCompatibleDimensions: k_dims: " << absl::StrJoin(k_dims, ",");
++  VLOG(4) << "\n GetCudnnCompatibleDimensions: v_dims: " << absl::StrJoin(v_dims, ",");
++
+   if (max_seg_per_batch > 1) {
+     FixDimsForRaggedOffset(q_dims, max_seg_per_batch);
+     FixDimsForRaggedOffset(k_dims, max_seg_per_batch);
+@@ -5037,12 +5042,12 @@ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionOperationGraph(
+                        .set_dim(q_dims)
+                        .set_stride(q_descriptor.GetCudnnCompatibleStrides(true))
+                        .set_uid(next_uid()));
+-  VLOG(4) << "\n k_strides: " << absl::StrJoin(k_descriptor.GetCudnnCompatibleStrides(false), ",");
++  VLOG(4) << "\n k_strides: " << absl::StrJoin(k_descriptor.GetCudnnCompatibleStrides(true), ",");
+   std::shared_ptr<Tensor_attributes> k_tensor =
+       graph.tensor(Tensor_attributes()
+                        .set_name("K")
+                        .set_dim(k_dims)
+-                       .set_stride(k_descriptor.GetCudnnCompatibleStrides(false))
++                       .set_stride(k_descriptor.GetCudnnCompatibleStrides(true))
+                        .set_uid(next_uid()));
+   std::shared_ptr<Tensor_attributes> v_tensor = graph.tensor(
+       Tensor_attributes()
+--
+2.34.1
