@@ -1,0 +1,39 @@
+From ba02141b25f1f7141385ef0022f4168f78f64611 Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Tue, 25 Feb 2025 14:51:59 +0000
+Subject: [PATCH] k rhs
+
+---
+ xla/stream_executor/cuda/cuda_dnn.cc | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/xla/stream_executor/cuda/cuda_dnn.cc b/xla/stream_executor/cuda/cuda_dnn.cc
+index 8443549449..9a7700ba46 100644
+--- a/xla/stream_executor/cuda/cuda_dnn.cc
++++ b/xla/stream_executor/cuda/cuda_dnn.cc
+@@ -5021,7 +5021,7 @@ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionOperationGraph(
+   auto next_uid = [uid = 0]() mutable -> int { return CuDnnTensorUID(uid++); };
+
+   std::vector<int64_t> q_dims = q_descriptor.GetCudnnCompatibleDimensions(true);
+-  std::vector<int64_t> k_dims = k_descriptor.GetCudnnCompatibleDimensions(true);
++  std::vector<int64_t> k_dims = k_descriptor.GetCudnnCompatibleDimensions(false);
+   std::vector<int64_t> v_dims =
+       v_descriptor.GetCudnnCompatibleDimensions(false);
+
+@@ -5037,12 +5037,12 @@ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionOperationGraph(
+                        .set_dim(q_dims)
+                        .set_stride(q_descriptor.GetCudnnCompatibleStrides(true))
+                        .set_uid(next_uid()));
+-  VLOG(4) << "\n k_strides: " << absl::StrJoin(k_descriptor.GetCudnnCompatibleStrides(true), ",");
++  VLOG(4) << "\n k_strides: " << absl::StrJoin(k_descriptor.GetCudnnCompatibleStrides(false), ",");
+   std::shared_ptr<Tensor_attributes> k_tensor =
+       graph.tensor(Tensor_attributes()
+                        .set_name("K")
+                        .set_dim(k_dims)
+-                       .set_stride(k_descriptor.GetCudnnCompatibleStrides(true))
++                       .set_stride(k_descriptor.GetCudnnCompatibleStrides(false))
+                        .set_uid(next_uid()));
+   std::shared_ptr<Tensor_attributes> v_tensor = graph.tensor(
+       Tensor_attributes()
+--
+2.34.1
