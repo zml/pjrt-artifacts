@@ -1,0 +1,152 @@
+From 3039cbe576b79c489920c165e12c1fdc08a5321a Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Tue, 25 Feb 2025 10:44:44 +0000
+Subject: [PATCH] pagged sdpa
+
+---
+ xla/service/gpu/backend_configs.proto         |  2 +
+ .../transforms/cudnn_custom_call_compiler.cc  | 23 ++++++++++-
+ xla/stream_executor/cuda/cuda_dnn.cc          | 39 +++++++++++++++++++
+ xla/stream_executor/cuda/cuda_dnn.h           |  5 +++
+ 4 files changed, 67 insertions(+), 2 deletions(-)
+
+diff --git a/xla/service/gpu/backend_configs.proto b/xla/service/gpu/backend_configs.proto
+index a7ff5bfba2..6ddbb5424e 100644
+--- a/xla/service/gpu/backend_configs.proto
++++ b/xla/service/gpu/backend_configs.proto
+@@ -283,6 +283,8 @@ message CudnnfMHABackendConfig {
+   // Only used with packed layout
+   // ignored if the valued <= 1
+   int32 max_seg_per_batch = 25;
++
++  optional int32 max_sequence_length_kv = 26;
+ }
+
+ // Backend config for a general custom call instruction, e.g. XLA FFI.
+diff --git a/xla/service/gpu/transforms/cudnn_custom_call_compiler.cc b/xla/service/gpu/transforms/cudnn_custom_call_compiler.cc
+index 4c15388a0a..2a15f3304c 100644
+--- a/xla/service/gpu/transforms/cudnn_custom_call_compiler.cc
++++ b/xla/service/gpu/transforms/cudnn_custom_call_compiler.cc
+@@ -139,6 +139,22 @@ absl::StatusOr<se::gpu::CudnnGraph> BuildGraphForCustomCallToForwardFMHA(
+     TF_ASSIGN_OR_RETURN(bias, TensorDescriptorFor(bias_hlo.shape()));
+   }
+
++  std::optional<se::dnn::TensorDescriptor> sequence_length_q;
++  std::optional<se::dnn::TensorDescriptor> sequence_length_kv;
++  std::optional<se::dnn::TensorDescriptor> page_table_k;
++  std::optional<se::dnn::TensorDescriptor> page_table_v;
++
++  if (custom_call->operand_count() == 7) {
++    TF_ASSIGN_OR_RETURN(sequence_length_q,
++                       TensorDescriptorFor(custom_call->operand(4)->shape()));
++    TF_ASSIGN_OR_RETURN(sequence_length_kv,
++                       TensorDescriptorFor(custom_call->operand(5)->shape()));
++    TF_ASSIGN_OR_RETURN(page_table_k,
++                       TensorDescriptorFor(custom_call->operand(6)->shape()));
++    TF_ASSIGN_OR_RETURN(page_table_v,
++                       TensorDescriptorFor(custom_call->operand(7)->shape()));
++  }
++
+   const double dropout_rate = config.dropout_rate();
+
+   TF_ASSIGN_OR_RETURN(CudnnfMHAMaskKind cudnn_mask_type,
+@@ -148,13 +164,16 @@ absl::StatusOr<se::gpu::CudnnGraph> BuildGraphForCustomCallToForwardFMHA(
+
+   const int sliding_window_length = config.sliding_window_length();
+   const int max_seg_per_batch = config.max_seg_per_batch();
++  std::optional<int> max_sequence_length_kv = config.max_sequence_length_kv();
+   TF_ASSIGN_OR_RETURN(
+       se::gpu::CudnnGraph graph,
+       se::gpu::GetCudnnFlashAttentionOperationGraph(
+-          dnn_support, lhs_bmm1, rhs_bmm1, rhs_bmm2, output, bias, activation,
++          dnn_support, lhs_bmm1, rhs_bmm1, rhs_bmm2, output, bias, sequence_length_q,
++          sequence_length_kv, activation,
+           static_cast<float>(config.fmha_scale()), dropout_rate > 0.0,
+           dropout_rate, dnn_mask_type, sliding_window_length,
+-          max_seg_per_batch));
++          page_table_k, page_table_v,
++          max_sequence_length_kv, max_seg_per_batch));
+   return graph;
+ }
+
+diff --git a/xla/stream_executor/cuda/cuda_dnn.cc b/xla/stream_executor/cuda/cuda_dnn.cc
+index 808870837f..922477beb8 100644
+--- a/xla/stream_executor/cuda/cuda_dnn.cc
++++ b/xla/stream_executor/cuda/cuda_dnn.cc
+@@ -4981,9 +4981,14 @@ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionOperationGraph(
+     const dnn::MatmulTensorDescriptor& v_descriptor,
+     const dnn::TensorDescriptor& o_descriptor,
+     const std::optional<dnn::TensorDescriptor> bias_descriptor,
++    const std::optional<dnn::TensorDescriptor> sequence_length_q,
++    const std::optional<dnn::TensorDescriptor> sequence_length_kv,
+     const std::optional<dnn::TensorDescriptor> stats_descriptor, double scale,
+     const bool use_dropout, const std::optional<double> dropout_rate,
+     const dnn::FMHAMaskKind mask_type, const int sliding_window_length,
++    const std::optional<dnn::TensorDescriptor> page_table_k,
++    const std::optional<dnn::TensorDescriptor> page_table_v,
++    const std::optional<int> max_sequence_length_kv,
+     const int max_seg_per_batch) {
+   using cudnn_frontend::graph::Tensor_attributes;
+
+@@ -5139,6 +5144,40 @@ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionOperationGraph(
+   if (sliding_window_length > 0) {
+     sdpa_options.set_sliding_window_length(sliding_window_length);
+   }
++
++  if (sequence_length_q && sequence_length_kv && page_table_k && page_table_v && max_sequence_length_kv) {
++    auto seq_q = graph.tensor(Tensor_attributes()
++        .set_name("seq_q")
++        .set_uid(next_uid())
++        .set_dim(sequence_length_q->dimensions())
++        .set_stride(sequence_length_q->GetLogicalStrides())
++        .set_data_type(cudnn_frontend::DataType_t::INT32));
++    auto seq_kv = graph.tensor(Tensor_attributes()
++        .set_name("seq_kv")
++        .set_uid(next_uid())
++        .set_dim(sequence_length_kv->dimensions())
++        .set_stride(sequence_length_kv->GetLogicalStrides())
++        .set_data_type(cudnn_frontend::DataType_t::INT32));
++    sdpa_options.set_padding_mask(true).set_seq_len_q(seq_q).set_seq_len_kv(seq_kv);
++
++    auto page_table_k_ = graph.tensor(Tensor_attributes()
++              .set_name("page_table_k")
++              .set_uid(next_uid())
++              .set_dim(page_table_k->dimensions())
++              .set_stride(page_table_k->GetLogicalStrides())
++              .set_data_type(cudnn_frontend::DataType_t::INT32));
++    auto page_table_v_ = graph.tensor(Tensor_attributes()
++              .set_name("page_table_v")
++              .set_uid(next_uid())
++              .set_dim(page_table_v->dimensions())
++              .set_stride(page_table_v->GetLogicalStrides())
++              .set_data_type(cudnn_frontend::DataType_t::INT32));
++
++    sdpa_options.set_paged_attention_k_table(page_table_k_);
++    sdpa_options.set_paged_attention_v_table(page_table_v_);
++    sdpa_options.set_paged_attention_max_seq_len_kv(max_sequence_length_kv.value());
++  }
++
+   // Add SDPA to the graph.
+   auto [o_tensor, stats_tensor] =
+       graph.sdpa(q_tensor, k_tensor, v_tensor, sdpa_options);
+diff --git a/xla/stream_executor/cuda/cuda_dnn.h b/xla/stream_executor/cuda/cuda_dnn.h
+index 946e419311..9146eaa785 100644
+--- a/xla/stream_executor/cuda/cuda_dnn.h
++++ b/xla/stream_executor/cuda/cuda_dnn.h
+@@ -714,9 +714,14 @@ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionOperationGraph(
+     const dnn::MatmulTensorDescriptor& v_descriptor,
+     const dnn::TensorDescriptor& o_descriptor,
+     const std::optional<dnn::TensorDescriptor> bias_descriptor,
++    const std::optional<dnn::TensorDescriptor> sequence_length_q,
++    const std::optional<dnn::TensorDescriptor> sequence_length_kv,
+     const std::optional<dnn::TensorDescriptor> stats_descriptor, double scale,
+     const bool use_dropout, const std::optional<double> dropout_rate,
+     const dnn::FMHAMaskKind mask_type, const int sliding_window_length,
++    const std::optional<dnn::TensorDescriptor> page_table_k,
++    const std::optional<dnn::TensorDescriptor> page_table_v,
++    const std::optional<int> max_sequence_length_kv,
+     const int max_seg_per_batch);
+
+ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionF8OperationGraph(
+--
+2.34.1

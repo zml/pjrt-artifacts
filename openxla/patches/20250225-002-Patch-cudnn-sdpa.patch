@@ -1,0 +1,52 @@
+From c4c568754c53674072317f322d511fcba93d7871 Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Tue, 25 Feb 2025 15:54:15 +0000
+Subject: [PATCH] patche
+
+---
+ xla/service/gpu/transforms/cudnn_custom_call_compiler.cc | 2 +-
+ xla/stream_executor/cuda/cuda_dnn.cc                     | 9 ++++++++-
+ 2 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/xla/service/gpu/transforms/cudnn_custom_call_compiler.cc b/xla/service/gpu/transforms/cudnn_custom_call_compiler.cc
+index 2a15f3304c..1604494003 100644
+--- a/xla/service/gpu/transforms/cudnn_custom_call_compiler.cc
++++ b/xla/service/gpu/transforms/cudnn_custom_call_compiler.cc
+@@ -144,7 +144,7 @@ absl::StatusOr<se::gpu::CudnnGraph> BuildGraphForCustomCallToForwardFMHA(
+   std::optional<se::dnn::TensorDescriptor> page_table_k;
+   std::optional<se::dnn::TensorDescriptor> page_table_v;
+
+-  if (custom_call->operand_count() == 7) {
++  if (custom_call->operand_count() == 8) {
+     TF_ASSIGN_OR_RETURN(sequence_length_q,
+                        TensorDescriptorFor(custom_call->operand(4)->shape()));
+     TF_ASSIGN_OR_RETURN(sequence_length_kv,
+diff --git a/xla/stream_executor/cuda/cuda_dnn.cc b/xla/stream_executor/cuda/cuda_dnn.cc
+index 922477beb8..1038d4b43f 100644
+--- a/xla/stream_executor/cuda/cuda_dnn.cc
++++ b/xla/stream_executor/cuda/cuda_dnn.cc
+@@ -5025,6 +5025,11 @@ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionOperationGraph(
+   std::vector<int64_t> v_dims =
+       v_descriptor.GetCudnnCompatibleDimensions(false);
+
++
++  VLOG(4) << "\n GetCudnnCompatibleDimensions: q_dims: " << absl::StrJoin(q_dims, ",");
++  VLOG(4) << "\n GetCudnnCompatibleDimensions: k_dims: " << absl::StrJoin(k_dims, ",");
++  VLOG(4) << "\n GetCudnnCompatibleDimensions: v_dims: " << absl::StrJoin(v_dims, ",");
++
+   if (max_seg_per_batch > 1) {
+     FixDimsForRaggedOffset(q_dims, max_seg_per_batch);
+     FixDimsForRaggedOffset(k_dims, max_seg_per_batch);
+@@ -5037,7 +5042,9 @@ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionOperationGraph(
+                        .set_dim(q_dims)
+                        .set_stride(q_descriptor.GetCudnnCompatibleStrides(true))
+                        .set_uid(next_uid()));
+-
++  VLOG(4) << "\n q_strides: " << absl::StrJoin(q_descriptor.GetCudnnCompatibleStrides(true), ",");
++  VLOG(4) << "\n k_strides: " << absl::StrJoin(k_descriptor.GetCudnnCompatibleStrides(true), ",");
++  VLOG(4) << "\n v_strides: " << absl::StrJoin(v_descriptor.GetCudnnCompatibleStrides(false), ",");
+   std::shared_ptr<Tensor_attributes> k_tensor =
+       graph.tensor(Tensor_attributes()
+                        .set_name("K")
+--
+2.34.1
