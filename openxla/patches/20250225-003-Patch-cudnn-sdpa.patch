@@ -1,0 +1,25 @@
+From b81051b2d45f486652a72cf88c355b4db9c9cd6b Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Tue, 25 Feb 2025 16:50:40 +0000
+Subject: [PATCH] remote attn scale
+
+---
+ xla/stream_executor/cuda/cuda_dnn.cc | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/xla/stream_executor/cuda/cuda_dnn.cc b/xla/stream_executor/cuda/cuda_dnn.cc
+index 1038d4b43f..d87c8acc43 100644
+--- a/xla/stream_executor/cuda/cuda_dnn.cc
++++ b/xla/stream_executor/cuda/cuda_dnn.cc
+@@ -5064,8 +5064,7 @@ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionOperationGraph(
+   cudnn_frontend::graph::SDPA_attributes sdpa_options;
+   sdpa_options.set_name("flash_attention")
+       .set_is_inference(stats_descriptor == std::nullopt)
+-      .set_causal_mask(is_causal)
+-      .set_attn_scale(scale);
++      .set_causal_mask(is_causal);
+
+   // Setting bias
+   if (bias_descriptor.has_value()) {
+--
+2.34.1
