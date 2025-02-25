@@ -14,40 +14,9 @@ PR: https://github.com/openxla/xla/pull/16696
 
 Co-authored-by: Steeve Morin <steeve@zml.ai>
 ---
- tensorflow.bazelrc |  5 ++---
- xla/pjrt/c/BUILD   | 18 ++++++++++--------
- 2 files changed, 12 insertions(+), 11 deletions(-)
+ xla/pjrt/c/BUILD | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/tensorflow.bazelrc b/tensorflow.bazelrc
-index f2ad3f6169..032cca5657 100644
---- a/tensorflow.bazelrc
-+++ b/tensorflow.bazelrc
-@@ -688,7 +688,6 @@ test:release_arm64_linux --flaky_test_attempts=3
- build:release_cpu_macos --config=avx_linux
- 
- # Base build configs for macOS
--build:release_macos_base --action_env  DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
- build:release_macos_base --define=no_nccl_support=true --output_filter=^$
- 
- # Ensure release_base is set on mac
-@@ -701,7 +700,7 @@ build:release_macos_x86 --config=avx_linux
- build:release_macos_x86 --cpu=darwin
- # Target Catalina as the minimum compatible OS version
- build:release_macos_x86 --macos_minimum_os=10.15
--build:release_macos_x86 --action_env MACOSX_DEPLOYMENT_TARGET=10.15
-+build:release_macos_x86 --macos_sdk_version=10.15
- 
- # Build configs for macOS Arm64
- build:release_macos_arm64 --config=release_macos_base
-@@ -709,7 +708,7 @@ build:release_macos_arm64 --cpu=darwin_arm64
- build:release_macos_arm64 --define=tensorflow_mkldnn_contraction_kernel=0
- # Target Moneterey as the minimum compatible OS version
- build:release_macos_arm64 --macos_minimum_os=12.0
--build:release_macos_arm64 --action_env MACOSX_DEPLOYMENT_TARGET=12.0
-+build:release_macos_arm64 --macos_sdk_version=12.0
- 
- # Base test configs for macOS
- test:release_macos_base --verbose_failures=true --local_test_jobs=HOST_CPUS
 diff --git a/xla/pjrt/c/BUILD b/xla/pjrt/c/BUILD
 index a0485b6a43..6f67ee6b78 100644
 --- a/xla/pjrt/c/BUILD
@@ -101,4 +70,3 @@ index a0485b6a43..6f67ee6b78 100644
          "//xla/stream_executor:cuda_platform",
 -- 
 2.39.5 (Apple Git-154)
-
