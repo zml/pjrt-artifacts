@@ -1,13 +1,94 @@
+diff --git a/xla/service/gpu/transforms/cudnn_custom_call_compiler.cc b/xla/service/gpu/transforms/cudnn_custom_call_compiler.cc
+index 6199a84562..6a325e7433 100644
+--- a/xla/service/gpu/transforms/cudnn_custom_call_compiler.cc
++++ b/xla/service/gpu/transforms/cudnn_custom_call_compiler.cc
+@@ -133,26 +133,26 @@ absl::StatusOr<se::gpu::CudnnGraph> BuildGraphForCustomCallToForwardFMHA(
+   }
+ 
+   std::optional<se::dnn::TensorDescriptor> bias;
+-  if (kind == CudnnfMHAKind::kScaleBiasSoftmax ||
+-      kind == CudnnfMHAKind::kScaleBiasSoftmaxDropout) {
+-    const HloInstruction &bias_hlo = *custom_call->operand(3);
+-    TF_ASSIGN_OR_RETURN(bias, TensorDescriptorFor(bias_hlo.shape()));
+-  }
++  //if (kind == CudnnfMHAKind::kScaleBiasSoftmax ||
++  //    kind == CudnnfMHAKind::kScaleBiasSoftmaxDropout) {
++  //  const HloInstruction &bias_hlo = *custom_call->operand(3);
++  //  TF_ASSIGN_OR_RETURN(bias, TensorDescriptorFor(bias_hlo.shape()));
++  //}
+ 
+   std::optional<se::dnn::TensorDescriptor> sequence_length_q;
+   std::optional<se::dnn::TensorDescriptor> sequence_length_kv;
+   std::optional<se::dnn::TensorDescriptor> page_table_k;
+   std::optional<se::dnn::TensorDescriptor> page_table_v;
+ 
+-  if (custom_call->operand_count() == 8) {
++  if (custom_call->operand_count() == 7) {
+     TF_ASSIGN_OR_RETURN(sequence_length_q,
+-                       TensorDescriptorFor(custom_call->operand(4)->shape()));
++                       TensorDescriptorFor(custom_call->operand(3)->shape()));
+     TF_ASSIGN_OR_RETURN(sequence_length_kv,
+-                       TensorDescriptorFor(custom_call->operand(5)->shape()));
++                       TensorDescriptorFor(custom_call->operand(4)->shape()));
+     TF_ASSIGN_OR_RETURN(page_table_k,
+-                       TensorDescriptorFor(custom_call->operand(6)->shape()));
++                       TensorDescriptorFor(custom_call->operand(5)->shape()));
+     TF_ASSIGN_OR_RETURN(page_table_v,
+-                       TensorDescriptorFor(custom_call->operand(7)->shape()));
++                       TensorDescriptorFor(custom_call->operand(6)->shape()));
+   }
+ 
+   const double dropout_rate = config.dropout_rate();
 diff --git a/xla/stream_executor/cuda/cuda_dnn.cc b/xla/stream_executor/cuda/cuda_dnn.cc
-index 4a63f8725e..d2eedafca6 100644
+index 2d6bd67570..0720df385d 100644
 --- a/xla/stream_executor/cuda/cuda_dnn.cc
 +++ b/xla/stream_executor/cuda/cuda_dnn.cc
-@@ -5164,7 +5164,7 @@ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionOperationGraph(
-         .set_dim(sequence_length_kv->dimensions())
-         .set_stride(sequence_length_kv->GetLogicalStrides())
-         .set_data_type(cudnn_frontend::DataType_t::INT32));
--    sdpa_options.set_padding_mask(true).set_seq_len_q(seq_q).set_seq_len_kv(seq_kv);
-+    sdpa_options.set_seq_len_q(seq_q).set_seq_len_kv(seq_kv);
+@@ -5079,27 +5079,27 @@ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionOperationGraph(
+   // Setting actual seqlen
+   bool is_padding = mask_type == dnn::FMHAMaskKind::PADDING ||
+                     mask_type == dnn::FMHAMaskKind::PADDING_CAUSAL;
+-  if (is_padding || max_seg_per_batch > 1) {
+-    // Get batch size
+-    auto b = q_dims[0];
+-    auto seq_q_tensor =
+-        graph.tensor(Tensor_attributes()
+-                         .set_name("seq_q")
+-                         .set_dim({b, 1, 1, 1})
+-                         .set_stride({1, 1, 1, 1})
+-                         .set_uid(next_uid())
+-                         .set_data_type(cudnn_frontend::DataType_t::INT32));
+-    auto seq_kv_tensor =
+-        graph.tensor(Tensor_attributes()
+-                         .set_name("seq_kv")
+-                         .set_dim({b, 1, 1, 1})
+-                         .set_stride({1, 1, 1, 1})
+-                         .set_uid(next_uid())
+-                         .set_data_type(cudnn_frontend::DataType_t::INT32));
+-    sdpa_options.set_padding_mask(true);
+-    sdpa_options.set_seq_len_q(seq_q_tensor);
+-    sdpa_options.set_seq_len_kv(seq_kv_tensor);
+-  }
++  //if (is_padding || max_seg_per_batch > 1) {
++  //  // Get batch size
++  //  auto b = q_dims[0];
++  //  auto seq_q_tensor =
++  //      graph.tensor(Tensor_attributes()
++  //                       .set_name("seq_q")
++  //                       .set_dim({b, 1, 1, 1})
++  //                       .set_stride({1, 1, 1, 1})
++  //                       .set_uid(next_uid())
++  //                       .set_data_type(cudnn_frontend::DataType_t::INT32));
++  //  auto seq_kv_tensor =
++  //      graph.tensor(Tensor_attributes()
++  //                       .set_name("seq_kv")
++  //                       .set_dim({b, 1, 1, 1})
++  //                       .set_stride({1, 1, 1, 1})
++  //                       .set_uid(next_uid())
++  //                       .set_data_type(cudnn_frontend::DataType_t::INT32));
++  //  sdpa_options.set_padding_mask(true);
++  //  sdpa_options.set_seq_len_q(seq_q_tensor);
++  //  sdpa_options.set_seq_len_kv(seq_kv_tensor);
++  //}
  
-     auto page_table_k_ = graph.tensor(Tensor_attributes()
-               .set_name("page_table_k")
+   std::shared_ptr<Tensor_attributes> offset_q;
+   if (max_seg_per_batch > 1) {
