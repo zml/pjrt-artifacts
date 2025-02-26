@@ -1,0 +1,13 @@
+diff --git a/xla/stream_executor/cuda/cuda_dnn.cc b/xla/stream_executor/cuda/cuda_dnn.cc
+index 4a63f8725e..d2eedafca6 100644
+--- a/xla/stream_executor/cuda/cuda_dnn.cc
++++ b/xla/stream_executor/cuda/cuda_dnn.cc
+@@ -5164,7 +5164,7 @@ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionOperationGraph(
+         .set_dim(sequence_length_kv->dimensions())
+         .set_stride(sequence_length_kv->GetLogicalStrides())
+         .set_data_type(cudnn_frontend::DataType_t::INT32));
+-    sdpa_options.set_padding_mask(true).set_seq_len_q(seq_q).set_seq_len_kv(seq_kv);
++    sdpa_options.set_seq_len_q(seq_q).set_seq_len_kv(seq_kv);
+ 
+     auto page_table_k_ = graph.tensor(Tensor_attributes()
+               .set_name("page_table_k")
