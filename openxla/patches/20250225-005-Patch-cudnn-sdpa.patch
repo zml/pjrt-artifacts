@@ -1,0 +1,26 @@
+From b929c4905a202c56e107e3c44c79ba7c87c1d4b4 Mon Sep 17 00:00:00 2001
+From: Corentin Godeau <corentin.godeau@zml.ai>
+Date: Thu, 27 Feb 2025 10:45:31 +0100
+Subject: [PATCH] Re-enable attention scale
+
+---
+ xla/stream_executor/cuda/cuda_dnn.cc | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/xla/stream_executor/cuda/cuda_dnn.cc b/xla/stream_executor/cuda/cuda_dnn.cc
+index 4a0dd1970b..06a0c240bc 100644
+--- a/xla/stream_executor/cuda/cuda_dnn.cc
++++ b/xla/stream_executor/cuda/cuda_dnn.cc
+@@ -5064,7 +5064,8 @@ absl::StatusOr<CudnnGraph> GetCudnnFlashAttentionOperationGraph(
+   cudnn_frontend::graph::SDPA_attributes sdpa_options;
+   sdpa_options.set_name("flash_attention")
+       .set_is_inference(stats_descriptor == std::nullopt)
+-      .set_causal_mask(is_causal);
++      .set_causal_mask(is_causal)
++      .set_attn_scale(scale);
+ 
+   // Setting bias
+   if (bias_descriptor.has_value()) {
+-- 
+2.39.3 (Apple Git-145)
+

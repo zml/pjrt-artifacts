@@ -1,0 +1,25 @@
+From 3b31141ade884a025bca78df53faca708d44f765 Mon Sep 17 00:00:00 2001
+From: Corentin Godeau <corentin.godeau@zml.ai>
+Date: Thu, 27 Feb 2025 13:37:13 +0100
+Subject: [PATCH] enable dynamic slice fusion for FMHA custom call
+
+---
+ xla/service/gpu/transforms/dynamic_slice_fusion_rewriter.cc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/xla/service/gpu/transforms/dynamic_slice_fusion_rewriter.cc b/xla/service/gpu/transforms/dynamic_slice_fusion_rewriter.cc
+index 80d1a9a2d8..5d37e13f42 100644
+--- a/xla/service/gpu/transforms/dynamic_slice_fusion_rewriter.cc
++++ b/xla/service/gpu/transforms/dynamic_slice_fusion_rewriter.cc
+@@ -535,7 +535,7 @@ absl::StatusOr<bool> DynamicSliceFusionRewriter::Run(
+     for (HloInstruction* instr : computation->instructions()) {
+       if ((HloPredicateIsOp<HloOpcode::kReduceScatter>(instr) &&
+            instr->shape().IsArray()) ||
+-          IsLegacyCublasMatmul(*instr) || IsCustomCall(instr, platform_name_)) {
++          IsLegacyCublasMatmul(*instr) || IsCustomCallTofMHA(*instr) || IsCustomCall(instr, platform_name_)) {
+         UseDefDataflowPaths sliced_operand_paths =
+             GetSlicedOperandPaths(instr, call_graph.get());
+         bool has_sliced_operand_paths = sliced_operand_paths.size() > 1;
+-- 
+2.39.3 (Apple Git-145)
+
