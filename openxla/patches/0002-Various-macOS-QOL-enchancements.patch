@@ -1,7 +1,7 @@
-From ba424272d5e5e0b139d05d530faad7ff1fbb6af5 Mon Sep 17 00:00:00 2001
+From 29a678a17fa8e97bd794f1290d2edb468b437a38 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Wed, 12 Feb 2025 13:10:04 +0100
-Subject: [PATCH 2/6] Various macOS QOL enchancements
+Subject: [PATCH 2/7] Various macOS QOL enchancements
 
 This PR adds various small quality of life improvements to macOS builds:
 

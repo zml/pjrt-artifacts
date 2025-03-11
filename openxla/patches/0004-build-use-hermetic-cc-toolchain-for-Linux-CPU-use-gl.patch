@@ -1,7 +1,7 @@
-From dfdd3a3cd7f33e8c9febf787cc18dd5f38977f9e Mon Sep 17 00:00:00 2001
+From 9e251ce8d783bfbb03092d61beb603234ba06222 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Wed, 5 Feb 2025 16:28:27 +0100
-Subject: [PATCH 4/6] build: use hermetic cc toolchain for Linux CPU (use glibc
+Subject: [PATCH 4/7] build: use hermetic cc toolchain for Linux CPU (use glibc
  2.31)
 
 Only for ZML, no PR on XLA side.

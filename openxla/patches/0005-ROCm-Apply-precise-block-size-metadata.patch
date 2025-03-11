@@ -1,13 +1,13 @@
-From 5da20b6aedf7952b52dba50b34a40f5b2f4d10d2 Mon Sep 17 00:00:00 2001
+From 58488feb243cc310e5dd1e52075b0d1b2d2af268 Mon Sep 17 00:00:00 2001
 From: Dragan Mladjenovic <Dragan.Mladjenovic@amd.com>
-Date: Wed, 12 Feb 2025 08:58:58 -0600
-Subject: [PATCH 6/6] [ROCm] Apply precise block size metadata
+Date: Tue, 11 Mar 2025 09:47:55 -0500
+Subject: [PATCH 5/7] [ROCm] Apply precise block size metadata
 
 ---
  xla/backends/gpu/codegen/emitters/emitter_base.cc |  7 +++++++
  xla/backends/gpu/codegen/fusion_emitter.cc        | 14 ++++++++++++++
- xla/service/gpu/target_util.cc                    |  1 +
- 3 files changed, 22 insertions(+)
+ xla/service/gpu/target_util.cc                    |  2 +-
+ 3 files changed, 22 insertions(+), 1 deletion(-)
 
 diff --git a/xla/backends/gpu/codegen/emitters/emitter_base.cc b/xla/backends/gpu/codegen/emitters/emitter_base.cc
 index ab43b681dc..2a68dad44d 100644
@@ -87,17 +87,18 @@ index 16028867ad..3269ed7242 100644
  }
  
 diff --git a/xla/service/gpu/target_util.cc b/xla/service/gpu/target_util.cc
-index 9c829183ab..a53e650a8d 100644
+index 9c829183ab..8128f4022a 100644
 --- a/xla/service/gpu/target_util.cc
 +++ b/xla/service/gpu/target_util.cc
-@@ -468,6 +468,7 @@ void AnnotateFunctionAsGpuKernel(llvm::Module* module, llvm::Function* func,
+@@ -468,7 +468,7 @@ void AnnotateFunctionAsGpuKernel(llvm::Module* module, llvm::Function* func,
    } else if (target_triple.getArch() == llvm::Triple::amdgcn) {
      // Attach information so AMDGPU can recognize function as a AMDGPU kernel.
      func->setCallingConv(llvm::CallingConv::AMDGPU_KERNEL);
+-    func->addFnAttr("amdgpu-flat-work-group-size", "1, 1024");
 +    func->addFnAttr("uniform-work-group-size", "true");
-     func->addFnAttr("amdgpu-flat-work-group-size", "1, 1024");
    } else if (target_triple.isSPIR()) {
      // Attach information so that it can be recognized as a SPIR kernel.
+     func->setCallingConv(llvm::CallingConv::SPIR_KERNEL);
 -- 
 2.43.0
 
