@@ -34,7 +34,7 @@ oci.pull(
 oci.pull(
     name = "rocm_base",
     digest = "sha256:f160ad7a77d59ec22506d6909e7d79aa8f86173e1f84f8e39223fa53e19122e7",
-    image = "docker.io/rocm/tensorflow-build:latest-jammy-python3.9-rocm6.2.0",
+    image = "docker.io/rocm/tensorflow-build:latest-jammy-python3.9-rocm6.3.0",
     platforms = [
         "linux/amd64",
     ],
