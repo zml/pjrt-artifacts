@@ -2,6 +2,7 @@ import %workspace%/common.bazelrc
 
 build --copt -Wno-sign-compare
 build --copt -Wno-gnu-offsetof-extensions
+build --copt -Wno-stringop-truncation
 build --build_tag_filters -no_oss
 build --test_tag_filters -no_oss
 
