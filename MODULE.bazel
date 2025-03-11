@@ -24,7 +24,7 @@ use_repo(xla_layer, "openxla")
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 oci.pull(
     name = "cuda_base",
-    digest = "sha256:5dca947f477ec8ea91624447bdad7cc5f6a0dfe038ef53642c884bf5416478a6",
+    digest = "sha256:12242992c121f6cab0ca11bccbaaf757db893b3065d7db74b933e59f321b2cf4",
     image = "docker.io/nvidia/cuda:12.8.0-base-ubuntu22.04",
     platforms = [
         "linux/amd64",
@@ -33,7 +33,7 @@ oci.pull(
 
 oci.pull(
     name = "rocm_base",
-    digest = "sha256:f160ad7a77d59ec22506d6909e7d79aa8f86173e1f84f8e39223fa53e19122e7",
+    digest = "sha256:982ececbe9a06b8f1fffb3cd1b3e5803cdf0894286e590d0b1c83de844699770",
     image = "docker.io/rocm/tensorflow-build:latest-jammy-python3.9-rocm6.3.0",
     platforms = [
         "linux/amd64",
