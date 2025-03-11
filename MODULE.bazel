@@ -25,7 +25,7 @@ oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 oci.pull(
     name = "cuda_base",
     digest = "sha256:5dca947f477ec8ea91624447bdad7cc5f6a0dfe038ef53642c884bf5416478a6",
-    image = "docker.io/nvidia/cuda:12.6.0-base-ubuntu22.04",
+    image = "docker.io/nvidia/cuda:12.8.0-base-ubuntu22.04",
     platforms = [
         "linux/amd64",
     ],
