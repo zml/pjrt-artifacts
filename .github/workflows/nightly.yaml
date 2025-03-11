@@ -104,3 +104,4 @@ jobs:
         with:
           name: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
           path: pjrt-${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }}.tar.gz
+          compression-level: 0 # no compression
