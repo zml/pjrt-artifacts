@@ -1,5 +1,6 @@
 name: nightly - PJRT CUDA library
 on:
+  workflow_dispatch:
   pull_request:
   schedule:
     - cron: '0 */4 * * *'
