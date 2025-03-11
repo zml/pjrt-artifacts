@@ -1,7 +1,7 @@
-From f59ff33447ea8312ed8c4bf7e87c7d5409f0d2b9 Mon Sep 17 00:00:00 2001
+From ba424272d5e5e0b139d05d530faad7ff1fbb6af5 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Wed, 12 Feb 2025 13:10:04 +0100
-Subject: [PATCH] Various macOS QOL enchancements
+Subject: [PATCH 2/6] Various macOS QOL enchancements
 
 This PR adds various small quality of life improvements to macOS builds:
 
@@ -18,10 +18,10 @@ Co-authored-by: Steeve Morin <steeve@zml.ai>
  1 file changed, 10 insertions(+), 8 deletions(-)
 
 diff --git a/xla/pjrt/c/BUILD b/xla/pjrt/c/BUILD
-index a0485b6a43..6f67ee6b78 100644
+index 0e7c35c30f..b3de80a5e7 100644
 --- a/xla/pjrt/c/BUILD
 +++ b/xla/pjrt/c/BUILD
-@@ -321,9 +321,14 @@ cc_library(
+@@ -326,9 +326,14 @@ cc_library(
  
  # PJRT CPU plugin.
  xla_cc_binary(
@@ -38,7 +38,7 @@ index a0485b6a43..6f67ee6b78 100644
          [
              "-Wl,--version-script,$(location :pjrt_c_api_cpu_version_script.lds)",
              "-Wl,--no-undefined",
-@@ -336,10 +341,7 @@ xla_cc_binary(
+@@ -341,10 +346,7 @@ xla_cc_binary(
          "notsan",
      ],
      visibility = ["//visibility:public"],
@@ -50,7 +50,7 @@ index a0485b6a43..6f67ee6b78 100644
  )
  
  cc_library(
-@@ -408,7 +410,8 @@ cc_library(
+@@ -413,7 +415,8 @@ cc_library(
  
  # PJRT GPU plugin. Can be configured to be built for CUDA or ROCM.
  xla_cc_binary(
@@ -60,7 +60,7 @@ index a0485b6a43..6f67ee6b78 100644
      linkopts = [
          "-Wl,--version-script,$(location :pjrt_c_api_gpu_version_script.lds)",
          "-Wl,--no-undefined",
-@@ -422,7 +425,6 @@ xla_cc_binary(
+@@ -427,7 +430,6 @@ xla_cc_binary(
      ],
      deps = [
          ":pjrt_c_api_gpu",
@@ -69,5 +69,5 @@ index a0485b6a43..6f67ee6b78 100644
      ] + if_cuda_is_configured([
          "//xla/stream_executor:cuda_platform",
 -- 
-2.39.5 (Apple Git-154)
+2.43.0
 

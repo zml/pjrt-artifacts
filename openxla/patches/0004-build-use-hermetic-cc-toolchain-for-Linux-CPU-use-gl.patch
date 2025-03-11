@@ -1,20 +1,21 @@
-From 86de695ba9579ace447bc6c4f5c54bc03d467f85 Mon Sep 17 00:00:00 2001
+From dfdd3a3cd7f33e8c9febf787cc18dd5f38977f9e Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Wed, 5 Feb 2025 16:28:27 +0100
-Subject: [PATCH] build: use hermetic cc toolchain for Linux CPU (use glibc 2.31)
+Subject: [PATCH 4/6] build: use hermetic cc toolchain for Linux CPU (use glibc
+ 2.31)
 
 Only for ZML, no PR on XLA side.
 ---
  WORKSPACE | 24 ++++++++++++++++++++++++
- 1 files changed, 24 insertions(+)
+ 1 file changed, 24 insertions(+)
 
 diff --git a/WORKSPACE b/WORKSPACE
-index 028dcdc7ef..55b6ed691f 100644
+index fb250a66da..3671de7c06 100644
 --- a/WORKSPACE
 +++ b/WORKSPACE
 @@ -99,3 +99,27 @@ load(
  )
-
+ 
  nccl_configure(name = "local_config_nccl")
 +
 +load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -40,5 +41,6 @@ index 028dcdc7ef..55b6ed691f 100644
 +register_toolchains(
 +    "@zig_sdk//toolchain:linux_amd64_gnu.2.31",
 +)
---
-2.39.5 (Apple Git-154)
+-- 
+2.43.0
+

@@ -1,0 +1,138 @@
+From 3c5a3dc9cae6552fc6c58659d75077055f899126 Mon Sep 17 00:00:00 2001
+From: Dragan Mladjenovic <Dragan.Mladjenovic@amd.com>
+Date: Wed, 19 Feb 2025 10:36:32 -0600
+Subject: [PATCH 5/6] [ROCm] Pass correct warp size to Triton pipeline
+
+---
+ xla/backends/gpu/codegen/triton/compilation_pipeline.h     | 2 +-
+ .../gpu/codegen/triton/compilation_pipeline_cuda.cc        | 6 ++----
+ .../gpu/codegen/triton/compilation_pipeline_rocm.cc        | 7 +++----
+ .../gpu/codegen/triton/compilation_pipeline_stub.cc        | 2 +-
+ xla/backends/gpu/codegen/triton/fusion_emitter.cc          | 4 +---
+ .../gpu/codegen/triton/fusion_emitter_stub_test.cc         | 2 +-
+ xla/service/gpu/ir_emitter_unnested.cc                     | 7 ++++---
+ 7 files changed, 13 insertions(+), 17 deletions(-)
+
+diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline.h b/xla/backends/gpu/codegen/triton/compilation_pipeline.h
+index 9acd6fee99..c9e65798a5 100644
+--- a/xla/backends/gpu/codegen/triton/compilation_pipeline.h
++++ b/xla/backends/gpu/codegen/triton/compilation_pipeline.h
+@@ -41,7 +41,7 @@ namespace gpu {
+ // parameter which would give a hint to Triton which cluster dims we prefer to
+ // use, but that's not the case currently.
+ absl::Status CreateTritonPipeline(
+-    mlir::OpPassManager* pm, std::string arch_name, int num_warps, int num_ctas,
++    mlir::OpPassManager* pm, const se::DeviceDescription& device_info, int num_warps, int num_ctas,
+     int num_stages, mlir::triton::nvidia_gpu::ClusterInfo& out_cluster_info,
+     bool is_xla_fusion);
+ 
+diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
+index b57300ea88..e0fcf5bfd1 100644
+--- a/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
++++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
+@@ -43,13 +43,11 @@ namespace mt = ::mlir::triton;
+ namespace mt_xla = ::mlir::triton::xla;
+ 
+ absl::Status CreateTritonPipeline(mlir::OpPassManager* pm,
+-                                  std::string arch_name, int num_warps,
++                                  const se::DeviceDescription& device_info, int num_warps,
+                                   int num_ctas, int num_stages,
+                                   mt::nvidia_gpu::ClusterInfo& out_cluster_info,
+                                   bool is_xla_fusion) {
+-  TF_ASSIGN_OR_RETURN(
+-      const stream_executor::CudaComputeCapability cc,
+-      stream_executor::CudaComputeCapability::FromString(arch_name));
++  auto cc = device_info.cuda_compute_capability();
+   const int ccAsInt = cc.major * 10 + cc.minor;
+   const int threadsPerWarp = 32;
+ 
+diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
+index 03fc4bb230..64a493ed2b 100644
+--- a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
++++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
+@@ -58,13 +58,12 @@ using ::mlir::Value;
+ using mlir::ValueRange;
+ 
+ absl::Status CreateTritonPipeline(mlir::OpPassManager* pm,
+-                                  std::string arch_name, int num_warps,
++                                  const se::DeviceDescription& device_info, int num_warps,
+                                   int num_ctas, int num_stages,
+                                   mt::nvidia_gpu::ClusterInfo& out_cluster_info,
+                                   bool is_xla_fusion) {
+-  // TODO(ROCm): Check why some test fail when threadsPerWarp is set to 64.
+-  const int threadsPerWarp = 32;
+-  auto cc = se::RocmComputeCapability(std::move(arch_name));
++  const int threadsPerWarp = device_info.threads_per_warp();
++  auto cc = device_info.rocm_compute_capability();
+ 
+   if (is_xla_fusion) {
+     pm->addPass(mt_xla::CreateInt4ToPackedInt4RewritePass());
+diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_stub.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_stub.cc
+index d91acda7f5..ce7517a6b5 100644
+--- a/xla/backends/gpu/codegen/triton/compilation_pipeline_stub.cc
++++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_stub.cc
+@@ -23,7 +23,7 @@ namespace xla {
+ namespace gpu {
+ 
+ absl::Status CreateTritonPipeline(
+-    mlir::OpPassManager* pm, std::string arch_name, int num_warps, int num_ctas,
++    mlir::OpPassManager* pm, const se::DeviceDescription& device_info, int num_warps, int num_ctas,
+     int num_stages, mlir::triton::nvidia_gpu::ClusterInfo& out_cluster_info,
+     bool is_xla_fusion) {
+   return absl::UnimplementedError("not supported for this build configuration");
+diff --git a/xla/backends/gpu/codegen/triton/fusion_emitter.cc b/xla/backends/gpu/codegen/triton/fusion_emitter.cc
+index 02644b9dc4..d164ffa9e4 100644
+--- a/xla/backends/gpu/codegen/triton/fusion_emitter.cc
++++ b/xla/backends/gpu/codegen/triton/fusion_emitter.cc
+@@ -1544,8 +1544,6 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
+     mlir::ModuleOp triton_module, llvm::Module* llvm_module,
+     mlir::MLIRContext& mlir_context, bool is_xla_fusion, bool emit_kernel) {
+   const auto& cc = device_info.gpu_compute_capability();
+-  std::string arch_name =
+-      std::visit([](auto& cc) { return cc.ToString(); }, cc);
+   if (std::holds_alternative<se::CudaComputeCapability>(cc)) {
+     auto ccCuda = std::get<se::CudaComputeCapability>(cc);
+     if (!ccCuda.IsAtLeastAmpere()) {
+@@ -1606,7 +1604,7 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
+   pm.addPass(CreateConvertIndexTypePass());
+ 
+   mlir::triton::nvidia_gpu::ClusterInfo cluster_info;
+-  if (!CreateTritonPipeline(&pm, arch_name, block_level_parameters.num_warps,
++  if (!CreateTritonPipeline(&pm, device_info, block_level_parameters.num_warps,
+                             block_level_parameters.num_ctas,
+                             block_level_parameters.num_stages, cluster_info,
+                             is_xla_fusion)
+diff --git a/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc b/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc
+index 20accf012b..26b0d91fee 100644
+--- a/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc
++++ b/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc
+@@ -51,7 +51,7 @@ TEST(TritonStub, CallStubApi) {
+   mlir::OpPassManager pm;
+   ::mlir::triton::nvidia_gpu::ClusterInfo cluster_info;
+ 
+-  EXPECT_FALSE(CreateTritonPipeline(&pm, "", 1, 1, 1, cluster_info,
++  EXPECT_FALSE(CreateTritonPipeline(&pm, {}, 1, 1, 1, cluster_info,
+                                     /*is_xla_fusion=*/true)
+                    .ok());
+   EXPECT_EQ(GetLibdevicePath({}, {}), "");
+diff --git a/xla/service/gpu/ir_emitter_unnested.cc b/xla/service/gpu/ir_emitter_unnested.cc
+index fcedefa8f3..75d970b7ae 100644
+--- a/xla/service/gpu/ir_emitter_unnested.cc
++++ b/xla/service/gpu/ir_emitter_unnested.cc
+@@ -1434,9 +1434,10 @@ absl::Status IrEmitterUnnested::EmitTritonCustomCall(
+         KernelArguments::Create(ir_emitter_context_->buffer_assignment(), instr,
+                                 instr->operands(),
+                                 /*dedup=*/false));
+-    auto launch_dimensions =
+-        LaunchDimensions(se::BlockDim(call.grid_x, call.grid_y, call.grid_z),
+-                         se::ThreadDim(call.num_warps * 32));
++    auto launch_dimensions = LaunchDimensions(
++        se::BlockDim(call.grid_x, call.grid_y, call.grid_z),
++        se::ThreadDim(call.num_warps *
++                      ir_emitter_context_->gpu_device_info().threads_per_warp()));
+ 
+     std::string sanitized_kernel_name =
+         GetSanitizedUniqueName(*ir_emitter_context_, kernel_name);
+-- 
+2.43.0
+

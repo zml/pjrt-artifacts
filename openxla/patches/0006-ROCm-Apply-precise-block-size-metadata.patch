@@ -1,0 +1,103 @@
+From 5da20b6aedf7952b52dba50b34a40f5b2f4d10d2 Mon Sep 17 00:00:00 2001
+From: Dragan Mladjenovic <Dragan.Mladjenovic@amd.com>
+Date: Wed, 12 Feb 2025 08:58:58 -0600
+Subject: [PATCH 6/6] [ROCm] Apply precise block size metadata
+
+---
+ xla/backends/gpu/codegen/emitters/emitter_base.cc |  7 +++++++
+ xla/backends/gpu/codegen/fusion_emitter.cc        | 14 ++++++++++++++
+ xla/service/gpu/target_util.cc                    |  1 +
+ 3 files changed, 22 insertions(+)
+
+diff --git a/xla/backends/gpu/codegen/emitters/emitter_base.cc b/xla/backends/gpu/codegen/emitters/emitter_base.cc
+index ab43b681dc..2a68dad44d 100644
+--- a/xla/backends/gpu/codegen/emitters/emitter_base.cc
++++ b/xla/backends/gpu/codegen/emitters/emitter_base.cc
+@@ -34,6 +34,7 @@ limitations under the License.
+ #include "llvm/IR/Function.h"
+ #include "llvm/IR/IRBuilder.h"
+ #include "llvm/IR/Instructions.h"
++#include "llvm/IR/IntrinsicsAMDGPU.h"
+ #include "llvm/IR/IntrinsicsNVPTX.h"
+ #include "llvm/Linker/Linker.h"
+ #include "llvm/Support/Casting.h"
+@@ -128,26 +129,32 @@ void AddRanges(llvm::Function* func, const LaunchDimensions& launch_dims,
+         if (auto* callee = call->getCalledFunction()) {
+           switch (callee->getIntrinsicID()) {
+             case llvm::Intrinsic::nvvm_read_ptx_sreg_tid_x:
++            case llvm::Intrinsic::amdgcn_workitem_id_x:
+               llvm_ir::AddRangeMetadata(
+                   0, launch_dims.thread_counts_per_block().x, call, module);
+               break;
+             case llvm::Intrinsic::nvvm_read_ptx_sreg_tid_y:
++            case llvm::Intrinsic::amdgcn_workitem_id_y:
+               llvm_ir::AddRangeMetadata(
+                   0, launch_dims.thread_counts_per_block().y, call, module);
+               break;
+             case llvm::Intrinsic::nvvm_read_ptx_sreg_tid_z:
++            case llvm::Intrinsic::amdgcn_workitem_id_z:
+               llvm_ir::AddRangeMetadata(
+                   0, launch_dims.thread_counts_per_block().z, call, module);
+               break;
+             case llvm::Intrinsic::nvvm_read_ptx_sreg_ctaid_x:
++            case llvm::Intrinsic::amdgcn_workgroup_id_x:
+               llvm_ir::AddRangeMetadata(0, launch_dims.block_counts().x, call,
+                                         module);
+               break;
+             case llvm::Intrinsic::nvvm_read_ptx_sreg_ctaid_y:
++            case llvm::Intrinsic::amdgcn_workgroup_id_y:
+               llvm_ir::AddRangeMetadata(0, launch_dims.block_counts().y, call,
+                                         module);
+               break;
+             case llvm::Intrinsic::nvvm_read_ptx_sreg_ctaid_z:
++            case llvm::Intrinsic::amdgcn_workgroup_id_z:
+               llvm_ir::AddRangeMetadata(0, launch_dims.block_counts().z, call,
+                                         module);
+               break;
+diff --git a/xla/backends/gpu/codegen/fusion_emitter.cc b/xla/backends/gpu/codegen/fusion_emitter.cc
+index 16028867ad..3269ed7242 100644
+--- a/xla/backends/gpu/codegen/fusion_emitter.cc
++++ b/xla/backends/gpu/codegen/fusion_emitter.cc
+@@ -84,6 +84,9 @@ absl::Status AnnotateKernelLaunchDimensions(
+   // Add __launch_bounds__ to metadata. This limits registers per thread to
+   // avoid out-of-resources launching errors.
+ 
++  llvm::Triple target_triple = llvm::Triple(llvm_module->getTargetTriple());
++
++  if (target_triple.isNVPTX()) {
+   // Our launch bounds are exact, so we can specify them as
+   // reqntid[xyz] rather than maxntid[xyz].
+   const std::string attr =
+@@ -93,6 +96,17 @@ absl::Status AnnotateKernelLaunchDimensions(
+   kernel->addFnAttr("nvvm.reqntid", attr);
+   // Maybe we want to set "reqnctapercluster" here, but not sure if needed or if
+   // LLVM supports that yet. Let's do that later when needed.
++  } else if (target_triple.getArch() == llvm::Triple::amdgcn) {
++    kernel->addFnAttr("amdgpu-flat-work-group-size",
++                         absl::StrJoin({launch_dims.num_threads_per_block(),
++                                        launch_dims.num_threads_per_block()},
++                                       ","));
++    kernel->addFnAttr("amdgpu-max-num-workgroups",
++                         absl::StrJoin({launch_dims.block_counts().x,
++                                        launch_dims.block_counts().y,
++                                        launch_dims.block_counts().z},
++                                       ","));
++  }
+   return absl::OkStatus();
+ }
+ 
+diff --git a/xla/service/gpu/target_util.cc b/xla/service/gpu/target_util.cc
+index 9c829183ab..a53e650a8d 100644
+--- a/xla/service/gpu/target_util.cc
++++ b/xla/service/gpu/target_util.cc
+@@ -468,6 +468,7 @@ void AnnotateFunctionAsGpuKernel(llvm::Module* module, llvm::Function* func,
+   } else if (target_triple.getArch() == llvm::Triple::amdgcn) {
+     // Attach information so AMDGPU can recognize function as a AMDGPU kernel.
+     func->setCallingConv(llvm::CallingConv::AMDGPU_KERNEL);
++    func->addFnAttr("uniform-work-group-size", "true");
+     func->addFnAttr("amdgpu-flat-work-group-size", "1, 1024");
+   } else if (target_triple.isSPIR()) {
+     // Attach information so that it can be recognized as a SPIR kernel.
+-- 
+2.43.0
+

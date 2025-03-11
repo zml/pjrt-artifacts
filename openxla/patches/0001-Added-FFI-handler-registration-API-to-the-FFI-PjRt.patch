@@ -1,7 +1,7 @@
-From c79f202be6fde802b4e5d697a5925d7eccea3d25 Mon Sep 17 00:00:00 2001
+From e888ca450bbc58331c81e7537dd3f2b933f92df7 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Wed, 5 Feb 2025 19:25:03 +0100
-Subject: [PATCH] Added FFI handler registration API to the FFI PjRt
+Subject: [PATCH 1/6] Added FFI handler registration API to the FFI PjRt
 
 PR: https://github.com/openxla/xla/pull/13420
 ---
@@ -11,7 +11,7 @@ PR: https://github.com/openxla/xla/pull/13420
  3 files changed, 54 insertions(+), 2 deletions(-)
 
 diff --git a/xla/pjrt/c/BUILD b/xla/pjrt/c/BUILD
-index ad1b3987fe..0598281ad1 100644
+index ad2ed95bce..0e7c35c30f 100644
 --- a/xla/pjrt/c/BUILD
 +++ b/xla/pjrt/c/BUILD
 @@ -69,7 +69,12 @@ cc_library(
@@ -28,10 +28,10 @@ index ad1b3987fe..0598281ad1 100644
  )
  
 diff --git a/xla/pjrt/c/pjrt_c_api_ffi_extension.h b/xla/pjrt/c/pjrt_c_api_ffi_extension.h
-index c5766f2a19..3d74e7cbf3 100644
+index a33bd4aa9c..3309194538 100644
 --- a/xla/pjrt/c/pjrt_c_api_ffi_extension.h
 +++ b/xla/pjrt/c/pjrt_c_api_ffi_extension.h
-@@ -67,12 +67,28 @@ PJRT_DEFINE_STRUCT_TRAITS(PJRT_FFI_UserData_Add_Args, user_data);
+@@ -66,12 +66,28 @@ PJRT_DEFINE_STRUCT_TRAITS(PJRT_FFI_UserData_Add_Args, user_data);
  // Adds a user data to the execute context.
  typedef PJRT_Error* PJRT_FFI_UserData_Add(PJRT_FFI_UserData_Add_Args* args);
  
@@ -128,4 +128,5 @@ index 0375b39d0b..3527a0756e 100644
  }
  
 -- 
-2.39.5 (Apple Git-154)
+2.43.0
+

@@ -1,19 +1,19 @@
-From a13ee6b68e951f3fa95f26fa3a4a9d0f8e9ab17d Mon Sep 17 00:00:00 2001
+From 87a2f9bdec76d447bfb7f1c379f3ccab93324824 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 21 Jan 2025 14:41:42 +0100
-Subject: [PATCH] Expose nvptxcompiler to link against in XLA if
+Subject: [PATCH 3/6] Expose nvptxcompiler to link against in XLA if
  enable_libnvptxcompiler_support is set
 
 Only for ZML, no PR on XLA side.
 ---
- .../gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl           |  8 ++++++++
- xla/stream_executor/cuda/BUILD                       | 12 +++++++++++-
+ third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl |  8 ++++++++
+ xla/stream_executor/cuda/BUILD                     | 12 +++++++++++-
  2 files changed, 19 insertions(+), 1 deletion(-)
 
-diff --git a/third_party/tsl/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl b/third_party/tsl/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl
+diff --git a/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl b/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl
 index 16ff3c8bea..d27832bb2e 100644
---- a/third_party/tsl/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl
-+++ b/third_party/tsl/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl
+--- a/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl
++++ b/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl
 @@ -45,6 +45,14 @@ filegroup(
      visibility = ["//visibility:public"],
  )
@@ -30,10 +30,10 @@ index 16ff3c8bea..d27832bb2e 100644
      name = "bin",
      srcs = glob([
 diff --git a/xla/stream_executor/cuda/BUILD b/xla/stream_executor/cuda/BUILD
-index 4ccfcbfc72..87d93f5f9c 100644
+index 62c8e4dbb2..d2f40db277 100644
 --- a/xla/stream_executor/cuda/BUILD
 +++ b/xla/stream_executor/cuda/BUILD
-@@ -78,6 +78,11 @@ config_setting(
+@@ -79,6 +79,11 @@ config_setting(
      },
  )
  
@@ -45,7 +45,7 @@ index 4ccfcbfc72..87d93f5f9c 100644
  cc_library(
      name = "cuda_platform_id",
      srcs = ["cuda_platform_id.cc"],
-@@ -122,7 +127,12 @@ cc_library(
+@@ -123,7 +128,12 @@ cc_library(
              "@tsl//tsl/platform:errors",
              "@tsl//tsl/platform:status",
              "@tsl//tsl/platform:statusor",
@@ -60,5 +60,5 @@ index 4ccfcbfc72..87d93f5f9c 100644
  )
  
 -- 
-2.39.5 (Apple Git-154)
+2.43.0
 
