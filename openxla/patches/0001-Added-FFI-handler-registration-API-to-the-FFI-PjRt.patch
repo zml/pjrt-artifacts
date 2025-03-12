@@ -1,7 +1,7 @@
 From 367df40470c00b9a4f83e3c5bc5553e7b0878351 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Wed, 5 Feb 2025 19:25:03 +0100
-Subject: [PATCH 1/7] Added FFI handler registration API to the FFI PjRt
+Subject: [PATCH 1/8] Added FFI handler registration API to the FFI PjRt
 
 PR: https://github.com/openxla/xla/pull/13420
 ---

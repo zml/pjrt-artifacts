@@ -1,7 +1,7 @@
 From ce57301fc1e95f0c4611677190d6428848d4c4d9 Mon Sep 17 00:00:00 2001
 From: Dragan Mladjenovic <Dragan.Mladjenovic@amd.com>
 Date: Wed, 19 Feb 2025 10:36:32 -0600
-Subject: [PATCH 6/7] [ROCm] Pass correct warp size to Triton pipeline
+Subject: [PATCH 6/8] [ROCm] Pass correct warp size to Triton pipeline
 
 ---
  .../gpu/codegen/triton/compilation_pipeline.h  |  7 +++++--

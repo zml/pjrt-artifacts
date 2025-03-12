@@ -1,7 +1,7 @@
 From 58488feb243cc310e5dd1e52075b0d1b2d2af268 Mon Sep 17 00:00:00 2001
 From: Dragan Mladjenovic <Dragan.Mladjenovic@amd.com>
 Date: Tue, 11 Mar 2025 09:47:55 -0500
-Subject: [PATCH 5/7] [ROCm] Apply precise block size metadata
+Subject: [PATCH 5/8] [ROCm] Apply precise block size metadata
 
 ---
  xla/backends/gpu/codegen/emitters/emitter_base.cc |  7 +++++++

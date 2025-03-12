@@ -1,7 +1,7 @@
 From 8fe97d36c154f32a6429924e4b6bf4fb757d9e03 Mon Sep 17 00:00:00 2001
 From: Steeve Morin <steeve@zml.ai>
 Date: Tue, 11 Mar 2025 17:00:22 +0000
-Subject: [PATCH 7/7] [ROCm] rebase thread per warp computation on current XLA
+Subject: [PATCH 7/8] [ROCm] rebase thread per warp computation on current XLA
  master
 
 ---
