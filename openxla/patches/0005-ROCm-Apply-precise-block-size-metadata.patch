@@ -1,7 +1,7 @@
-From 58488feb243cc310e5dd1e52075b0d1b2d2af268 Mon Sep 17 00:00:00 2001
+From c3a9dbb9616c727d2b325f04714372d7e675ca04 Mon Sep 17 00:00:00 2001
 From: Dragan Mladjenovic <Dragan.Mladjenovic@amd.com>
 Date: Tue, 11 Mar 2025 09:47:55 -0500
-Subject: [PATCH 5/8] [ROCm] Apply precise block size metadata
+Subject: [PATCH 5/7] [ROCm] Apply precise block size metadata
 
 ---
  xla/backends/gpu/codegen/emitters/emitter_base.cc |  7 +++++++
@@ -55,10 +55,10 @@ index ab43b681dc..2a68dad44d 100644
                                          module);
                break;
 diff --git a/xla/backends/gpu/codegen/fusion_emitter.cc b/xla/backends/gpu/codegen/fusion_emitter.cc
-index 16028867ad..3269ed7242 100644
+index 9c02768ddf..419a940805 100644
 --- a/xla/backends/gpu/codegen/fusion_emitter.cc
 +++ b/xla/backends/gpu/codegen/fusion_emitter.cc
-@@ -84,6 +84,9 @@ absl::Status AnnotateKernelLaunchDimensions(
+@@ -83,6 +83,9 @@ absl::Status AnnotateKernelLaunchDimensions(
    // Add __launch_bounds__ to metadata. This limits registers per thread to
    // avoid out-of-resources launching errors.
  
@@ -68,7 +68,7 @@ index 16028867ad..3269ed7242 100644
    // Our launch bounds are exact, so we can specify them as
    // reqntid[xyz] rather than maxntid[xyz].
    const std::string attr =
-@@ -93,6 +96,17 @@ absl::Status AnnotateKernelLaunchDimensions(
+@@ -92,6 +95,17 @@ absl::Status AnnotateKernelLaunchDimensions(
    kernel->addFnAttr("nvvm.reqntid", attr);
    // Maybe we want to set "reqnctapercluster" here, but not sure if needed or if
    // LLVM supports that yet. Let's do that later when needed.
@@ -100,5 +100,5 @@ index 9c829183ab..8128f4022a 100644
      // Attach information so that it can be recognized as a SPIR kernel.
      func->setCallingConv(llvm::CallingConv::SPIR_KERNEL);
 -- 
-2.43.0
+2.39.5 (Apple Git-154)
 

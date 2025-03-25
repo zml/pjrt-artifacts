@@ -1,7 +1,7 @@
-From 9e251ce8d783bfbb03092d61beb603234ba06222 Mon Sep 17 00:00:00 2001
+From c1f477c5f84f9bbb60fe9aa2aa933912a1af5508 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Wed, 5 Feb 2025 16:28:27 +0100
-Subject: [PATCH 4/8] build: use hermetic cc toolchain for Linux CPU (use glibc
+Subject: [PATCH 4/7] build: use hermetic cc toolchain for Linux CPU (use glibc
  2.31)
 
 Only for ZML, no PR on XLA side.
@@ -42,5 +42,5 @@ index fb250a66da..3671de7c06 100644
 +    "@zig_sdk//toolchain:linux_amd64_gnu.2.31",
 +)
 -- 
-2.43.0
+2.39.5 (Apple Git-154)
 

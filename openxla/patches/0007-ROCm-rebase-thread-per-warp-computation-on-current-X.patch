@@ -1,7 +1,7 @@
-From 8fe97d36c154f32a6429924e4b6bf4fb757d9e03 Mon Sep 17 00:00:00 2001
+From f05891c48ebf3e0f270edaae0b3781e8548aa2e4 Mon Sep 17 00:00:00 2001
 From: Steeve Morin <steeve@zml.ai>
 Date: Tue, 11 Mar 2025 17:00:22 +0000
-Subject: [PATCH 7/8] [ROCm] rebase thread per warp computation on current XLA
+Subject: [PATCH 7/7] [ROCm] rebase thread per warp computation on current XLA
  master
 
 ---
@@ -22,10 +22,10 @@ index 2bfa678adb..f7f550398f 100644
  namespace mlir::triton::nvidia_gpu {
  
 diff --git a/xla/pjrt/triton_cuda.cc b/xla/pjrt/triton_cuda.cc
-index 99465a61dd..865c710012 100644
+index 963f4deade..5c36f11398 100644
 --- a/xla/pjrt/triton_cuda.cc
 +++ b/xla/pjrt/triton_cuda.cc
-@@ -77,8 +77,14 @@ absl::Status TritonToLLVM(
+@@ -78,8 +78,14 @@ absl::Status TritonToLLVM(
      mlir::triton::nvidia_gpu::ClusterInfo* out_cluster_info) {
    mlir::PassManager pm(module.getContext());
    pm.enableVerifier();
@@ -42,5 +42,5 @@ index 99465a61dd..865c710012 100644
                                       /*is_xla_fusion=*/false));
    return pm.run(module).succeeded()
 -- 
-2.43.0
+2.39.5 (Apple Git-154)
 

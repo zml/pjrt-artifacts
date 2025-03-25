@@ -1,7 +1,7 @@
-From efa29f77ccced525592536563423f9ee9b1ae1e4 Mon Sep 17 00:00:00 2001
+From 055f702ba59fff1299d0c32685179f5e05aef108 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 21 Jan 2025 14:41:42 +0100
-Subject: [PATCH 3/8] Expose nvptxcompiler to link against in XLA if
+Subject: [PATCH 3/7] Expose nvptxcompiler to link against in XLA if
  enable_libnvptxcompiler_support is set
 
 Only for ZML, no PR on XLA side.
@@ -30,7 +30,7 @@ index 16ff3c8bea..d27832bb2e 100644
      name = "bin",
      srcs = glob([
 diff --git a/xla/stream_executor/cuda/BUILD b/xla/stream_executor/cuda/BUILD
-index 62c8e4dbb2..d2f40db277 100644
+index 4da22dfc10..530997bf27 100644
 --- a/xla/stream_executor/cuda/BUILD
 +++ b/xla/stream_executor/cuda/BUILD
 @@ -79,6 +79,11 @@ config_setting(
@@ -60,5 +60,5 @@ index 62c8e4dbb2..d2f40db277 100644
  )
  
 -- 
-2.43.0
+2.39.5 (Apple Git-154)
 

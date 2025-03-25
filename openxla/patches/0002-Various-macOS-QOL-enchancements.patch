@@ -1,7 +1,7 @@
-From 29a678a17fa8e97bd794f1290d2edb468b437a38 Mon Sep 17 00:00:00 2001
+From 376a45ae2f6403341e79da24f0aff246238f2ada Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Wed, 12 Feb 2025 13:10:04 +0100
-Subject: [PATCH 2/8] Various macOS QOL enchancements
+Subject: [PATCH 2/7] Various macOS QOL enchancements
 
 This PR adds various small quality of life improvements to macOS builds:
 
@@ -14,60 +14,38 @@ PR: https://github.com/openxla/xla/pull/16696
 
 Co-authored-by: Steeve Morin <steeve@zml.ai>
 ---
- xla/pjrt/c/BUILD | 18 ++++++++++--------
- 1 file changed, 10 insertions(+), 8 deletions(-)
+ xla/pjrt/c/BUILD | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/xla/pjrt/c/BUILD b/xla/pjrt/c/BUILD
-index 0e7c35c30f..b3de80a5e7 100644
+index d7c359f49a..c096bb89ad 100644
 --- a/xla/pjrt/c/BUILD
 +++ b/xla/pjrt/c/BUILD
-@@ -326,9 +326,14 @@ cc_library(
+@@ -327,13 +327,14 @@ cc_library(
  
  # PJRT CPU plugin.
  xla_cc_binary(
 -    name = "pjrt_c_api_cpu_plugin.so",
 +    name = "pjrt_c_api_cpu_plugin",
-+    additional_linker_inputs = if_macos([], [":pjrt_c_api_cpu_version_script.lds"]),
-     linkopts = if_macos(
--        [],
-+        [
-+            "-Wl,-exported_symbol,_GetPjrtApi",
-+            "-Wl,-install_name,@rpath/pjrt_c_api_cpu_plugin.dylib",
-+            "-Wl,-undefined,error",
-+        ],
-         [
-             "-Wl,--version-script,$(location :pjrt_c_api_cpu_version_script.lds)",
-             "-Wl,--no-undefined",
-@@ -341,10 +346,7 @@ xla_cc_binary(
-         "notsan",
+     additional_linker_inputs = [
+         ":pjrt_c_api_cpu_version_script.lds",
      ],
-     visibility = ["//visibility:public"],
--    deps = [
--        ":pjrt_c_api_cpu",
--        ":pjrt_c_api_cpu_version_script.lds",
--    ],
-+    deps = [":pjrt_c_api_cpu"],
- )
- 
- cc_library(
-@@ -413,7 +415,8 @@ cc_library(
+     linkopts = if_macos(
+         [
+             "-Wl,-exported_symbol,_GetPjrtApi",
++            "-Wl,-install_name,@rpath/pjrt_c_api_cpu_plugin.dylib",
+             "-Wl,-undefined,error",
+         ],
+         [
+@@ -419,7 +420,7 @@ cc_library(
  
  # PJRT GPU plugin. Can be configured to be built for CUDA or ROCM.
  xla_cc_binary(
 -    name = "pjrt_c_api_gpu_plugin.so",
 +    name = "pjrt_c_api_gpu_plugin",
-+    additional_linker_inputs = [":pjrt_c_api_gpu_version_script.lds"],
-     linkopts = [
-         "-Wl,--version-script,$(location :pjrt_c_api_gpu_version_script.lds)",
-         "-Wl,--no-undefined",
-@@ -427,7 +430,6 @@ xla_cc_binary(
+     additional_linker_inputs = [
+         ":pjrt_c_api_gpu_version_script.lds",
      ],
-     deps = [
-         ":pjrt_c_api_gpu",
--        ":pjrt_c_api_gpu_version_script.lds",
-         "//xla/service:gpu_plugin",
-     ] + if_cuda_is_configured([
-         "//xla/stream_executor:cuda_platform",
 -- 
-2.43.0
+2.39.5 (Apple Git-154)
 
