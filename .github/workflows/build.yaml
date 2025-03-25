@@ -19,7 +19,7 @@ permissions:
   contents: write
 
 env:
-  XLA_COMMIT: ${{ inputs.xla_commit || 'd0a7d3dd72534e36f71cd9f352fb5f335bb12270' }}
+  XLA_COMMIT: ${{ inputs.xla_commit || 'd505fef9c5eb6cc1bf282fdf62139783d7fe4ec5' }}
 
 jobs:
   setup_openxla:

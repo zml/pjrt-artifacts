@@ -1,7 +1,7 @@
-From ce57301fc1e95f0c4611677190d6428848d4c4d9 Mon Sep 17 00:00:00 2001
+From 0bd148fe394e6438622ed739a75c1ba90f55f05b Mon Sep 17 00:00:00 2001
 From: Dragan Mladjenovic <Dragan.Mladjenovic@amd.com>
 Date: Wed, 19 Feb 2025 10:36:32 -0600
-Subject: [PATCH 6/8] [ROCm] Pass correct warp size to Triton pipeline
+Subject: [PATCH 6/7] [ROCm] Pass correct warp size to Triton pipeline
 
 ---
  .../gpu/codegen/triton/compilation_pipeline.h  |  7 +++++--
@@ -39,7 +39,7 @@ index 9acd6fee99..2bfa678adb 100644
  
  }  // namespace gpu
 diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
-index b57300ea88..e0fcf5bfd1 100644
+index f18f56117d..b437ba6731 100644
 --- a/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
 +++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
 @@ -43,13 +43,11 @@ namespace mt = ::mlir::triton;
@@ -59,7 +59,7 @@ index b57300ea88..e0fcf5bfd1 100644
    const int threadsPerWarp = 32;
  
 diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
-index 03fc4bb230..f6bd98aeda 100644
+index bda1e79001..e45c854ba9 100644
 --- a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
 +++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
 @@ -57,14 +57,13 @@ using ::mlir::Type;
@@ -112,10 +112,10 @@ index d91acda7f5..4b9d7f0949 100644
    return absl::UnimplementedError("not supported for this build configuration");
  }
 diff --git a/xla/backends/gpu/codegen/triton/fusion_emitter.cc b/xla/backends/gpu/codegen/triton/fusion_emitter.cc
-index 02644b9dc4..d164ffa9e4 100644
+index f7837fa5dc..b08d41fb12 100644
 --- a/xla/backends/gpu/codegen/triton/fusion_emitter.cc
 +++ b/xla/backends/gpu/codegen/triton/fusion_emitter.cc
-@@ -1544,8 +1544,6 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
+@@ -1546,8 +1546,6 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
      mlir::ModuleOp triton_module, llvm::Module* llvm_module,
      mlir::MLIRContext& mlir_context, bool is_xla_fusion, bool emit_kernel) {
    const auto& cc = device_info.gpu_compute_capability();
@@ -124,7 +124,7 @@ index 02644b9dc4..d164ffa9e4 100644
    if (std::holds_alternative<se::CudaComputeCapability>(cc)) {
      auto ccCuda = std::get<se::CudaComputeCapability>(cc);
      if (!ccCuda.IsAtLeastAmpere()) {
-@@ -1606,7 +1604,7 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
+@@ -1608,7 +1606,7 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
    pm.addPass(CreateConvertIndexTypePass());
  
    mlir::triton::nvidia_gpu::ClusterInfo cluster_info;
@@ -147,7 +147,7 @@ index 20accf012b..26b0d91fee 100644
                     .ok());
    EXPECT_EQ(GetLibdevicePath({}, {}), "");
 diff --git a/xla/service/gpu/ir_emitter_unnested.cc b/xla/service/gpu/ir_emitter_unnested.cc
-index 226f60e82a..3ba2a8b169 100644
+index 887a982799..ffb6b93210 100644
 --- a/xla/service/gpu/ir_emitter_unnested.cc
 +++ b/xla/service/gpu/ir_emitter_unnested.cc
 @@ -1434,9 +1434,10 @@ absl::Status IrEmitterUnnested::EmitTritonCustomCall(
@@ -165,5 +165,5 @@ index 226f60e82a..3ba2a8b169 100644
      std::string sanitized_kernel_name =
          GetSanitizedUniqueName(*ir_emitter_context_, kernel_name);
 -- 
-2.43.0
+2.39.5 (Apple Git-154)
 
