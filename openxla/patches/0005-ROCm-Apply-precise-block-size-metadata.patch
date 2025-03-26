@@ -1,4 +1,4 @@
-From c3a9dbb9616c727d2b325f04714372d7e675ca04 Mon Sep 17 00:00:00 2001
+From 612fe2f7bc7c7a1a57ff59528a3ffe3c667546ac Mon Sep 17 00:00:00 2001
 From: Dragan Mladjenovic <Dragan.Mladjenovic@amd.com>
 Date: Tue, 11 Mar 2025 09:47:55 -0500
 Subject: [PATCH 5/7] [ROCm] Apply precise block size metadata

@@ -1,4 +1,4 @@
-From 0bd148fe394e6438622ed739a75c1ba90f55f05b Mon Sep 17 00:00:00 2001
+From 8c07a531e0d6f900ec2ac2e3b48f96dc63ab745a Mon Sep 17 00:00:00 2001
 From: Dragan Mladjenovic <Dragan.Mladjenovic@amd.com>
 Date: Wed, 19 Feb 2025 10:36:32 -0600
 Subject: [PATCH 6/7] [ROCm] Pass correct warp size to Triton pipeline
@@ -39,7 +39,7 @@ index 9acd6fee99..2bfa678adb 100644
  
  }  // namespace gpu
 diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
-index f18f56117d..b437ba6731 100644
+index 1c5ce93550..4b793e5ca9 100644
 --- a/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
 +++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
 @@ -43,13 +43,11 @@ namespace mt = ::mlir::triton;
@@ -59,7 +59,7 @@ index f18f56117d..b437ba6731 100644
    const int threadsPerWarp = 32;
  
 diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
-index bda1e79001..e45c854ba9 100644
+index 6012e001a2..c2d1b53277 100644
 --- a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
 +++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
 @@ -57,14 +57,13 @@ using ::mlir::Type;
@@ -84,7 +84,7 @@ index bda1e79001..e45c854ba9 100644
  
    if (is_xla_fusion) {
      pm->addPass(mt_xla::CreateInt4ToPackedInt4RewritePass());
-@@ -109,7 +108,8 @@ absl::Status CreateTritonPipeline(mlir::OpPassManager* pm,
+@@ -110,7 +109,8 @@ absl::Status CreateTritonPipeline(mlir::OpPassManager* pm,
    }
    pm->addPass(mlir::createTritonAMDGPUCanonicalizePointersPass());
    pm->addPass(mlir::createCanonicalizerPass());
@@ -112,10 +112,10 @@ index d91acda7f5..4b9d7f0949 100644
    return absl::UnimplementedError("not supported for this build configuration");
  }
 diff --git a/xla/backends/gpu/codegen/triton/fusion_emitter.cc b/xla/backends/gpu/codegen/triton/fusion_emitter.cc
-index f7837fa5dc..b08d41fb12 100644
+index dc65948758..09d0d6cd8b 100644
 --- a/xla/backends/gpu/codegen/triton/fusion_emitter.cc
 +++ b/xla/backends/gpu/codegen/triton/fusion_emitter.cc
-@@ -1546,8 +1546,6 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
+@@ -1676,8 +1676,6 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
      mlir::ModuleOp triton_module, llvm::Module* llvm_module,
      mlir::MLIRContext& mlir_context, bool is_xla_fusion, bool emit_kernel) {
    const auto& cc = device_info.gpu_compute_capability();
@@ -124,15 +124,15 @@ index f7837fa5dc..b08d41fb12 100644
    if (std::holds_alternative<se::CudaComputeCapability>(cc)) {
      auto ccCuda = std::get<se::CudaComputeCapability>(cc);
      if (!ccCuda.IsAtLeastAmpere()) {
-@@ -1608,7 +1606,7 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
-   pm.addPass(CreateConvertIndexTypePass());
+@@ -1748,7 +1746,7 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
+   }
  
    mlir::triton::nvidia_gpu::ClusterInfo cluster_info;
--  if (!CreateTritonPipeline(&pm, arch_name, block_level_parameters.num_warps,
-+  if (!CreateTritonPipeline(&pm, device_info, block_level_parameters.num_warps,
-                             block_level_parameters.num_ctas,
-                             block_level_parameters.num_stages, cluster_info,
-                             is_xla_fusion)
+-  if (!CreateTritonPipeline(&pm, arch_name, num_warps, num_ctas, num_stages,
++  if (!CreateTritonPipeline(&pm, device_info, num_warps, num_ctas, num_stages,
+                             cluster_info, is_xla_fusion)
+            .ok()) {
+     return Internal("Failed to create Triton pipeline.");
 diff --git a/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc b/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc
 index 20accf012b..26b0d91fee 100644
 --- a/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc
