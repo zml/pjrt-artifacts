@@ -1,8 +1,6 @@
 import %workspace%/common.bazelrc
 
-build      --copt -Wno-sign-compare
-build      --copt -Wno-error=unused-command-line-argument
-build      --copt -Wno-gnu-offsetof-extensions
+build      -c dbg
 build      --build_tag_filters -no_oss
 build      --test_tag_filters -no_oss
 build      --config nvcc_clang
