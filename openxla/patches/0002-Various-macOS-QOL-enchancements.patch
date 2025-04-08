@@ -1,4 +1,4 @@
-From 69b84b08b1cef4234ced2876c4eddd05211dce16 Mon Sep 17 00:00:00 2001
+From 40f4be3e7e8dee28ec1e33b4de3a1430028ea0e9 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Wed, 12 Feb 2025 13:10:04 +0100
 Subject: [PATCH 2/7] Various macOS QOL enchancements
@@ -18,7 +18,7 @@ Co-authored-by: Steeve Morin <steeve@zml.ai>
  1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/xla/pjrt/c/BUILD b/xla/pjrt/c/BUILD
-index d7c359f49a..c096bb89ad 100644
+index 551c35b461..cf03f65f83 100644
 --- a/xla/pjrt/c/BUILD
 +++ b/xla/pjrt/c/BUILD
 @@ -327,13 +327,14 @@ cc_library(
