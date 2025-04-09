@@ -1,7 +1,7 @@
-From 612fe2f7bc7c7a1a57ff59528a3ffe3c667546ac Mon Sep 17 00:00:00 2001
+From 407b78db675edf3f3e284382413db14bc1ff9ea5 Mon Sep 17 00:00:00 2001
 From: Dragan Mladjenovic <Dragan.Mladjenovic@amd.com>
 Date: Tue, 11 Mar 2025 09:47:55 -0500
-Subject: [PATCH 5/7] [ROCm] Apply precise block size metadata
+Subject: [PATCH 5/7] Apply precise block size metadata
 
 ---
  xla/backends/gpu/codegen/emitters/emitter_base.cc |  7 +++++++
@@ -10,10 +10,10 @@ Subject: [PATCH 5/7] [ROCm] Apply precise block size metadata
  3 files changed, 22 insertions(+), 1 deletion(-)
 
 diff --git a/xla/backends/gpu/codegen/emitters/emitter_base.cc b/xla/backends/gpu/codegen/emitters/emitter_base.cc
-index ab43b681dc..2a68dad44d 100644
+index 4d393924bf..41c351b045 100644
 --- a/xla/backends/gpu/codegen/emitters/emitter_base.cc
 +++ b/xla/backends/gpu/codegen/emitters/emitter_base.cc
-@@ -34,6 +34,7 @@ limitations under the License.
+@@ -36,6 +36,7 @@ limitations under the License.
  #include "llvm/IR/Function.h"
  #include "llvm/IR/IRBuilder.h"
  #include "llvm/IR/Instructions.h"
@@ -21,7 +21,7 @@ index ab43b681dc..2a68dad44d 100644
  #include "llvm/IR/IntrinsicsNVPTX.h"
  #include "llvm/Linker/Linker.h"
  #include "llvm/Support/Casting.h"
-@@ -128,26 +129,32 @@ void AddRanges(llvm::Function* func, const LaunchDimensions& launch_dims,
+@@ -135,26 +136,32 @@ void AddRanges(llvm::Function* func, const LaunchDimensions& launch_dims,
          if (auto* callee = call->getCalledFunction()) {
            switch (callee->getIntrinsicID()) {
              case llvm::Intrinsic::nvvm_read_ptx_sreg_tid_x:
