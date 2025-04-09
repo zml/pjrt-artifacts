@@ -19,7 +19,7 @@ permissions:
   contents: write
 
 env:
-  XLA_COMMIT: ${{ inputs.xla_commit || 'd535b0804700d1f4320ad91fc8eb2c465d3e08c3' }}
+  XLA_COMMIT: ${{ inputs.xla_commit || '7167d711e572e1da17d6c4a87ab1f3661c8f2ac0' }}
 
 jobs:
   setup_openxla:
@@ -74,14 +74,14 @@ jobs:
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: cpu
-            config: "--config=release_macos_arm64 --macos_sdk_version=15.2"
+            config: "--config=release_macos_arm64 --macos_sdk_version=15.4"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
             runs_on: ["self-hosted", "macOS"]
             renamed_artifact: libpjrt_cpu.dylib
             platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
-            config: "--config=release_macos_base --macos_sdk_version=15.2"
+            config: "--config=release_macos_base --macos_sdk_version=15.4"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
             renamed_artifact: libpjrt_cpu.dylib
             runs_on: ["self-hosted", "macOS"]
