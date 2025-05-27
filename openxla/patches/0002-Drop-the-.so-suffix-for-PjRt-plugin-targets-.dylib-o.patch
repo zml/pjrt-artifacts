@@ -1,27 +1,19 @@
-From 93a79c525d0eed7b2081ec31d1d2103c76efcd37 Mon Sep 17 00:00:00 2001
+From 438bdbd415b656b10a7e95dfa9f871718bf8dc22 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
-Date: Wed, 12 Feb 2025 13:10:04 +0100
-Subject: [PATCH 2/7] Various macOS QOL enchancements
-
-This PR adds various small quality of life improvements to macOS builds:
-
-- drop the .so suffix for PjRt plugin targets (.dylib on macOS)
-- add compatibility with Apple Command Line Tools (no need for Xcode anymore)
-only export the GetPjrtApi symbol on macOS
-- leverage bazel's cc_binary.additional_linker_inputs instead of using deps
+Date: Tue, 27 May 2025 11:49:51 +0200
+Subject: [PATCH 2/8] Drop the .so suffix for PjRt plugin targets (.dylib on
+ macOS)
 
 PR: https://github.com/openxla/xla/pull/16696
-
-Co-authored-by: Steeve Morin <steeve@zml.ai>
 ---
  xla/pjrt/c/BUILD | 5 +++--
  1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/xla/pjrt/c/BUILD b/xla/pjrt/c/BUILD
-index 551c35b461..cf03f65f83 100644
+index 0f33dd8a6e..13e6f1b9dc 100644
 --- a/xla/pjrt/c/BUILD
 +++ b/xla/pjrt/c/BUILD
-@@ -327,13 +327,14 @@ cc_library(
+@@ -331,13 +331,14 @@ cc_library(
  
  # PJRT CPU plugin.
  xla_cc_binary(
@@ -37,7 +29,7 @@ index 551c35b461..cf03f65f83 100644
              "-Wl,-undefined,error",
          ],
          [
-@@ -419,7 +420,7 @@ cc_library(
+@@ -424,7 +425,7 @@ cc_library(
  
  # PJRT GPU plugin. Can be configured to be built for CUDA or ROCM.
  xla_cc_binary(
