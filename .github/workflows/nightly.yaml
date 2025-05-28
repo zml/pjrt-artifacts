@@ -21,14 +21,14 @@ jobs:
             config: "--config=cuda"
             artifact: libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64", "debug=true"]
+            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             config: "--config=rocm"
             artifact: libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64", "debug=true"]
+            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
     runs-on: ${{ matrix.pjrt.runs_on }}
@@ -68,12 +68,12 @@ jobs:
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
         working-directory: ./pjrt-artifacts
         run: |
-          docker rm -f pjrt-${{ matrix.pjrt.target }}
-          ~/bin/bazel run //${{ matrix.pjrt.target }}:${{ matrix.pjrt.target }}_stripped_tarball
+          sudo docker rm -f pjrt-${{ matrix.pjrt.target }}
+          ~/bin/bazel run  --run_under="sudo" //${{ matrix.pjrt.target }}:${{ matrix.pjrt.target }}_stripped_tarball
 
       - name: "Run ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
         run: |
-          docker run \
+          sudo docker run \
             --name=pjrt-${{ matrix.pjrt.target }} \
             -w=/xla \
             --net=host \
@@ -88,8 +88,9 @@ jobs:
 
       - name: "Retrieve ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts"
         run: |
-          docker cp pjrt-${{ matrix.pjrt.target }}:/xla/bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} ${{ matrix.pjrt.renamed_artifact }}
-          docker rm -f pjrt-${{ matrix.pjrt.target }}
+          sudo docker cp pjrt-${{ matrix.pjrt.target }}:/xla/bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} ${{ matrix.pjrt.renamed_artifact }}
+          sudo chown runner:runner ${{ matrix.pjrt.renamed_artifact }}
+          sudo docker rm -f pjrt-${{ matrix.pjrt.target }}
 
       - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
         uses: a7ul/tar-action@v1.2.0

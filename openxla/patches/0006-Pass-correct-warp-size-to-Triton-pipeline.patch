@@ -1,8 +1,9 @@
-From 9a1f5b31b811a2a50658725fbe42736ab415d549 Mon Sep 17 00:00:00 2001
-From: Dragan Mladjenovic <Dragan.Mladjenovic@amd.com>
-Date: Wed, 19 Feb 2025 10:36:32 -0600
-Subject: [PATCH 6/7] Pass correct warp size to Triton pipeline
+From 3f9375a249e8e7ae3f310abe39ef45d15526d36a Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Tue, 27 May 2025 12:09:30 +0200
+Subject: [PATCH 6/8] Pass correct warp size to Triton pipeline
 
+PR: https://github.com/openxla/xla/pull/23639
 ---
  .../gpu/codegen/triton/compilation_pipeline.h   |  7 +++++--
  .../codegen/triton/compilation_pipeline_cuda.cc |  6 ++----
@@ -39,7 +40,7 @@ index 9acd6fee99..2bfa678adb 100644
  
  }  // namespace gpu
 diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
-index 835b25a5fe..01e4575fe6 100644
+index e17542a56d..89ea1f2a37 100644
 --- a/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
 +++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
 @@ -43,13 +43,11 @@ namespace mt = ::mlir::triton;
@@ -59,7 +60,7 @@ index 835b25a5fe..01e4575fe6 100644
    const int threadsPerWarp = 32;
  
 diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
-index 21919310c6..ee75f850dd 100644
+index 359032fb8e..ae7ce74484 100644
 --- a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
 +++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
 @@ -53,14 +53,13 @@ using ::mlir::Type;
@@ -91,8 +92,8 @@ index 21919310c6..ee75f850dd 100644
 -    pm->addPass(mlir::createTritonAMDGPUConvertToBufferOpsPass(arch_name));
 +    pm->addPass(mlir::createTritonAMDGPUConvertToBufferOpsPass(cc.gfx_version()));
    }
+   pm->addPass(mlir::createTritonAMDGPUFoldTrueCmpIPass());
    pm->addPass(mlir::createCanonicalizerPass());
-   pm->addPass(mlir::createCSEPass());
 diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_stub.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_stub.cc
 index d91acda7f5..4b9d7f0949 100644
 --- a/xla/backends/gpu/codegen/triton/compilation_pipeline_stub.cc
@@ -111,10 +112,10 @@ index d91acda7f5..4b9d7f0949 100644
    return absl::UnimplementedError("not supported for this build configuration");
  }
 diff --git a/xla/backends/gpu/codegen/triton/fusion_emitter.cc b/xla/backends/gpu/codegen/triton/fusion_emitter.cc
-index 1983d45ecd..8e0a40bc76 100644
+index 1b6c73d044..0365fa3ec1 100644
 --- a/xla/backends/gpu/codegen/triton/fusion_emitter.cc
 +++ b/xla/backends/gpu/codegen/triton/fusion_emitter.cc
-@@ -1796,8 +1796,6 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
+@@ -1765,8 +1765,6 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
      mlir::ModuleOp triton_module, llvm::Module* llvm_module,
      mlir::MLIRContext& mlir_context, bool is_xla_fusion, bool emit_kernel) {
    const auto& cc = device_info.gpu_compute_capability();
@@ -123,7 +124,7 @@ index 1983d45ecd..8e0a40bc76 100644
    if (std::holds_alternative<se::CudaComputeCapability>(cc)) {
      auto ccCuda = std::get<se::CudaComputeCapability>(cc);
      if (!ccCuda.IsAtLeastAmpere()) {
-@@ -1881,7 +1879,7 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
+@@ -1850,7 +1848,7 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
    }
  
    mlir::triton::nvidia_gpu::ClusterInfo cluster_info;
@@ -133,7 +134,7 @@ index 1983d45ecd..8e0a40bc76 100644
             .ok()) {
      return Internal("Failed to create Triton pipeline.");
 diff --git a/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc b/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc
-index 204d7e9da5..c7ed18fb28 100644
+index 1a4f4504f2..cdb28656b5 100644
 --- a/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc
 +++ b/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc
 @@ -53,7 +53,7 @@ TEST(TritonStub, CallStubApi) {
@@ -146,13 +147,13 @@ index 204d7e9da5..c7ed18fb28 100644
                     .ok());
    EXPECT_EQ(GetLibdevicePath({}, {}), "");
 diff --git a/xla/service/gpu/ir_emitter_unnested.cc b/xla/service/gpu/ir_emitter_unnested.cc
-index d9e09ee69e..6e4475abdd 100644
+index 5fac005ab1..794941b4b1 100644
 --- a/xla/service/gpu/ir_emitter_unnested.cc
 +++ b/xla/service/gpu/ir_emitter_unnested.cc
-@@ -1435,9 +1435,10 @@ absl::Status IrEmitterUnnested::EmitTritonCustomCall(
-         KernelArguments::Create(ir_emitter_context_->buffer_assignment(), instr,
-                                 instr->operands(),
-                                 /*dedup=*/false));
+@@ -1441,9 +1441,10 @@ absl::Status IrEmitterUnnested::EmitTritonCustomCall(
+             ir_emitter_context_->buffer_assignment(),
+             GetDefaultBufferAlignment(), instr, instr->operands(),
+             /*dedup=*/false));
 -    auto launch_dimensions =
 -        LaunchDimensions(se::BlockDim(call.grid_x, call.grid_y, call.grid_z),
 -                         se::ThreadDim(call.num_warps * 32));

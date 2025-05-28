@@ -2,7 +2,7 @@ images:
   ubuntu24-amd64:
     platform: "linux"
     arch: "amd64"
-    ami: "ami-04a92520784b93e73"
+    ami: "ami-04a4acda26ca36de0"
     disk: large
     preinstall: |
       #!/bin/bash
@@ -27,7 +27,7 @@ images:
   ubuntu22-amd64:
     platform: "linux"
     arch: "amd64"
-    ami: "ami-04a4acda26ca36de0"
+    ami: "ami-0fe4043e9a4c6efd3"
     disk: large
     preinstall: |
       #!/bin/bash

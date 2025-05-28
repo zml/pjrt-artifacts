@@ -1,8 +1,9 @@
-From 1fc2e54031c21764611102cb86b5c7cedfb6fd1d Mon Sep 17 00:00:00 2001
-From: Steeve Morin <steeve@zml.ai>
-Date: Tue, 11 Mar 2025 17:00:22 +0000
-Subject: [PATCH 7/7] rebase thread per warp computation on current XLA master
+From eeea08723904ac25d8db509f3f0563d0f2433a0f Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Tue, 27 May 2025 12:10:30 +0200
+Subject: [PATCH 7/8] Rebase thread per warp computation on current XLA master
 
+Only for ZML, no PR on XLA side.
 ---
  xla/backends/gpu/codegen/triton/compilation_pipeline.h | 1 +
  xla/pjrt/triton_cuda.cc                                | 8 +++++++-
