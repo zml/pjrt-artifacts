@@ -1,4 +1,4 @@
-From aeb7e096fed869ce875cbaff8f7cafc2840a2191 Mon Sep 17 00:00:00 2001
+From f1fe4dc16d4438651619f8d0e5f9dc4b6cbea162 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 11:50:40 +0200
 Subject: [PATCH 3/8] Expose nvptxcompiler to link against in XLA if

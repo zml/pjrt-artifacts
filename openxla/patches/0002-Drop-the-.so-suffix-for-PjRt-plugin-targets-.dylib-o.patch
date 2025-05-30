@@ -1,4 +1,4 @@
-From 438bdbd415b656b10a7e95dfa9f871718bf8dc22 Mon Sep 17 00:00:00 2001
+From 1485c9ba51b0ddc97971dfb5df7a69140d5a2809 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 11:49:51 +0200
 Subject: [PATCH 2/8] Drop the .so suffix for PjRt plugin targets (.dylib on
