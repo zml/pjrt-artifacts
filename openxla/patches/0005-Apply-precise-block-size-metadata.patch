@@ -1,4 +1,4 @@
-From 78a8d81d5f2d8ce0ce63728a0424efe688b130a1 Mon Sep 17 00:00:00 2001
+From 8b5e4d6fc726b45f925e5fac70f5f858c0952b06 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 11:53:49 +0200
 Subject: [PATCH 5/8] Apply precise block size metadata

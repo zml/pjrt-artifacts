@@ -1,4 +1,4 @@
-From 0dd7dbfe7cd7cf9e6954682a2d1083f235ee6b8f Mon Sep 17 00:00:00 2001
+From ff8063b1c364ba29a4557cee14aed9e2e3c2e618 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 16:31:37 +0200
 Subject: [PATCH 8/8] Fix apple_support usage

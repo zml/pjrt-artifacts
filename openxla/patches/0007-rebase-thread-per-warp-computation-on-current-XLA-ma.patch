@@ -1,4 +1,4 @@
-From eeea08723904ac25d8db509f3f0563d0f2433a0f Mon Sep 17 00:00:00 2001
+From 50c10bb3208cc0edc22c0301ec0c9b5a83da0fae Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 12:10:30 +0200
 Subject: [PATCH 7/8] Rebase thread per warp computation on current XLA master
