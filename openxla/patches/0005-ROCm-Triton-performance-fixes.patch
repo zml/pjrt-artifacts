@@ -1,7 +1,7 @@
 From 63439cf2d4d9499d5edc8460c197969e4673305e Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 11:53:49 +0200
-Subject: [PATCH 4/5] [ROCm] Triton performance fixes
+Subject: [PATCH 5/6] [ROCm] Triton performance fixes
 
 PR: https://github.com/openxla/xla/pull/23688
 ---

@@ -1,7 +1,7 @@
 From 94a08e3aac860d6a19b788ceb8fe4459a139c08e Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 11:49:51 +0200
-Subject: [PATCH 1/5] Drop the .so suffix for PjRt plugin targets (.dylib on
+Subject: [PATCH 2/6] Drop the .so suffix for PjRt plugin targets (.dylib on
  macOS)
 
 PR: https://github.com/openxla/xla/pull/16696
