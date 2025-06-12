@@ -1,7 +1,7 @@
-From f1fe4dc16d4438651619f8d0e5f9dc4b6cbea162 Mon Sep 17 00:00:00 2001
+From 08f8bb1431e1536b07118e0fe85826d7958b56a7 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 11:50:40 +0200
-Subject: [PATCH 3/8] Expose nvptxcompiler to link against in XLA if
+Subject: [PATCH 3/6] Expose nvptxcompiler to link against in XLA if
  enable_libnvptxcompiler_support is set
 
 Only for ZML, no PR on XLA side.
@@ -11,10 +11,10 @@ Only for ZML, no PR on XLA side.
  2 files changed, 19 insertions(+), 1 deletion(-)
 
 diff --git a/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl b/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl
-index 7757a92a90..ef9aaab735 100644
+index 733d95d371..f6c1c5ab53 100644
 --- a/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl
 +++ b/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl
-@@ -44,6 +44,14 @@ filegroup(
+@@ -52,6 +52,14 @@ filegroup(
      visibility = ["//visibility:public"],
  )
  
@@ -30,10 +30,10 @@ index 7757a92a90..ef9aaab735 100644
      name = "bin",
      srcs = glob([
 diff --git a/xla/stream_executor/cuda/BUILD b/xla/stream_executor/cuda/BUILD
-index 6b4152b276..75deaa62b6 100644
+index 4a62a44357..d5f723fd62 100644
 --- a/xla/stream_executor/cuda/BUILD
 +++ b/xla/stream_executor/cuda/BUILD
-@@ -79,6 +79,11 @@ config_setting(
+@@ -84,6 +84,11 @@ config_setting(
      },
  )
  
@@ -45,7 +45,7 @@ index 6b4152b276..75deaa62b6 100644
  cc_library(
      name = "cuda_platform_id",
      srcs = ["cuda_platform_id.cc"],
-@@ -123,7 +128,12 @@ cc_library(
+@@ -128,7 +133,12 @@ cc_library(
              "@tsl//tsl/platform:errors",
              "@tsl//tsl/platform:status",
              "@tsl//tsl/platform:statusor",
