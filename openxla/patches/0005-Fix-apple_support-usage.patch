@@ -1,7 +1,7 @@
-From ff8063b1c364ba29a4557cee14aed9e2e3c2e618 Mon Sep 17 00:00:00 2001
+From db87dfb837ca75b31034a48690ac1eeb8fe1e80f Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 16:31:37 +0200
-Subject: [PATCH 8/8] Fix apple_support usage
+Subject: [PATCH 5/5] Fix apple_support usage
 
 Issue: https://github.com/openxla/xla/issues/27099
 ---
@@ -9,7 +9,7 @@ Issue: https://github.com/openxla/xla/issues/27099
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/tensorflow.bazelrc b/tensorflow.bazelrc
-index 5e42e49dca..1ded8e40b4 100644
+index e0d2dcb83f..0a58248925 100644
 --- a/tensorflow.bazelrc
 +++ b/tensorflow.bazelrc
 @@ -127,7 +127,7 @@ build:macos --features=archive_param_file
@@ -21,7 +21,7 @@ index 5e42e49dca..1ded8e40b4 100644
  
  # Config to use a mostly-static build and disable modular op registration
  # support (this will revert to loading TensorFlow with RTLD_GLOBAL in Python).
-@@ -531,7 +531,7 @@ build:release_macos_x86 --config=release_macos_base
+@@ -534,7 +534,7 @@ build:release_macos_x86 --config=release_macos_base
  # Build with the AVX instruction set when on macOS x86
  build:release_macos_x86 --config=avx_linux
  build:release_macos_x86 --cpu=darwin
@@ -30,7 +30,7 @@ index 5e42e49dca..1ded8e40b4 100644
  # Target Catalina as the minimum compatible OS version
  build:release_macos_x86 --macos_minimum_os=10.15
  build:release_macos_x86 --macos_sdk_version=10.15
-@@ -539,7 +539,7 @@ build:release_macos_x86 --macos_sdk_version=10.15
+@@ -542,7 +542,7 @@ build:release_macos_x86 --macos_sdk_version=10.15
  # Build configs for macOS Arm64
  build:release_macos_arm64 --config=release_macos_base
  build:release_macos_arm64 --cpu=darwin_arm64
