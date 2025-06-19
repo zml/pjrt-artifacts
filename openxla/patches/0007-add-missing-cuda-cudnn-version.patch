@@ -1,14 +1,14 @@
-From 389f41c4198790bd815b7930e59010d80de1c11d Mon Sep 17 00:00:00 2001
+From c4a62e1a7cc8bd022d92026d77daffd4025555e4 Mon Sep 17 00:00:00 2001
 From: Corentin Godeau <corentin.godeau@zml.ai>
 Date: Thu, 19 Jun 2025 17:43:35 +0200
 Subject: [PATCH] add missing cuda/cudnn version
 
 ---
- third_party/gpus/cuda/hermetic/cuda_redist_versions.bzl | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ .../gpus/cuda/hermetic/cuda_redist_versions.bzl        | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
 diff --git a/third_party/gpus/cuda/hermetic/cuda_redist_versions.bzl b/third_party/gpus/cuda/hermetic/cuda_redist_versions.bzl
-index 76af01bdcd..604cde50fc 100644
+index 76af01bdcd..6750349e42 100644
 --- a/third_party/gpus/cuda/hermetic/cuda_redist_versions.bzl
 +++ b/third_party/gpus/cuda/hermetic/cuda_redist_versions.bzl
 @@ -82,6 +82,10 @@ CUDA_REDIST_JSON_DICT = {
@@ -33,6 +33,22 @@ index 76af01bdcd..604cde50fc 100644
  }
  
  MIRRORED_TARS_CUDNN_REDIST_JSON_DICT = {
+@@ -317,6 +325,7 @@ CUDA_NCCL_WHEELS = {
+     "12.6.3": CUDA_12_NCCL_WHEEL_DICT,
+     "12.8.0": CUDA_12_NCCL_WHEEL_DICT,
+     "12.8.1": CUDA_12_NCCL_WHEEL_DICT,
++    "12.9.0": CUDA_12_NCCL_WHEEL_DICT,
+ }
+ 
+ # Ensures PTX version compatibility w/ Clang & ptxas in cuda_configure.bzl
+@@ -349,6 +358,7 @@ REDIST_VERSIONS_TO_BUILD_TEMPLATES = {
+     "nvidia_driver": {
+         "repo_name": "cuda_driver",
+         "version_to_template": {
++            "575": "//third_party/gpus/cuda/hermetic:cuda_driver.BUILD.tpl",
+             "570": "//third_party/gpus/cuda/hermetic:cuda_driver.BUILD.tpl",
+             "560": "//third_party/gpus/cuda/hermetic:cuda_driver.BUILD.tpl",
+             "555": "//third_party/gpus/cuda/hermetic:cuda_driver.BUILD.tpl",
 -- 
 2.39.3 (Apple Git-145)
 
