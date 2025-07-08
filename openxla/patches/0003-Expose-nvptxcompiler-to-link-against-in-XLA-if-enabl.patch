@@ -1,4 +1,4 @@
-From 08f8bb1431e1536b07118e0fe85826d7958b56a7 Mon Sep 17 00:00:00 2001
+From e8d8ec1a4a75243778fb85b9798a499fe75ba09b Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 11:50:40 +0200
 Subject: [PATCH 3/6] Expose nvptxcompiler to link against in XLA if
@@ -30,10 +30,10 @@ index 733d95d371..f6c1c5ab53 100644
      name = "bin",
      srcs = glob([
 diff --git a/xla/stream_executor/cuda/BUILD b/xla/stream_executor/cuda/BUILD
-index 4a62a44357..d5f723fd62 100644
+index 08abf6197f..f8c1ce5b1f 100644
 --- a/xla/stream_executor/cuda/BUILD
 +++ b/xla/stream_executor/cuda/BUILD
-@@ -84,6 +84,11 @@ config_setting(
+@@ -80,6 +80,11 @@ config_setting(
      },
  )
  
@@ -45,7 +45,7 @@ index 4a62a44357..d5f723fd62 100644
  cc_library(
      name = "cuda_platform_id",
      srcs = ["cuda_platform_id.cc"],
-@@ -128,7 +133,12 @@ cc_library(
+@@ -124,7 +129,12 @@ cc_library(
              "@tsl//tsl/platform:errors",
              "@tsl//tsl/platform:status",
              "@tsl//tsl/platform:statusor",
