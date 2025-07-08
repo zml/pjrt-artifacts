@@ -1,4 +1,4 @@
-From 1866ae22448e8ac595da5fc66fa7dfc771ff12f9 Mon Sep 17 00:00:00 2001
+From 10d01d1b4e013fa31331492e4ec08d4f7ac8d171 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 11:53:49 +0200
 Subject: [PATCH 5/6] [ROCm] Triton performance fixes
@@ -32,7 +32,7 @@ index 14725920c4..4bfc449335 100644
  // use, but that's not the case currently.
  absl::Status CreateTritonPipeline(
 -    mlir::OpPassManager* pm, std::string arch_name, int num_warps, int num_ctas,
-+    mlir::OpPassManager* pm, const stream_executor::DeviceDescription& device_info,
++    mlir::OpPassManager* pm, const stream_executor::DeviceDescription& device_info, 
 +    int num_warps, int num_ctas,
      int num_stages, mlir::triton::nvidia_gpu::ClusterInfo& out_cluster_info);
  

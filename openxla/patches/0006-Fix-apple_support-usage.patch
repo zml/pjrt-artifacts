@@ -1,4 +1,4 @@
-From bc2896c30c7944ffd08020d88fcf0f6cd06e5da3 Mon Sep 17 00:00:00 2001
+From d556f3745b621ade8e62b484e3e08530d15c841a Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 16:31:37 +0200
 Subject: [PATCH 6/6] Fix apple_support usage
