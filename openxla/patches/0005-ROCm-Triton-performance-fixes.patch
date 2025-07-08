@@ -1,4 +1,4 @@
-From 10d01d1b4e013fa31331492e4ec08d4f7ac8d171 Mon Sep 17 00:00:00 2001
+From 106a790db775c84418df855dc235e14c6c00080b Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 11:53:49 +0200
 Subject: [PATCH 5/6] [ROCm] Triton performance fixes

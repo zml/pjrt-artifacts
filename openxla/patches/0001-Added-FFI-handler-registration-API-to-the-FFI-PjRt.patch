@@ -1,4 +1,4 @@
-From dde10b40a7b0d15f6421d8f025a5aca991bdc28b Mon Sep 17 00:00:00 2001
+From f611279a404af0bcad8c25c78977c28d67956118 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 11:48:17 +0200
 Subject: [PATCH 1/6] Added FFI handler registration API to the FFI PjRt
@@ -6,9 +6,9 @@ Subject: [PATCH 1/6] Added FFI handler registration API to the FFI PjRt
 PR: https://github.com/openxla/xla/pull/13420
 ---
  xla/pjrt/c/BUILD                      |  5 +++++
- xla/pjrt/c/pjrt_c_api_ffi_extension.h | 21 ++++++++++++++++++
+ xla/pjrt/c/pjrt_c_api_ffi_extension.h | 23 ++++++++++++++++++-
  xla/pjrt/c/pjrt_c_api_ffi_internal.cc | 32 ++++++++++++++++++++++++++-
- 3 files changed, 57 insertions(+), 1 deletion(-)
+ 3 files changed, 58 insertions(+), 2 deletions(-)
 
 diff --git a/xla/pjrt/c/BUILD b/xla/pjrt/c/BUILD
 index 1158024109..176da1b49e 100644
@@ -29,10 +29,10 @@ index 1158024109..176da1b49e 100644
  )
  
 diff --git a/xla/pjrt/c/pjrt_c_api_ffi_extension.h b/xla/pjrt/c/pjrt_c_api_ffi_extension.h
-index 995a2c7e50..b8f10bc2f7 100644
+index 995a2c7e50..7c83ca9fbc 100644
 --- a/xla/pjrt/c/pjrt_c_api_ffi_extension.h
 +++ b/xla/pjrt/c/pjrt_c_api_ffi_extension.h
-@@ -69,10 +69,31 @@ PJRT_DEFINE_STRUCT_TRAITS(PJRT_FFI_UserData_Add_Args, user_data);
+@@ -69,12 +69,33 @@ PJRT_DEFINE_STRUCT_TRAITS(PJRT_FFI_UserData_Add_Args, user_data);
  // Adds a user data to the execute context.
  typedef PJRT_Error* PJRT_FFI_UserData_Add(PJRT_FFI_UserData_Add_Args* args);
  
@@ -62,8 +62,11 @@ index 995a2c7e50..b8f10bc2f7 100644
    PJRT_FFI_UserData_Add* user_data_add;
 +  PJRT_FFI_Register_Handler* register_handler;
  } PJRT_FFI;
- PJRT_DEFINE_STRUCT_TRAITS(PJRT_FFI_Extension, user_data_add);
+-PJRT_DEFINE_STRUCT_TRAITS(PJRT_FFI_Extension, user_data_add);
++PJRT_DEFINE_STRUCT_TRAITS(PJRT_FFI_Extension, register_handler);
  
+ #ifdef __cplusplus
+ }
 diff --git a/xla/pjrt/c/pjrt_c_api_ffi_internal.cc b/xla/pjrt/c/pjrt_c_api_ffi_internal.cc
 index 5fa88eab33..63ad65bc69 100644
 --- a/xla/pjrt/c/pjrt_c_api_ffi_internal.cc
