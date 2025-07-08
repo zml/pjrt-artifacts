@@ -1,4 +1,4 @@
-From 106a790db775c84418df855dc235e14c6c00080b Mon Sep 17 00:00:00 2001
+From eca4cbe38bfa1bd5685cbef1ac4524d69cb4578d Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 11:53:49 +0200
 Subject: [PATCH 5/6] [ROCm] Triton performance fixes
@@ -56,7 +56,7 @@ index 697058c7c0..adeadd4e36 100644
    const int threadsPerWarp = 32;
  
 diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
-index 33ec8a51f7..4ada32cdec 100644
+index 33ec8a51f7..b1d3bbf757 100644
 --- a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
 +++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
 @@ -54,10 +54,10 @@ using ::mlir::Value;
@@ -78,7 +78,7 @@ index 33ec8a51f7..4ada32cdec 100644
    pm->addPass(mt::gpu::createTritonGPUOptimizeThreadLocality());
    // TODO ROCm Pass cc.gfx_version() after fixing issue with fmfa
 -  pm->addPass(mlir::createTritonAMDGPUAccelerateMatmul({arch_name}));
-+  pm->addPass(mlir::createTritonAMDGPUAccelerateMatmul(cc.gfx_version()));
++  pm->addPass(mlir::createTritonAMDGPUAccelerateMatmul({cc.gfx_version()}));
    pm->addPass(mt::gpu::createTritonGPURemoveLayoutConversions());
    // TODO ROCm Check if we want to compare MI100 and greater
    pm->addPass(mlir::createTritonAMDGPUOptimizeEpilogue());
@@ -87,7 +87,7 @@ index 33ec8a51f7..4ada32cdec 100644
      pm->addPass(mlir::createTritonAMDGPUCanonicalizePointers());
      pm->addPass(mlir::createCanonicalizerPass());
 -    pm->addPass(mlir::createTritonAMDGPUConvertToBufferOps({arch_name}));
-+    pm->addPass(mlir::createTritonAMDGPUConvertToBufferOps(cc.gfx_version()));
++    pm->addPass(mlir::createTritonAMDGPUConvertToBufferOps({cc.gfx_version()}));
    }
    pm->addPass(mlir::createTritonAMDFoldTrueCmpI());
    pm->addPass(mlir::createCanonicalizerPass());
