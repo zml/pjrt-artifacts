@@ -1,7 +1,7 @@
-From c317741af27803cc6dfc5a9de3be5717361a6fac Mon Sep 17 00:00:00 2001
+From 9b1765a5a807b93a489ae771d1591be8f48f374b Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 11:53:49 +0200
-Subject: [PATCH 5/6] [ROCm] Triton performance fixes
+Subject: [PATCH 5/7] [ROCm] Triton performance fixes
 
 PR: https://github.com/openxla/xla/pull/23688
 ---
@@ -38,7 +38,7 @@ index 14725920c4..2fe57036bc 100644
  
  }  // namespace gpu
 diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
-index 697058c7c0..adeadd4e36 100644
+index 831ebb8459..f914acb24e 100644
 --- a/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
 +++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
 @@ -43,11 +43,9 @@ namespace mt_xla = ::mlir::triton::xla;
@@ -106,7 +106,7 @@ index 5590401ba9..35147014f7 100644
    return absl::UnimplementedError("not supported for this build configuration");
  }
 diff --git a/xla/backends/gpu/codegen/triton/fusion_emitter.cc b/xla/backends/gpu/codegen/triton/fusion_emitter.cc
-index a93d4934f0..00c35e5542 100644
+index 1e1a77819c..0ea364f408 100644
 --- a/xla/backends/gpu/codegen/triton/fusion_emitter.cc
 +++ b/xla/backends/gpu/codegen/triton/fusion_emitter.cc
 @@ -1931,8 +1931,6 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
@@ -118,7 +118,7 @@ index a93d4934f0..00c35e5542 100644
    if (std::holds_alternative<se::CudaComputeCapability>(cc)) {
      auto ccCuda = std::get<se::CudaComputeCapability>(cc);
      if (!ccCuda.IsAtLeastAmpere()) {
-@@ -2020,7 +2018,7 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
+@@ -2019,7 +2017,7 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
    }
  
    mlir::triton::nvidia_gpu::ClusterInfo cluster_info;

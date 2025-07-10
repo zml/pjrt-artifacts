@@ -1,7 +1,7 @@
-From db34849688e16018f83850a8509a09ba2426f63e Mon Sep 17 00:00:00 2001
+From ff930c6b192a4c72aec42fe9fe1c2d51661db95b Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 11:50:40 +0200
-Subject: [PATCH 3/6] Expose nvptxcompiler to link against in XLA if
+Subject: [PATCH 3/7] Expose nvptxcompiler to link against in XLA if
  enable_libnvptxcompiler_support is set
 
 Only for ZML, no PR on XLA side.

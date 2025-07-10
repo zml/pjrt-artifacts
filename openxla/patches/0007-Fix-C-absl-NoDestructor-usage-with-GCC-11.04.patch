@@ -1,0 +1,27 @@
+From 88e2b1f30bc8f7041c0acd4474925d8ade1ec035 Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Thu, 10 Jul 2025 16:23:07 +0200
+Subject: [PATCH 7/7] Fix C++ absl::NoDestructor usage with GCC 11.04
+
+Add an explicit type annotation to make it unambiguous
+XLA issue: https://github.com/openxla/xla/issues/28643
+---
+ xla/service/gpu/gpu_memory_space_assignment.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/xla/service/gpu/gpu_memory_space_assignment.h b/xla/service/gpu/gpu_memory_space_assignment.h
+index b2fe735eb2..c6c0cbb4cb 100644
+--- a/xla/service/gpu/gpu_memory_space_assignment.h
++++ b/xla/service/gpu/gpu_memory_space_assignment.h
+@@ -45,7 +45,7 @@ inline BufferAssigner::Colorer CollectiveColorer(bool use_user_buffers,
+   return [use_user_buffers, use_nvshmem](HloAliasAnalysis* alias_analysis,
+                                          const HloOrdering&) {
+     static const absl::NoDestructor<absl::flat_hash_set<HloOpcode>>
+-        kSupportedOpcodes({
++        kSupportedOpcodes(absl::flat_hash_set<HloOpcode>{
+             HloOpcode::kAllReduce,
+             HloOpcode::kAllReduceStart,
+             HloOpcode::kAllReduceDone,
+-- 
+2.39.5 (Apple Git-154)
+
