@@ -10,6 +10,7 @@ build      --action_env CLANG_CUDA_COMPILER_PATH=/usr/lib/llvm-18/bin/clang
 build:cuda --repo_env HERMETIC_CUDA_COMPUTE_CAPABILITIES="5.0,5.2,5.3,6.0,6.1,6.2,7.0,7.2,7.5,8.0,8.6,8.7,8.9,9.0,10.0,10.1,12.0"
 build:cuda --repo_env=HERMETIC_CUDA_VERSION="12.8.0"
 build:cuda --repo_env=HERMETIC_CUDNN_VERSION="9.8.0"
+build:cuda --repo_env=HERMETIC_NVSHMEM_VERSION="3.2.5"
 build:cuda --@//xla/stream_executor/cuda:enable_libnvjitlink_support=True
 build:cuda --@//xla/stream_executor/cuda:enable_libnvptxcompiler_support=True
 

@@ -1,58 +1,58 @@
-From 08f8bb1431e1536b07118e0fe85826d7958b56a7 Mon Sep 17 00:00:00 2001
+From ff930c6b192a4c72aec42fe9fe1c2d51661db95b Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Tue, 27 May 2025 11:50:40 +0200
-Subject: [PATCH 3/6] Expose nvptxcompiler to link against in XLA if
+Subject: [PATCH 3/7] Expose nvptxcompiler to link against in XLA if
  enable_libnvptxcompiler_support is set
 
 Only for ZML, no PR on XLA side.
 ---
- third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl |  8 ++++++++
- xla/stream_executor/cuda/BUILD                     | 12 +++++++++++-
- 2 files changed, 19 insertions(+), 1 deletion(-)
+ third_party/gpus/cuda/hermetic/BUILD.tpl | 1 +
+ workspace0.bzl                           | 6 +++---
+ xla/stream_executor/cuda/BUILD           | 7 ++++++-
+ 3 files changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl b/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl
-index 733d95d371..f6c1c5ab53 100644
---- a/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl
-+++ b/third_party/gpus/cuda/hermetic/cuda_nvcc.BUILD.tpl
-@@ -52,6 +52,14 @@ filegroup(
-     visibility = ["//visibility:public"],
+diff --git a/third_party/gpus/cuda/hermetic/BUILD.tpl b/third_party/gpus/cuda/hermetic/BUILD.tpl
+index 41a273ebbe..d789e71883 100644
+--- a/third_party/gpus/cuda/hermetic/BUILD.tpl
++++ b/third_party/gpus/cuda/hermetic/BUILD.tpl
+@@ -307,6 +307,7 @@ cc_library(
+     # This is not yet fully supported, but we need the rule
+     # to make bazel query happy.
+     name = "nvptxcompiler",
++    actual = "@cuda_nvcc//:libnvptxcompiler",
  )
  
-+filegroup(
-+    name = "libnvptxcompiler",
-+    srcs = [
-+        "lib/libnvptxcompiler_static.a",
-+    ],
-+    visibility = ["//visibility:public"],
-+)
-+
- filegroup(
-     name = "bin",
-     srcs = glob([
+ alias(
+diff --git a/workspace0.bzl b/workspace0.bzl
+index 25db007e51..e6ccc318f0 100644
+--- a/workspace0.bzl
++++ b/workspace0.bzl
+@@ -138,10 +138,10 @@ def workspace():
+     # Details: https://github.com/google-ml-infra/rules_ml_toolchain
+     http_archive(
+         name = "rules_ml_toolchain",
+-        sha256 = "de3b14418657eeacd8afc2aa89608be6ec8d66cd6a5de81c4f693e77bc41bee1",
+-        strip_prefix = "rules_ml_toolchain-5653e5a0ca87c1272069b4b24864e55ce7f129a1",
++        sha256 = "fb78d09234528aef2be856820b69b76486829f65e4eb3c7ffaa5803b667fa441",
++        strip_prefix = "rules_ml_toolchain-f4ad89fa906be2c1374785a79335c8a7dcd49df7",
+         urls = [
+-            "https://github.com/google-ml-infra/rules_ml_toolchain/archive/5653e5a0ca87c1272069b4b24864e55ce7f129a1.tar.gz",
++            "https://github.com/zml/rules_ml_toolchain/archive/f4ad89fa906be2c1374785a79335c8a7dcd49df7.tar.gz",
+         ],
+     )
+ 
 diff --git a/xla/stream_executor/cuda/BUILD b/xla/stream_executor/cuda/BUILD
-index 4a62a44357..d5f723fd62 100644
+index 08abf6197f..ac06e394bc 100644
 --- a/xla/stream_executor/cuda/BUILD
 +++ b/xla/stream_executor/cuda/BUILD
-@@ -84,6 +84,11 @@ config_setting(
-     },
- )
- 
-+cc_import(
-+    name = "nvptxcompiler",
-+    static_library = "@cuda_nvcc//:libnvptxcompiler",
-+)
-+
- cc_library(
-     name = "cuda_platform_id",
-     srcs = ["cuda_platform_id.cc"],
-@@ -128,7 +133,12 @@ cc_library(
+@@ -124,7 +124,12 @@ cc_library(
              "@tsl//tsl/platform:errors",
              "@tsl//tsl/platform:status",
              "@tsl//tsl/platform:statusor",
 -        ] + tf_additional_cuda_platform_deps(),
 +        ] + tf_additional_cuda_platform_deps() + select({
 +            ":libnvptxcompiler_support_enabled": [
-+                ":nvptxcompiler",
++                "@local_config_cuda//cuda:nvptxcompiler",
 +            ],
 +            "//conditions:default": [],
 +        }),
