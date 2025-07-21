@@ -131,7 +131,7 @@ jobs:
       - name: Download ROCm toolchain (not fully hermetic)
         if: matrix.pjrt.target == 'rocm'
         run: |
-          sudo apt install llvm-18 lld-18 clang-18 -y
+          sudo apt install llvm-18 lld-18 clang-18 libnuma-dev -y
           wget https://repo.radeon.com/amdgpu-install/6.4.1/ubuntu/noble/amdgpu-install_6.4.60401-1_all.deb
           sudo apt install ./amdgpu-install_6.4.60401-1_all.deb -y
           sudo amdgpu-install --usecase=hiplibsdk --no-dkms -y

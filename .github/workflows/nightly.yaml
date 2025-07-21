@@ -18,31 +18,54 @@ jobs:
       matrix:
         pjrt:
           - target: cuda
+            bazel_opts: ""
             config: "--config=cuda"
-            artifact: libpjrt_c_api_gpu_plugin.so
+            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
-            config: "--config=rocm"
-            artifact: libpjrt_c_api_gpu_plugin.so
+            bazel_opts: ""
+            config: "--config=rocm_ci_hermetic"
+            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu24-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
     runs-on: ${{ matrix.pjrt.runs_on }}
     steps:
+      - uses: runs-on/action@v1
+
+      - uses: runs-on/snapshot@v1
+        with:
+          path: /home/runner/.cache/bazel-disk
+          volume_size: 350
+
+      - name: TMP fix for the mount user
+        if: matrix.pjrt.platform != 'darwin-arm64' && matrix.pjrt.platform != 'darwin-amd64'
+        run: sudo chown -R runner:runner /home/runner/.cache/
+
+      - name: Download ROCm toolchain (not fully hermetic)
+        if: matrix.pjrt.target == 'rocm'
+        run: |
+          sudo apt install llvm-18 lld-18 clang-18 libnuma-dev -y
+          wget https://repo.radeon.com/amdgpu-install/6.4.1/ubuntu/noble/amdgpu-install_6.4.60401-1_all.deb
+          sudo apt install ./amdgpu-install_6.4.60401-1_all.deb -y
+          sudo amdgpu-install --usecase=hiplibsdk --no-dkms -y
+
       - name: "Checking out repository"
         uses: actions/checkout@v4
         with:
           path: "pjrt-artifacts"
+
       - name: "Checking out openxla repository"
         uses: actions/checkout@v4
         with:
           ref: main
           repository: openxla/xla
           path: "xla"
+
       - name: Apply patches to openxla
         id: patches
         working-directory: ./xla
@@ -54,43 +77,38 @@ jobs:
               echo "Applying patch $patch"
               git apply "$patch"
           done
-      - name: Setup Bazel
-        run: |
-          mkdir -p ~/bin/
-          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-${{ matrix.pjrt.platform }} -O ~/bin/bazel
-          chmod +x ~/bin/bazel
+
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        if: matrix.pjrt.platform != 'darwin-arm64' && matrix.pjrt.platform != 'darwin-amd64'
+        with:
+          bazelisk-version: 1.26.0
+          bazelisk-cache: false
+          bazelrc: |
+            common --verbose_failures
+            common --keep_going
+            common --test_output=streamed
+            common --color=yes
+            common --show_timestamps
+            common --disk_cache=/home/runner/.cache/bazel-disk
 
       - name: "Setup bazelrc for openxla"
         run: |
-          cp pjrt-artifacts/openxla/bazelrc/common.bazelrc xla/
           cp pjrt-artifacts/openxla/bazelrc/${{ matrix.pjrt.target }}.bazelrc xla/xla_configure.bazelrc
 
-      - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
-        working-directory: ./pjrt-artifacts
+      - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
+        working-directory: ./xla
         run: |
-          sudo docker rm -f pjrt-${{ matrix.pjrt.target }}
-          ~/bin/bazel run  --run_under="sudo" //${{ matrix.pjrt.target }}:${{ matrix.pjrt.target }}_stripped_tarball
-
-      - name: "Run ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} image"
-        run: |
-          sudo docker run \
-            --name=pjrt-${{ matrix.pjrt.target }} \
-            -w=/xla \
-            --net=host \
-            -v=$(pwd)/xla:/xla \
-            -v=/tmp/cache:/tmp/cache \
-            distroless/${{ matrix.pjrt.target }}_builder:latest \
-              bazelisk \
+          bazel \
+              ${{ matrix.pjrt.bazel_opts }} \
               build \
-              --disk_cache=/tmp/cache \
+              --spawn_strategy=processwrapper-sandbox \
               ${{ matrix.pjrt.config }} \
               ${{ matrix.pjrt.bazel_target }}
 
-      - name: "Retrieve ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} artifacts"
+      - name: Set file at the right path
+        working-directory: ./xla
         run: |
-          sudo docker cp pjrt-${{ matrix.pjrt.target }}:/xla/bazel-bin/xla/pjrt/c/${{ matrix.pjrt.artifact }} ${{ matrix.pjrt.renamed_artifact }}
-          sudo chown runner:runner ${{ matrix.pjrt.renamed_artifact }}
-          sudo docker rm -f pjrt-${{ matrix.pjrt.target }}
+          cp ${{ matrix.pjrt.artifact }} ../${{ matrix.pjrt.renamed_artifact }}
 
       - name: Create compressed ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }} release file
         uses: a7ul/tar-action@v1.2.0
