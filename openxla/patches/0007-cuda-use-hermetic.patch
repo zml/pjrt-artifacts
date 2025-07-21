@@ -1,22 +1,38 @@
-From 66d3427165b5e9cc9097c2d4e32f6999ddae3f36 Mon Sep 17 00:00:00 2001
+From 3f45db3539790aa13c5b5addee92dc70623fd655 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Mon, 21 Jul 2025 14:38:20 +0200
 Subject: [PATCH] cuda: use hermetic
 
 ---
- tensorflow.bazelrc | 2 --
- 1 file changed, 2 deletions(-)
+ .bazelrc           | 4 ++--
+ tensorflow.bazelrc | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
+diff --git a/.bazelrc b/.bazelrc
+index bcdd8b21f8..e85829ef7b 100644
+--- a/.bazelrc
++++ b/.bazelrc
+@@ -5,8 +5,8 @@ build --incompatible_enable_cc_toolchain_resolution
+ build --repo_env USE_HERMETIC_CC_TOOLCHAIN=1
+ 
+ # TODO: Migrate for https://github.com/bazelbuild/bazel/issues/7260
+-build:clang_local --noincompatible_enable_cc_toolchain_resolution
+-build:clang_local --repo_env USE_HERMETIC_CC_TOOLCHAIN=0
++# build:clang_local --noincompatible_enable_cc_toolchain_resolution
++# build:clang_local --repo_env USE_HERMETIC_CC_TOOLCHAIN=0
+ 
+ # Load the TensorFlow bazelrc
+ import %workspace%/tensorflow.bazelrc
 diff --git a/tensorflow.bazelrc b/tensorflow.bazelrc
-index 05b4f8af3f..d8f54bf93b 100644
+index 05b4f8af3f..56039cb37f 100644
 --- a/tensorflow.bazelrc
 +++ b/tensorflow.bazelrc
-@@ -195,8 +195,6 @@ build:cuda --@local_config_cuda//:enable_cuda
- build:cuda --config=cuda_version
+@@ -196,7 +196,7 @@ build:cuda --config=cuda_version
  # This flag is needed to include CUDA libraries.
  build:cuda --@local_config_cuda//cuda:include_cuda_libs=true
--# TODO(ybaturina): Remove this once the wheel size issue is fixed.
+ # TODO(ybaturina): Remove this once the wheel size issue is fixed.
 -build:cuda --config=clang_local
++# build:cuda --config=clang_local
  
  # This configuration is used for building the wheels.
  build:cuda_wheel --@local_config_cuda//cuda:include_cuda_libs=false

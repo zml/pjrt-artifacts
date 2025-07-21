@@ -20,6 +20,7 @@ permissions:
 
 env:
   XLA_COMMIT: ${{ inputs.xla_commit || '6319f0d3bdfd3078e04bb984a759c890b7116484' }}
+  TF_ROCM_AMDGPU_TARGETS: "gfx900,gfx906,gfx908,gfx90a,gfx940,gfx941,gfx942,gfx1030,gfx1100"
 
 jobs:
   setup_openxla:
@@ -61,14 +62,14 @@ jobs:
         pjrt:
           - target: cuda
             config: "--config=cuda"
-            artifact: libpjrt_c_api_gpu_plugin.so
+            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             config: "--config=rocm_ci_hermetic"
-            artifact: libpjrt_c_api_gpu_plugin.so
+            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
             platform: linux-amd64
