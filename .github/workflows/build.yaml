@@ -104,6 +104,7 @@ jobs:
     needs: ["setup_openxla"]
     steps:
       - uses: runs-on/action@v1
+        if: matrix.pjrt.platform != 'darwin-arm64' && matrix.pjrt.platform != 'darwin-amd64'
 
       - name: "Checking out repository"
         uses: actions/checkout@v4
@@ -111,11 +112,13 @@ jobs:
           path: "pjrt-artifacts"
 
       - uses: runs-on/snapshot@v1
+        if: matrix.pjrt.platform != 'darwin-arm64' && matrix.pjrt.platform != 'darwin-amd64'
         with:
           path: /home/runner/.cache/bazel-disk
           volume_size: 350
 
       - name: TMP fix for the mount user
+        if: matrix.pjrt.platform != 'darwin-arm64' && matrix.pjrt.platform != 'darwin-amd64'
         run: sudo chown -R runner:runner /home/runner/.cache/
 
       - name: Download xla artifact
@@ -125,6 +128,7 @@ jobs:
           path: xla
 
       - uses: bazel-contrib/setup-bazel@0.15.0
+        if: matrix.pjrt.platform != 'darwin-arm64' && matrix.pjrt.platform != 'darwin-amd64'
         with:
           bazelisk-version: 1.26.0
           bazelisk-cache: false
@@ -135,6 +139,18 @@ jobs:
             common --color=yes
             common --show_timestamps
             common --disk_cache=/home/runner/.cache/bazel-disk
+
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        if: matrix.pjrt.platform == 'darwin-arm64' || matrix.pjrt.platform == 'darwin-amd64'
+        with:
+          bazelisk-version: 1.26.0
+          bazelisk-cache: false
+          bazelrc: |
+            common --verbose_failures
+            common --keep_going
+            common --test_output=streamed
+            common --color=yes
+            common --show_timestamps
 
       - name: "Setup bazelrc for openxla"
         run: |
