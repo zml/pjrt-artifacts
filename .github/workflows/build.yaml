@@ -61,6 +61,7 @@ jobs:
       matrix:
         pjrt:
           - target: cuda
+            bazel_opts: ""
             config: "--config=cuda"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
@@ -68,13 +69,15 @@ jobs:
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
+            bazel_opts: ""
             config: "--config=rocm_ci_hermetic"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu24-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: cpu
+            bazel_opts: "--output_base=/tmp/bazel_output_base_cpu_darwin_arm64"
             config: "--config=release_macos_arm64 --macos_sdk_version=15.5"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
             runs_on: ["self-hosted", "macOS"]
@@ -82,6 +85,7 @@ jobs:
             platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
+            bazel_opts: "--output_base=/tmp/bazel_output_base_cpu_darwin_amd64"
             config: "--config=release_macos_base --macos_sdk_version=15.5"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
             renamed_artifact: libpjrt_cpu.dylib
@@ -89,6 +93,7 @@ jobs:
             platform: darwin-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
+            bazel_opts: ""
             config: ""
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
             renamed_artifact: libpjrt_cpu.so
@@ -98,10 +103,20 @@ jobs:
 
     needs: ["setup_openxla"]
     steps:
+      - uses: runs-on/action@v1
+
       - name: "Checking out repository"
         uses: actions/checkout@v4
         with:
           path: "pjrt-artifacts"
+
+      - uses: runs-on/snapshot@v1
+        with:
+          path: /home/runner/.cache/bazel-disk
+          volume_size: 350
+
+      - name: TMP fix for the mount user
+        run: sudo chown -R runner:runner /home/runner/.cache/
 
       - name: Download xla artifact
         uses: actions/download-artifact@v4
@@ -109,11 +124,17 @@ jobs:
           name: xla-${{ env.XLA_COMMIT }}
           path: xla
 
-      - name: Setup Bazel
-        run: |
-          mkdir -p ~/bin/
-          wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-${{ matrix.pjrt.platform }} -O ~/bin/bazel
-          chmod +x ~/bin/bazel
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-version: 1.26.0
+          bazelisk-cache: false
+          bazelrc: |
+            common --verbose_failures
+            common --keep_going
+            common --test_output=streamed
+            common --color=yes
+            common --show_timestamps
+            common --disk_cache=/home/runner/.cache/bazel-disk
 
       - name: "Setup bazelrc for openxla"
         run: |
@@ -121,16 +142,16 @@ jobs:
 
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
         working-directory: ./xla
-        # todo: --disk_cache=/tmp/cache \
         run: |
-          ~/bin/bazel \
-              --output_base=/tmp/bazel_output_base_${{ matrix.pjrt.target }}_${{ matrix.pjrt.platform }} \
+          bazel \
+              ${{ matrix.pjrt.bazel_opts }} \
               build \
               --spawn_strategy=processwrapper-sandbox \
               ${{ matrix.pjrt.config }} \
               ${{ matrix.pjrt.bazel_target }}
 
       - name: Set file at the right path
+        if: matrix.pjrt.platform != 'darwin-arm64' && matrix.pjrt.platform != 'darwin-amd64'
         working-directory: ./xla
         run: |
           cp ${{ matrix.pjrt.artifact }} ../${{ matrix.pjrt.renamed_artifact }}
