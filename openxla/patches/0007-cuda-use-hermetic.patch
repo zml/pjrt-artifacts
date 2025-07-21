@@ -1,30 +1,14 @@
-From 3f45db3539790aa13c5b5addee92dc70623fd655 Mon Sep 17 00:00:00 2001
+From 0ffb2a6b53aaadd49348e706afb2c39af2ac5b4b Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Mon, 21 Jul 2025 14:38:20 +0200
 Subject: [PATCH] cuda: use hermetic
 
 ---
- .bazelrc           | 4 ++--
- tensorflow.bazelrc | 2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ tensorflow.bazelrc | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/.bazelrc b/.bazelrc
-index bcdd8b21f8..e85829ef7b 100644
---- a/.bazelrc
-+++ b/.bazelrc
-@@ -5,8 +5,8 @@ build --incompatible_enable_cc_toolchain_resolution
- build --repo_env USE_HERMETIC_CC_TOOLCHAIN=1
- 
- # TODO: Migrate for https://github.com/bazelbuild/bazel/issues/7260
--build:clang_local --noincompatible_enable_cc_toolchain_resolution
--build:clang_local --repo_env USE_HERMETIC_CC_TOOLCHAIN=0
-+# build:clang_local --noincompatible_enable_cc_toolchain_resolution
-+# build:clang_local --repo_env USE_HERMETIC_CC_TOOLCHAIN=0
- 
- # Load the TensorFlow bazelrc
- import %workspace%/tensorflow.bazelrc
 diff --git a/tensorflow.bazelrc b/tensorflow.bazelrc
-index 05b4f8af3f..56039cb37f 100644
+index 05b4f8af3f..cde557c7f5 100644
 --- a/tensorflow.bazelrc
 +++ b/tensorflow.bazelrc
 @@ -196,7 +196,7 @@ build:cuda --config=cuda_version
@@ -36,6 +20,15 @@ index 05b4f8af3f..56039cb37f 100644
  
  # This configuration is used for building the wheels.
  build:cuda_wheel --@local_config_cuda//cuda:include_cuda_libs=false
+@@ -256,7 +256,7 @@ build:asan --copt -g
+ build:asan --copt -fno-omit-frame-pointer
+ build:asan --linkopt -fsanitize=address
+ 
+-build:rocm_base --config=clang_local
++# build:rocm_base --config=clang_local
+ build:rocm_base --copt=-Wno-gnu-offsetof-extensions
+ build:rocm_base --crosstool_top=@local_config_rocm//crosstool:toolchain
+ build:rocm_base --define=using_rocm_hipcc=true
 -- 
 2.39.5 (Apple Git-154)
 
