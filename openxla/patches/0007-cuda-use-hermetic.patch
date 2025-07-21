@@ -1,0 +1,25 @@
+From 66d3427165b5e9cc9097c2d4e32f6999ddae3f36 Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Mon, 21 Jul 2025 14:38:20 +0200
+Subject: [PATCH] cuda: use hermetic
+
+---
+ tensorflow.bazelrc | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/tensorflow.bazelrc b/tensorflow.bazelrc
+index 05b4f8af3f..d8f54bf93b 100644
+--- a/tensorflow.bazelrc
++++ b/tensorflow.bazelrc
+@@ -195,8 +195,6 @@ build:cuda --@local_config_cuda//:enable_cuda
+ build:cuda --config=cuda_version
+ # This flag is needed to include CUDA libraries.
+ build:cuda --@local_config_cuda//cuda:include_cuda_libs=true
+-# TODO(ybaturina): Remove this once the wheel size issue is fixed.
+-build:cuda --config=clang_local
+ 
+ # This configuration is used for building the wheels.
+ build:cuda_wheel --@local_config_cuda//cuda:include_cuda_libs=false
+-- 
+2.39.5 (Apple Git-154)
+
