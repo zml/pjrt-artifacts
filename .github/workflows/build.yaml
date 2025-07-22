@@ -21,13 +21,7 @@ permissions:
 env:
   XLA_COMMIT: ${{ inputs.xla_commit || '6319f0d3bdfd3078e04bb984a759c890b7116484' }}
   TF_ROCM_AMDGPU_TARGETS: "gfx900,gfx906,gfx908,gfx90a,gfx940,gfx941,gfx942,gfx1030,gfx1100"
-  ROCM_PATH: "/opt/rocm-6.4.1/"
-
-# sudo apt install llvm-18 lld-18 clang-18 -y
-# wget https://repo.radeon.com/amdgpu-install/6.4.1/ubuntu/noble/amdgpu-install_6.4.60401-1_all.deb
-# sudo apt install ./amdgpu-install_6.4.60401-1_all.deb
-# sudo amdgpu-install --usecase=hiplibsdk --no-dkms -y
-# ROCM_PATH=
+  ROCM_PATH: "/opt/rocm-6.4.2/"
 
 jobs:
   setup_openxla:
@@ -132,8 +126,8 @@ jobs:
         if: matrix.pjrt.target == 'rocm'
         run: |
           sudo apt install llvm-18 lld-18 clang-18 libnuma-dev -y
-          wget https://repo.radeon.com/amdgpu-install/6.4.1/ubuntu/noble/amdgpu-install_6.4.60401-1_all.deb
-          sudo apt install ./amdgpu-install_6.4.60401-1_all.deb -y
+          wget https://repo.radeon.com/amdgpu-install/6.4.2/ubuntu/noble/amdgpu-install_6.4.60402-1_all.deb
+          sudo apt install ./amdgpu-install_6.4.60402-1_all.deb -y
           sudo amdgpu-install --usecase=hiplibsdk --no-dkms -y
 
       - name: Download xla artifact
