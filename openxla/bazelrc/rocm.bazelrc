@@ -1,8 +1,9 @@
-import %workspace%/common.bazelrc
+build --repo_env=HERMETIC_PYTHON_VERSION=3.11
+build:rocm_ci_hermetic --repo_env="ROCM_VERSION=6.4.1"
 
 build --copt -Wno-sign-compare
 build --copt -Wno-gnu-offsetof-extensions
-build --copt -Wno-stringop-truncation
+
 build --build_tag_filters -no_oss
 build --test_tag_filters -no_oss
 

@@ -1,43 +1,9 @@
 # Bazel symlinks
 /bazel-*
 
-# Various output folders
-/mnist/
-/include/
-/profiles/
-/xla_dump/
-/venv/
-
 # macOS
 .DS_Store
 
-# Local Checkouts
-/stablehlo/
-/llvm-project/
+# Local checkouts
 /xla/
 
-# Just in case, Zig caches
-.zig-cache/
-zig-cache/
-zig-out/
-
-# Models
-*.safetensors
-*.pb
-*.trace.json
-*.pt
-!test_data/simple.pt
-*.bin
-
-# Data files
-*.wav
-*.ecdc
-.venv
-zml_prebuilt.tar.gz
-kconv-output/
-
-# Editor specific
-## Neovim
-.nvim.local.lua
-
-__pycache__/
