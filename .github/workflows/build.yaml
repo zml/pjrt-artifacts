@@ -63,7 +63,7 @@ jobs:
         pjrt:
           - target: cuda
             bazel_opts: ""
-            config: "--config=cuda  --config=dbg"
+            config: "--disk_cache=/home/runner/.cache/bazel-disk --config=cuda"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
@@ -71,7 +71,7 @@ jobs:
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             bazel_opts: ""
-            config: "--config=rocm_ci_hermetic"
+            config: "--disk_cache=/home/runner/.cache/bazel-disk --config=rocm_ci_hermetic"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu24-amd64"]
@@ -95,7 +95,7 @@ jobs:
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
             bazel_opts: ""
-            config: ""
+            config: "--disk_cache=/home/runner/.cache/bazel-disk "
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
             renamed_artifact: libpjrt_cpu.so
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
@@ -137,20 +137,6 @@ jobs:
           path: xla
 
       - uses: bazel-contrib/setup-bazel@0.15.0
-        if: matrix.pjrt.platform != 'darwin-arm64' && matrix.pjrt.platform != 'darwin-amd64'
-        with:
-          bazelisk-version: 1.26.0
-          bazelisk-cache: false
-          bazelrc: |
-            common --verbose_failures
-            common --keep_going
-            common --test_output=streamed
-            common --color=yes
-            common --show_timestamps
-            common --disk_cache=/home/runner/.cache/bazel-disk
-
-      - uses: bazel-contrib/setup-bazel@0.15.0
-        if: matrix.pjrt.platform == 'darwin-arm64' || matrix.pjrt.platform == 'darwin-amd64'
         with:
           bazelisk-version: 1.26.0
           bazelisk-cache: false
@@ -158,6 +144,7 @@ jobs:
             common --verbose_failures
             common --color=yes
             common --show_timestamps
+            build  --spawn_strategy=processwrapper-sandbox
 
       - name: "Setup bazelrc for openxla"
         run: |
@@ -166,12 +153,7 @@ jobs:
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
         working-directory: ./xla
         run: |
-          bazel \
-              ${{ matrix.pjrt.bazel_opts }} \
-              build \
-              --spawn_strategy=processwrapper-sandbox \
-              ${{ matrix.pjrt.config }} \
-              ${{ matrix.pjrt.bazel_target }}
+          bazel ${{ matrix.pjrt.bazel_opts }} build ${{ matrix.pjrt.config }} ${{ matrix.pjrt.bazel_target }}
 
       - name: Set file at the right path
         if: matrix.pjrt.platform != 'darwin-arm64' && matrix.pjrt.platform != 'darwin-amd64'
