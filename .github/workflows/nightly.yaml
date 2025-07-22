@@ -12,6 +12,10 @@ concurrency:
 permissions:
   contents: write
 
+env:
+  TF_ROCM_AMDGPU_TARGETS: "gfx900,gfx906,gfx908,gfx90a,gfx940,gfx941,gfx942,gfx1030,gfx1100"
+  ROCM_PATH: "/opt/rocm-6.4.1/"
+
 jobs:
   nightly-pjrt-artifacts:
     strategy:
