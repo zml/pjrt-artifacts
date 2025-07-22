@@ -69,7 +69,7 @@ jobs:
         pjrt:
           - target: cuda
             bazel_opts: ""
-            config: "--config=cuda"
+            config: "--config=cuda  --config=dbg"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
