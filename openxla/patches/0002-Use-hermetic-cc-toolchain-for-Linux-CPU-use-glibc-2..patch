@@ -1,0 +1,55 @@
+From a9bcf4a6b8bf344236d4c49ace4bf696f22850c6 Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Mon, 1 Sep 2025 13:26:24 +0200
+Subject: [PATCH 2/3] Use hermetic cc toolchain for Linux CPU (use glibc 2.31)
+
+Only for ZML, no PR on XLA side.
+---
+ WORKSPACE | 24 +++++++++++++++++++++++-
+ 1 file changed, 23 insertions(+), 1 deletion(-)
+
+diff --git a/WORKSPACE b/WORKSPACE
+index 7ac815ada9..bdb4f70c07 100644
+--- a/WORKSPACE
++++ b/WORKSPACE
+@@ -5,7 +5,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+ 
+ # Initialize toolchains for ML projects.
+ #
+-# A hermetic build system is designed to produce completely reproducible builds for C++.
++# A hermetic build system is designed to produce completely reproducible builds for C.
+ # Details: https://github.com/google-ml-infra/rules_ml_toolchain
+ http_archive(
+     name = "rules_ml_toolchain",
+@@ -27,6 +27,28 @@ register_toolchains("@rules_ml_toolchain//cc:linux_x86_64_linux_x86_64")
+ 
+ register_toolchains("@rules_ml_toolchain//cc:linux_x86_64_linux_x86_64_cuda")
+ 
++HERMETIC_CC_TOOLCHAIN_VERSION = "v3.1.1"
++
++http_archive(
++    name = "hermetic_cc_toolchain",
++    sha256 = "907745bf91555f77e8234c0b953371e6cac5ba715d1cf12ff641496dd1bce9d1",
++    urls = [
++        "https://mirror.bazel.build/github.com/uber/hermetic_cc_toolchain/releases/download/{0}/hermetic_cc_toolchain-{0}.tar.gz".format(HERMETIC_CC_TOOLCHAIN_VERSION),
++        "https://github.com/uber/hermetic_cc_toolchain/releases/download/{0}/hermetic_cc_toolchain-{0}.tar.gz".format(HERMETIC_CC_TOOLCHAIN_VERSION),
++    ],
++)
++
++load("@hermetic_cc_toolchain//toolchain:defs.bzl", zig_toolchains = "toolchains")
++
++# Plain zig_toolchains() will pick reasonable defaults. See
++# toolchain/defs.bzl:toolchains on how to change the Zig SDK version and
++# download URL.
++zig_toolchains()
++
++register_toolchains(
++    "@zig_sdk//toolchain:linux_amd64_gnu.2.31",
++)
++
+ # Initialize the XLA repository and all dependencies.
+ #
+ # The cascade of load() statements and xla_workspace?() calls works around the
+-- 
+2.39.5 (Apple Git-154)
+
