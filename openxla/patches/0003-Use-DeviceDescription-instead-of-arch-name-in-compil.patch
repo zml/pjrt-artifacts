@@ -1,7 +1,8 @@
-From 9b1765a5a807b93a489ae771d1591be8f48f374b Mon Sep 17 00:00:00 2001
+From e36e3dc47d1768c0466490326f31451a4ee287bd Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
-Date: Tue, 27 May 2025 11:53:49 +0200
-Subject: [PATCH 5/7] [ROCm] Triton performance fixes
+Date: Mon, 1 Sep 2025 13:35:41 +0200
+Subject: [PATCH 3/3] Use DeviceDescription instead of arch name in compilation
+ pipeline
 
 PR: https://github.com/openxla/xla/pull/23688
 ---
@@ -38,10 +39,10 @@ index 14725920c4..2fe57036bc 100644
  
  }  // namespace gpu
 diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
-index 831ebb8459..f914acb24e 100644
+index d7ac2f92e8..021c933c79 100644
 --- a/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
 +++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
-@@ -43,11 +43,9 @@ namespace mt_xla = ::mlir::triton::xla;
+@@ -45,11 +45,9 @@ namespace mt_xla = ::mlir::triton::xla;
  namespace ttng = mlir::triton::nvidia_gpu;
  
  absl::Status CreateTritonPipeline(
@@ -56,7 +57,7 @@ index 831ebb8459..f914acb24e 100644
    const int threadsPerWarp = 32;
  
 diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
-index 33ec8a51f7..b1d3bbf757 100644
+index 2d1bd69f4d..2b4cd1c668 100644
 --- a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
 +++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
 @@ -54,10 +54,10 @@ using ::mlir::Value;
@@ -82,7 +83,7 @@ index 33ec8a51f7..b1d3bbf757 100644
    pm->addPass(mt::gpu::createTritonGPURemoveLayoutConversions());
    // TODO ROCm Check if we want to compare MI100 and greater
    pm->addPass(mlir::createTritonAMDGPUOptimizeEpilogue());
-@@ -122,7 +122,7 @@ absl::Status CreateTritonPipeline(
+@@ -123,7 +123,7 @@ absl::Status CreateTritonPipeline(
    if (/*use_buffer_ops=*/false) {  // Not enabled by default.
      pm->addPass(mlir::createTritonAMDGPUCanonicalizePointers());
      pm->addPass(mlir::createCanonicalizerPass());
@@ -106,10 +107,10 @@ index 5590401ba9..35147014f7 100644
    return absl::UnimplementedError("not supported for this build configuration");
  }
 diff --git a/xla/backends/gpu/codegen/triton/fusion_emitter.cc b/xla/backends/gpu/codegen/triton/fusion_emitter.cc
-index 1e1a77819c..0ea364f408 100644
+index 4c7d26efcc..287798e29c 100644
 --- a/xla/backends/gpu/codegen/triton/fusion_emitter.cc
 +++ b/xla/backends/gpu/codegen/triton/fusion_emitter.cc
-@@ -1931,8 +1931,6 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
+@@ -1952,8 +1952,6 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
      mlir::ModuleOp triton_module, llvm::Module* llvm_module,
      mlir::MLIRContext& mlir_context, bool is_xla_fusion, bool emit_kernel) {
    const auto& cc = device_info.gpu_compute_capability();
@@ -118,7 +119,7 @@ index 1e1a77819c..0ea364f408 100644
    if (std::holds_alternative<se::CudaComputeCapability>(cc)) {
      auto ccCuda = std::get<se::CudaComputeCapability>(cc);
      if (!ccCuda.IsAtLeastAmpere()) {
-@@ -2019,7 +2017,7 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
+@@ -2044,7 +2042,7 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
    }
  
    mlir::triton::nvidia_gpu::ClusterInfo cluster_info;
