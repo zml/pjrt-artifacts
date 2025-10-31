@@ -1,166 +1,26 @@
-From e36e3dc47d1768c0466490326f31451a4ee287bd Mon Sep 17 00:00:00 2001
+From 6c287da177825a35b28284127f685d520c322337 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Mon, 1 Sep 2025 13:35:41 +0200
 Subject: [PATCH 3/3] Use DeviceDescription instead of arch name in compilation
  pipeline
 
-PR: https://github.com/openxla/xla/pull/23688
 ---
- xla/backends/gpu/codegen/triton/compilation_pipeline.h |  5 ++++-
- .../gpu/codegen/triton/compilation_pipeline_cuda.cc    |  6 ++----
- .../gpu/codegen/triton/compilation_pipeline_rocm.cc    | 10 +++++-----
- .../gpu/codegen/triton/compilation_pipeline_stub.cc    |  3 ++-
- xla/backends/gpu/codegen/triton/fusion_emitter.cc      |  4 +---
- .../gpu/codegen/triton/fusion_emitter_stub_test.cc     |  2 +-
- xla/pjrt/triton_cuda.cc                                |  8 +++++++-
- 7 files changed, 22 insertions(+), 16 deletions(-)
+ xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline.h b/xla/backends/gpu/codegen/triton/compilation_pipeline.h
-index 14725920c4..2fe57036bc 100644
---- a/xla/backends/gpu/codegen/triton/compilation_pipeline.h
-+++ b/xla/backends/gpu/codegen/triton/compilation_pipeline.h
-@@ -20,6 +20,8 @@ limitations under the License.
- 
- #include "absl/status/status.h"
- #include "mlir/Pass/PassManager.h"
-+#include "xla/stream_executor/device_description.h"
-+#include "xla/util.h"
- 
- namespace mlir::triton::nvidia_gpu {
- 
-@@ -41,7 +43,8 @@ namespace gpu {
- // parameter which would give a hint to Triton which cluster dims we prefer to
- // use, but that's not the case currently.
- absl::Status CreateTritonPipeline(
--    mlir::OpPassManager* pm, std::string arch_name, int num_warps, int num_ctas,
-+    mlir::OpPassManager* pm, const stream_executor::DeviceDescription& device_info,
-+    int num_warps, int num_ctas,
-     int num_stages, mlir::triton::nvidia_gpu::ClusterInfo& out_cluster_info);
- 
- }  // namespace gpu
-diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
-index d7ac2f92e8..021c933c79 100644
---- a/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
-+++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_cuda.cc
-@@ -45,11 +45,9 @@ namespace mt_xla = ::mlir::triton::xla;
- namespace ttng = mlir::triton::nvidia_gpu;
- 
- absl::Status CreateTritonPipeline(
--    mlir::OpPassManager* pm, std::string arch_name, int num_warps, int num_ctas,
-+    mlir::OpPassManager* pm, const se::DeviceDescription& device_info, int num_warps, int num_ctas,
-     int num_stages, mt::nvidia_gpu::ClusterInfo& out_cluster_info) {
--  TF_ASSIGN_OR_RETURN(
--      const stream_executor::CudaComputeCapability cc,
--      stream_executor::CudaComputeCapability::FromString(arch_name));
-+  auto cc = device_info.cuda_compute_capability();
-   const int ccAsInt = cc.major * 10 + cc.minor;
-   const int threadsPerWarp = 32;
- 
 diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
-index 2d1bd69f4d..2b4cd1c668 100644
+index bf122c7ea1..d2718f0d2a 100644
 --- a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
 +++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
-@@ -54,10 +54,10 @@ using ::mlir::Value;
- using mlir::ValueRange;
- 
- absl::Status CreateTritonPipeline(
--    mlir::OpPassManager* pm, std::string arch_name, int num_warps, int num_ctas,
-+    mlir::OpPassManager* pm, const stream_executor::DeviceDescription& device_info, int num_warps, int num_ctas,
-     int num_stages, mt::nvidia_gpu::ClusterInfo& out_cluster_info) {
--  const int threadsPerWarp = (arch_name[3] == '9') ? 64 : 32;
--  auto cc = se::RocmComputeCapability(std::move(arch_name));
-+  const int threadsPerWarp = device_info.threads_per_warp();
-+  auto cc = device_info.rocm_compute_capability();
- 
-   // Based on make_ttir() in
-   // @triton//:third_party/amd/backend/compiler.py
-@@ -81,7 +81,7 @@ absl::Status CreateTritonPipeline(
-   pm->addPass(mt::gpu::createTritonGPURemoveLayoutConversions());
-   pm->addPass(mt::gpu::createTritonGPUOptimizeThreadLocality());
-   // TODO ROCm Pass cc.gfx_version() after fixing issue with fmfa
--  pm->addPass(mlir::createTritonAMDGPUAccelerateMatmul({arch_name}));
-+  pm->addPass(mlir::createTritonAMDGPUAccelerateMatmul({cc.gfx_version()}));
-   pm->addPass(mt::gpu::createTritonGPURemoveLayoutConversions());
-   // TODO ROCm Check if we want to compare MI100 and greater
-   pm->addPass(mlir::createTritonAMDGPUOptimizeEpilogue());
-@@ -123,7 +123,7 @@ absl::Status CreateTritonPipeline(
+@@ -109,7 +109,7 @@ static void MakeTTGIR(mlir::OpPassManager* pm,
    if (/*use_buffer_ops=*/false) {  // Not enabled by default.
      pm->addPass(mlir::createTritonAMDGPUCanonicalizePointers());
      pm->addPass(mlir::createCanonicalizerPass());
 -    pm->addPass(mlir::createTritonAMDGPUConvertToBufferOps({arch_name}));
-+    pm->addPass(mlir::createTritonAMDGPUConvertToBufferOps({cc.gfx_version()}));
++    pm->addPass(mlir::createTritonAMDGPUConvertToBufferOps({rocm_cc.gfx_version()}));
    }
    pm->addPass(mlir::createTritonAMDFoldTrueCmpI());
    pm->addPass(mlir::createCanonicalizerPass());
-diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_stub.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_stub.cc
-index 5590401ba9..35147014f7 100644
---- a/xla/backends/gpu/codegen/triton/compilation_pipeline_stub.cc
-+++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_stub.cc
-@@ -23,7 +23,8 @@ namespace xla {
- namespace gpu {
- 
- absl::Status CreateTritonPipeline(
--    mlir::OpPassManager* pm, std::string arch_name, int num_warps, int num_ctas,
-+    mlir::OpPassManager* pm, const stream_executor::DeviceDescription& device_info,
-+    int num_warps, int num_ctas,
-     int num_stages, mlir::triton::nvidia_gpu::ClusterInfo& out_cluster_info) {
-   return absl::UnimplementedError("not supported for this build configuration");
- }
-diff --git a/xla/backends/gpu/codegen/triton/fusion_emitter.cc b/xla/backends/gpu/codegen/triton/fusion_emitter.cc
-index 4c7d26efcc..287798e29c 100644
---- a/xla/backends/gpu/codegen/triton/fusion_emitter.cc
-+++ b/xla/backends/gpu/codegen/triton/fusion_emitter.cc
-@@ -1952,8 +1952,6 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
-     mlir::ModuleOp triton_module, llvm::Module* llvm_module,
-     mlir::MLIRContext& mlir_context, bool is_xla_fusion, bool emit_kernel) {
-   const auto& cc = device_info.gpu_compute_capability();
--  std::string arch_name =
--      std::visit([](auto& cc) { return cc.ToString(); }, cc);
-   if (std::holds_alternative<se::CudaComputeCapability>(cc)) {
-     auto ccCuda = std::get<se::CudaComputeCapability>(cc);
-     if (!ccCuda.IsAtLeastAmpere()) {
-@@ -2044,7 +2042,7 @@ absl::StatusOr<TritonWrapperResult> CompileTritonToLLVM(
-   }
- 
-   mlir::triton::nvidia_gpu::ClusterInfo cluster_info;
--  if (!CreateTritonPipeline(&pm, arch_name, num_warps, num_ctas, num_stages,
-+  if (!CreateTritonPipeline(&pm, device_info, num_warps, num_ctas, num_stages,
-                             cluster_info)
-            .ok()) {
-     return Internal("Failed to create Triton pipeline.");
-diff --git a/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc b/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc
-index 15a8f3e0ac..836de45bc1 100644
---- a/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc
-+++ b/xla/backends/gpu/codegen/triton/fusion_emitter_stub_test.cc
-@@ -53,7 +53,7 @@ TEST(TritonStub, CallStubApi) {
-   mlir::OpPassManager pm;
-   ::mlir::triton::nvidia_gpu::ClusterInfo cluster_info;
- 
--  EXPECT_FALSE(CreateTritonPipeline(&pm, "", 1, 1, 1, cluster_info).ok());
-+  EXPECT_FALSE(CreateTritonPipeline(&pm, {}, 1, 1, 1, cluster_info).ok());
-   EXPECT_EQ(GetLibdevicePath({}, {}), "");
- 
-   HloConstantInstruction constant(LiteralUtil::CreateR1<int>({1, 1}));
-diff --git a/xla/pjrt/triton_cuda.cc b/xla/pjrt/triton_cuda.cc
-index 7f0aa638a5..67df37d9d5 100644
---- a/xla/pjrt/triton_cuda.cc
-+++ b/xla/pjrt/triton_cuda.cc
-@@ -80,8 +80,14 @@ absl::Status TritonToLLVM(
-     mlir::triton::nvidia_gpu::ClusterInfo* out_cluster_info) {
-   mlir::PassManager pm(module.getContext());
-   pm.enableVerifier();
-+
-+  stream_executor::DeviceDescription device_info;
-+  TF_ASSIGN_OR_RETURN(stream_executor::GpuComputeCapability gpu_compute_capability,
-+    stream_executor::CudaComputeCapability::FromString(arch_name));
-+  device_info.set_gpu_compute_capability(gpu_compute_capability);
-+
-   TF_RETURN_IF_ERROR(
--      xla::gpu::CreateTritonPipeline(&pm, std::string(arch_name), num_warps,
-+      xla::gpu::CreateTritonPipeline(&pm, device_info, num_warps,
-                                      num_ctas, num_stages, *out_cluster_info));
-   return pm.run(module).succeeded()
-              ? absl::OkStatus()
 -- 
-2.39.5 (Apple Git-154)
+2.50.1 (Apple Git-155)
 
