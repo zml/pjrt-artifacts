@@ -1,29 +1,19 @@
-From a9bcf4a6b8bf344236d4c49ace4bf696f22850c6 Mon Sep 17 00:00:00 2001
+From c9a58db6724b6ebac97bac4e9774a4366213722b Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Mon, 1 Sep 2025 13:26:24 +0200
 Subject: [PATCH 2/3] Use hermetic cc toolchain for Linux CPU (use glibc 2.31)
 
-Only for ZML, no PR on XLA side.
 ---
- WORKSPACE | 24 +++++++++++++++++++++++-
- 1 file changed, 23 insertions(+), 1 deletion(-)
+ WORKSPACE | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
 
 diff --git a/WORKSPACE b/WORKSPACE
-index 7ac815ada9..bdb4f70c07 100644
+index 8d7f1384d8..8cd8df86a0 100644
 --- a/WORKSPACE
 +++ b/WORKSPACE
-@@ -5,7 +5,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+@@ -33,6 +33,28 @@ register_toolchains("@rules_ml_toolchain//cc:linux_aarch64_linux_aarch64")
  
- # Initialize toolchains for ML projects.
- #
--# A hermetic build system is designed to produce completely reproducible builds for C++.
-+# A hermetic build system is designed to produce completely reproducible builds for C.
- # Details: https://github.com/google-ml-infra/rules_ml_toolchain
- http_archive(
-     name = "rules_ml_toolchain",
-@@ -27,6 +27,28 @@ register_toolchains("@rules_ml_toolchain//cc:linux_x86_64_linux_x86_64")
- 
- register_toolchains("@rules_ml_toolchain//cc:linux_x86_64_linux_x86_64_cuda")
+ register_toolchains("@rules_ml_toolchain//cc:linux_aarch64_linux_aarch64_cuda")
  
 +HERMETIC_CC_TOOLCHAIN_VERSION = "v3.1.1"
 +
@@ -51,5 +41,5 @@ index 7ac815ada9..bdb4f70c07 100644
  #
  # The cascade of load() statements and xla_workspace?() calls works around the
 -- 
-2.39.5 (Apple Git-154)
+2.50.1 (Apple Git-155)
 

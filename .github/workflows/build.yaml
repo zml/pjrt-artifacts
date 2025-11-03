@@ -19,7 +19,7 @@ permissions:
   contents: write
 
 env:
-  XLA_COMMIT: ${{ inputs.xla_commit || 'b3fbfeeb076f2b536897180f4a274680ed9d52eb' }}
+  XLA_COMMIT: ${{ inputs.xla_commit || '9a77a882bb2bc75cb8c29620ff8cd0fd089bdc86' }}
   TF_ROCM_AMDGPU_TARGETS: "gfx900,gfx906,gfx908,gfx90a,gfx940,gfx941,gfx942,gfx1030,gfx1100"
   ROCM_PATH: "/opt/rocm-6.4.1/"
 
@@ -63,7 +63,7 @@ jobs:
         pjrt:
           - target: cuda
             bazel_opts: ""
-            config: "--disk_cache=/home/runner/.cache/bazel-disk --config=cuda"
+            config: "--spawn_strategy=local --disk_cache=/home/runner/.cache/bazel-disk --config=cuda"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
@@ -71,7 +71,7 @@ jobs:
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             bazel_opts: ""
-            config: "--disk_cache=/home/runner/.cache/bazel-disk --config=rocm_ci_hermetic"
+            config: "--spawn_strategy=local --disk_cache=/home/runner/.cache/bazel-disk --config=rocm_ci_hermetic"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
@@ -79,7 +79,7 @@ jobs:
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: cpu
             bazel_opts: "--output_base=/tmp/bazel_output_base_cpu_darwin_arm64"
-            config: "--config=release_macos_arm64 --macos_sdk_version=15.5"
+            config: "--spawn_strategy=processwrapper-sandbox --config=release_macos_arm64 --macos_sdk_version=15.5"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
             runs_on: ["self-hosted", "macOS"]
             renamed_artifact: libpjrt_cpu.dylib
@@ -87,7 +87,7 @@ jobs:
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
             bazel_opts: "--output_base=/tmp/bazel_output_base_cpu_darwin_amd64"
-            config: "--config=release_macos_base --macos_sdk_version=15.5"
+            config: "--spawn_strategy=processwrapper-sandbox --config=release_macos_base --macos_sdk_version=15.5"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
             renamed_artifact: libpjrt_cpu.dylib
             runs_on: ["self-hosted", "macOS"]
@@ -95,7 +95,7 @@ jobs:
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
             bazel_opts: ""
-            config: "--disk_cache=/home/runner/.cache/bazel-disk "
+            config: "--spawn_strategy=processwrapper-sandbox --disk_cache=/home/runner/.cache/bazel-disk "
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
             renamed_artifact: libpjrt_cpu.so
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
@@ -147,7 +147,6 @@ jobs:
             common --verbose_failures
             common --color=yes
             common --show_timestamps
-            build  --spawn_strategy=processwrapper-sandbox
 
       - name: "Setup bazelrc for openxla"
         run: |
