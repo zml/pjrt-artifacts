@@ -23,7 +23,7 @@ jobs:
         pjrt:
           - target: cuda
             bazel_opts: ""
-            config: "--disk_cache=/home/runner/.cache/bazel-disk --config=cuda"
+            config: "--spawn_strategy=local --disk_cache=/home/runner/.cache/bazel-disk --config=cuda"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
@@ -31,7 +31,7 @@ jobs:
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             bazel_opts: ""
-            config: "--disk_cache=/home/runner/.cache/bazel-disk --config=rocm_ci_hermetic"
+            config: "--spawn_strategy=local --disk_cache=/home/runner/.cache/bazel-disk --config=rocm_ci_hermetic"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu24-amd64"]
@@ -94,7 +94,6 @@ jobs:
             common --test_output=streamed
             common --color=yes
             common --show_timestamps
-            build  --spawn_strategy=processwrapper-sandbox
 
       - name: "Setup bazelrc for openxla"
         run: |
