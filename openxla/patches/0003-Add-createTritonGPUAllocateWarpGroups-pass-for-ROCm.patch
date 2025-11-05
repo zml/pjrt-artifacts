@@ -1,0 +1,24 @@
+From 191618d7b4c7d2720c50c16e32db67ac51488862 Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Wed, 5 Nov 2025 12:28:59 +0100
+Subject: [PATCH 3/3] Add createTritonGPUAllocateWarpGroups pass for ROCm
+
+---
+ xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
+index bf122c7ea1..6ab6be6926 100644
+--- a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
++++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
+@@ -123,6 +123,7 @@ static void MakeLLIR(mlir::OpPassManager* pm,
+                      const stream_executor::RocmComputeCapability& rocm_cc,
+                      int num_stages) {
+   const int custom_lds_size = 0;
++  pm->addPass(mt::gpu::createTritonGPUAllocateWarpGroups());
+   pm->addPass(mlir::triton::AMD::createOptimizeLDSUsagePass(
+       rocm_cc.gfx_version(), custom_lds_size));
+   pm->addPass(mlir::createSCFToControlFlowPass());
+-- 
+2.50.1 (Apple Git-155)
+

@@ -1,4 +1,4 @@
-From c9a58db6724b6ebac97bac4e9774a4366213722b Mon Sep 17 00:00:00 2001
+From 1a78dbcbc471f2bf1b2baa97a56a7bf05840adb0 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Mon, 1 Sep 2025 13:26:24 +0200
 Subject: [PATCH 2/3] Use hermetic cc toolchain for Linux CPU (use glibc 2.31)
@@ -8,7 +8,7 @@ Subject: [PATCH 2/3] Use hermetic cc toolchain for Linux CPU (use glibc 2.31)
  1 file changed, 22 insertions(+)
 
 diff --git a/WORKSPACE b/WORKSPACE
-index 8d7f1384d8..8cd8df86a0 100644
+index 27f81c62b1..8fdd2c1547 100644
 --- a/WORKSPACE
 +++ b/WORKSPACE
 @@ -33,6 +33,28 @@ register_toolchains("@rules_ml_toolchain//cc:linux_aarch64_linux_aarch64")
