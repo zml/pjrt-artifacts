@@ -1,6 +1,6 @@
-From c9a58db6724b6ebac97bac4e9774a4366213722b Mon Sep 17 00:00:00 2001
+From 5a073c6fc34b8ffeeb254bacdb1e8210c8cf6d62 Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
-Date: Mon, 1 Sep 2025 13:26:24 +0200
+Date: Wed, 5 Nov 2025 14:45:51 +0100
 Subject: [PATCH 2/3] Use hermetic cc toolchain for Linux CPU (use glibc 2.31)
 
 ---
