@@ -1,0 +1,31 @@
+name: Clean Bazel Cache on Runs-On
+on:
+  workflow_dispatch:
+    inputs:
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup-bazel-cache:
+    runs-on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+    steps:
+      - uses: runs-on/action@v1
+
+      - name: "Mount cache volumes"
+        uses: runs-on/snapshot@v1
+        with:
+          path: /home/runner/.cache/bazel-disk
+          volume_size: 350
+
+      - name: "Fix mount user permissions"
+        run: sudo chown -R runner:runner /home/runner/.cache/
+
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-version: 1.26.0
+          bazelisk-cache: false
+
+      - name: "Clean Bazel disk cache"
+        run: |
+          bazel --disk_cache="/home/runner/.cache/bazel-disk" clean --expunge
