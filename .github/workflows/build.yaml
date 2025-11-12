@@ -19,7 +19,7 @@ permissions:
   contents: write
 
 env:
-  XLA_COMMIT: ${{ inputs.xla_commit || '9a77a882bb2bc75cb8c29620ff8cd0fd089bdc86' }}
+  XLA_COMMIT: ${{ inputs.xla_commit || 'a4df377589951add3ed16b3b23907d71c11f1c9f' }}
   TF_ROCM_AMDGPU_TARGETS: "gfx900,gfx906,gfx908,gfx90a,gfx940,gfx941,gfx942,gfx1030,gfx1100"
   ROCM_PATH: "/opt/rocm-6.4.1/"
 
