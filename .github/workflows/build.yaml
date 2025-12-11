@@ -92,14 +92,14 @@ jobs:
       fail-fast: false
       matrix:
         pjrt:
-          - target: cuda
-            bazel_opts: ""
-            config: "--spawn_strategy=local --disk_cache=/home/runner/.cache/bazel-disk --config=cuda"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
-            renamed_artifact: libpjrt_cuda.so
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
-            platform: linux-amd64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
+          # - target: cuda
+          #   bazel_opts: ""
+          #   config: "--spawn_strategy=local --disk_cache=/home/runner/.cache/bazel-disk --config=cuda"
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
+          #   renamed_artifact: libpjrt_cuda.so
+          #   runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+          #   platform: linux-amd64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             bazel_opts: ""
             # todo: restore `--disk_cache=/home/runner/.cache/bazel-disk` after merge
@@ -109,30 +109,30 @@ jobs:
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
-          - target: cpu
-            bazel_opts: "--output_base=/tmp/bazel_output_base_cpu_darwin_arm64"
-            config: "--spawn_strategy=processwrapper-sandbox --config=release_macos_arm64 --macos_sdk_version=15.5"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
-            runs_on: ["self-hosted", "macOS"]
-            renamed_artifact: libpjrt_cpu.dylib
-            platform: darwin-arm64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
-          - target: cpu
-            bazel_opts: "--output_base=/tmp/bazel_output_base_cpu_darwin_amd64"
-            config: "--spawn_strategy=processwrapper-sandbox --config=release_macos_base --macos_sdk_version=15.5"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
-            renamed_artifact: libpjrt_cpu.dylib
-            runs_on: ["self-hosted", "macOS"]
-            platform: darwin-amd64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
-          - target: cpu
-            bazel_opts: ""
-            config: "--spawn_strategy=processwrapper-sandbox --disk_cache=/home/runner/.cache/bazel-disk "
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
-            renamed_artifact: libpjrt_cpu.so
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
-            platform: linux-amd64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+          # - target: cpu
+          #   bazel_opts: "--output_base=/tmp/bazel_output_base_cpu_darwin_arm64"
+          #   config: "--spawn_strategy=processwrapper-sandbox --config=release_macos_arm64 --macos_sdk_version=15.5"
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
+          #   runs_on: ["self-hosted", "macOS"]
+          #   renamed_artifact: libpjrt_cpu.dylib
+          #   platform: darwin-arm64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+          # - target: cpu
+          #   bazel_opts: "--output_base=/tmp/bazel_output_base_cpu_darwin_amd64"
+          #   config: "--spawn_strategy=processwrapper-sandbox --config=release_macos_base --macos_sdk_version=15.5"
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
+          #   renamed_artifact: libpjrt_cpu.dylib
+          #   runs_on: ["self-hosted", "macOS"]
+          #   platform: darwin-amd64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+          # - target: cpu
+          #   bazel_opts: ""
+          #   config: "--spawn_strategy=processwrapper-sandbox --disk_cache=/home/runner/.cache/bazel-disk "
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
+          #   renamed_artifact: libpjrt_cpu.so
+          #   runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+          #   platform: linux-amd64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
 
     needs: ["setup_openxla"]
     steps:
