@@ -13,11 +13,12 @@ permissions:
   contents: write
 
 env:
-  TF_ROCM_AMDGPU_TARGETS: "gfx900,gfx906,gfx908,gfx90a,gfx940,gfx941,gfx942,gfx1030,gfx1100"
-  ROCM_PATH: "/opt/rocm-6.4.1/"
+  TF_ROCM_AMDGPU_TARGETS: "gfx900,gfx906,gfx908,gfx90a,gfx941,gfx942,gfx1030,gfx1100"
+  ROCM_PATH: "/opt/rocm-7.1.1/"
 
 jobs:
   nightly-pjrt-artifacts:
+    if: github.event_name != 'pull_request' || contains(join(github.event.pull_request.labels.*.name, ','), 'nightly')
     strategy:
       matrix:
         pjrt:
@@ -65,10 +66,19 @@ jobs:
           path: "pjrt-artifacts"
 
       - name: "Checking out openxla repository"
+        if: matrix.pjrt.target != 'rocm'
         uses: actions/checkout@v4
         with:
           ref: main
           repository: openxla/xla
+          path: "xla"
+
+      - name: "Checking out ROCm xla repository"
+        if: matrix.pjrt.target == 'rocm'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          repository: ROCm/xla
           path: "xla"
 
       - name: Apply patches to openxla
