@@ -10,6 +10,10 @@ on:
         required: true
         type: string
         default: "main"
+      rocm_xla_commit:
+        required: true
+        type: string
+        default: "main"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -20,12 +24,16 @@ permissions:
 
 env:
   XLA_COMMIT: ${{ inputs.xla_commit || 'a4df377589951add3ed16b3b23907d71c11f1c9f' }}
-  TF_ROCM_AMDGPU_TARGETS: "gfx900,gfx906,gfx908,gfx90a,gfx940,gfx941,gfx942,gfx1030,gfx1100"
-  ROCM_PATH: "/opt/rocm-6.4.1/"
+  ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit || 'd790f9abc77b217e730588f66345f606654ad971' }}
+  TF_ROCM_AMDGPU_TARGETS: "gfx900,gfx906,gfx908,gfx90a,gfx941,gfx942,gfx1030,gfx1100"
+  ROCM_PATH: "/opt/rocm-7.1.1/"
 
 jobs:
   setup_openxla:
     runs-on: ubuntu-latest
+    outputs:
+      xla_commit: ${{ steps.patches.outputs.XLA_COMMIT_ID }}
+      rocm_xla_commit: ${{ steps.rocm_patches.outputs.XLA_COMMIT_ID }}
     steps:
       - name: "Checking out repository"
         uses: actions/checkout@v4
@@ -54,6 +62,29 @@ jobs:
           include-hidden-files: true
           name: xla-${{ steps.patches.outputs.XLA_COMMIT_ID }}
           path: ./xla
+      - name: "Checking out ROCm xla repository"
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.ROCM_XLA_COMMIT }}
+          repository: ROCm/xla
+          path: "xla-rocm"
+      - name: Apply patches to ROCm openxla
+        id: rocm_patches
+        working-directory: ./xla-rocm
+        run: |
+          xla_commit=$(git rev-parse HEAD)
+          echo "XLA_COMMIT_ID=$xla_commit" >> $GITHUB_OUTPUT
+          echo ::notice::Applying patches to ROCm openxla $xla_commit
+          for patch in $(ls ../pjrt-artifacts/openxla/patches/*.patch | sort); do
+              echo "Applying patch $patch"
+              git apply "$patch"
+          done
+      - name: Upload ROCm openxla repository artifact
+        uses: actions/upload-artifact@v4
+        with:
+          include-hidden-files: true
+          name: xla-rocm-${{ steps.rocm_patches.outputs.XLA_COMMIT_ID }}
+          path: ./xla-rocm
 
   pjrt-artifacts:
     runs-on: ${{ matrix.pjrt.runs_on }}
@@ -130,14 +161,22 @@ jobs:
           sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" -- 18
           sudo apt update -y
           sudo apt install llvm-18 lld-18 clang-18 libnuma-dev -y
-          wget https://repo.radeon.com/amdgpu-install/6.4.1/ubuntu/jammy/amdgpu-install_6.4.60401-1_all.deb
-          sudo apt install ./amdgpu-install_6.4.60401-1_all.deb -y
+          wget https://repo.radeon.com/amdgpu-install/7.1.1/ubuntu/jammy/amdgpu-install_7.1.1.70101-1_all.deb
+          sudo apt install ./amdgpu-install_7.1.1.70101-1_all.deb -y
           sudo amdgpu-install --usecase=hiplibsdk --no-dkms -y
 
       - name: Download xla artifact
+        if: matrix.pjrt.target != 'rocm'
         uses: actions/download-artifact@v4
         with:
-          name: xla-${{ env.XLA_COMMIT }}
+          name: xla-${{ needs.setup_openxla.outputs.xla_commit }}
+          path: xla
+
+      - name: Download ROCm xla artifact
+        if: matrix.pjrt.target == 'rocm'
+        uses: actions/download-artifact@v4
+        with:
+          name: xla-rocm-${{ needs.setup_openxla.outputs.rocm_xla_commit }}
           path: xla
 
       - uses: bazel-contrib/setup-bazel@0.15.0
