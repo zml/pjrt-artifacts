@@ -162,7 +162,7 @@ jobs:
           sudo apt install llvm-18 lld-18 clang-18 libnuma-dev -y
           wget https://repo.radeon.com/amdgpu-install/7.1.1/ubuntu/jammy/amdgpu-install_7.1.1.70101-1_all.deb
           sudo apt install ./amdgpu-install_7.1.1.70101-1_all.deb -y
-          sudo amdgpu-install --usecase=dkms,rocm,hiplibsdk -y
+          sudo amdgpu-install --usecase=rocm,rocmdev,hiplibsdk -y
 
       - name: Download xla artifact
         if: matrix.pjrt.target != 'rocm'
