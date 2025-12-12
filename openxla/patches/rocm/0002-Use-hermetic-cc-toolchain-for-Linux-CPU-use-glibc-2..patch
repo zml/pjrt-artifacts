@@ -1,3 +1,12 @@
+From 5a073c6fc34b8ffeeb254bacdb1e8210c8cf6d62 Mon Sep 17 00:00:00 2001
+From: Hugo Mano <hugo@zml.ai>
+Date: Wed, 5 Nov 2025 14:45:51 +0100
+Subject: [PATCH 2/3] Use hermetic cc toolchain for Linux CPU (use glibc 2.31)
+
+---
+ WORKSPACE | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+
 diff --git a/WORKSPACE b/WORKSPACE
 index 0f3259fa38..8fedf4c620 100644
 --- a/WORKSPACE
@@ -31,3 +40,6 @@ index 0f3259fa38..8fedf4c620 100644
  # Initialize the XLA repository and all dependencies.
  #
  # The cascade of load() statements and xla_workspace?() calls works around the
+-- 
+2.50.1 (Apple Git-155)
+

@@ -52,7 +52,7 @@ jobs:
           xla_commit=$(git rev-parse HEAD)
           echo "XLA_COMMIT_ID=$xla_commit" >> $GITHUB_OUTPUT
           echo ::notice::Applying patches to openxla $xla_commit
-          for patch in $(ls ../pjrt-artifacts/openxla/patches/*.patch | sort); do
+          for patch in $(ls ../pjrt-artifacts/openxla/patches/upstream/*.patch | sort); do
               echo "Applying patch $patch"
               git apply "$patch"
           done
@@ -75,7 +75,7 @@ jobs:
           xla_commit=$(git rev-parse HEAD)
           echo "XLA_COMMIT_ID=$xla_commit" >> $GITHUB_OUTPUT
           echo ::notice::Applying patches to ROCm openxla $xla_commit
-          for patch in $(ls ../pjrt-artifacts/openxla/patches/*.patch | sort); do
+          for patch in $(ls ../pjrt-artifacts/openxla/patches/rocm/*.patch | sort); do
               echo "Applying patch $patch"
               git apply "$patch"
           done
