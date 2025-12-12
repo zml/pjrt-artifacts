@@ -1,0 +1,13 @@
+diff --git a/third_party/gpus/find_rocm_config.py b/third_party/gpus/find_rocm_config.py
+index cd64efe649..e985776e81 100644
+--- a/third_party/gpus/find_rocm_config.py
++++ b/third_party/gpus/find_rocm_config.py
+@@ -100,6 +100,8 @@ def _find_rocm_config(rocm_install_path):
+ 
+ def _find_hipruntime_config(rocm_install_path):
+ 
++  raise ConfigError("Searching inside {}".format(rocm_install_path))
++
+   def hipruntime_version_number(path):
+     possible_version_files = [
+         "include/hip/hip_version.h",  # ROCm 5.2
