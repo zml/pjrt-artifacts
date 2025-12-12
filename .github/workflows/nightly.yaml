@@ -14,7 +14,6 @@ permissions:
 
 env:
   TF_ROCM_AMDGPU_TARGETS: "gfx900,gfx906,gfx908,gfx90a,gfx942,gfx1030,gfx1100"
-  ROCM_PATH: "/opt/rocm-7.1.1/"
 
 jobs:
   nightly-pjrt-artifacts:

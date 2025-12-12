@@ -26,7 +26,6 @@ env:
   XLA_COMMIT: ${{ inputs.xla_commit || 'f238b48769d2ab8d62eeb09b5d31a972dfa4841a' }}
   ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit || 'a7e58876b73dfa9bb6bc785f6981a332c133bb55' }}
   TF_ROCM_AMDGPU_TARGETS: "gfx900,gfx906,gfx908,gfx90a,gfx942,gfx1030,gfx1100"
-  ROCM_PATH: "/opt/rocm-7.1.1/"
 
 jobs:
   setup_openxla:

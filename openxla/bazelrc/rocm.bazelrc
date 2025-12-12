@@ -1,6 +1,6 @@
 build --repo_env=HERMETIC_PYTHON_VERSION=3.11
 build:rocm_ci_hermetic --repo_env="ROCM_VERSION=7.1.1"
-build:rocm_ci --repo_env="ROCM_PATH=/opt/rocm-7.1.1/"
+
 build --copt -Wno-sign-compare
 build --copt -Wno-gnu-offsetof-extensions
 
