@@ -23,10 +23,11 @@ permissions:
   contents: write
 
 env:
+  # From master 2025-12-12
   XLA_COMMIT: ${{ inputs.xla_commit || 'f238b48769d2ab8d62eeb09b5d31a972dfa4841a' }}
-  ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit || 'd790f9abc77b217e730588f66345f606654ad971' }}
+  # rocm-jaxlib-v0.8.0
+  ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit || '06402b44669c52956732678772104dcb85c53806' }}
   TF_ROCM_AMDGPU_TARGETS: "gfx900,gfx906,gfx908,gfx90a,gfx942,gfx1030,gfx1100"
-  ROCM_PATH: "/opt/rocm-7.1.1/"
 
 jobs:
   setup_openxla:
@@ -52,7 +53,7 @@ jobs:
           xla_commit=$(git rev-parse HEAD)
           echo "XLA_COMMIT_ID=$xla_commit" >> $GITHUB_OUTPUT
           echo ::notice::Applying patches to openxla $xla_commit
-          for patch in $(ls ../pjrt-artifacts/openxla/patches/*.patch | sort); do
+          for patch in $(ls ../pjrt-artifacts/openxla/patches/upstream/*.patch | sort); do
               echo "Applying patch $patch"
               git apply "$patch"
           done
@@ -75,7 +76,7 @@ jobs:
           xla_commit=$(git rev-parse HEAD)
           echo "XLA_COMMIT_ID=$xla_commit" >> $GITHUB_OUTPUT
           echo ::notice::Applying patches to ROCm openxla $xla_commit
-          for patch in $(ls ../pjrt-artifacts/openxla/patches/*.patch | sort); do
+          for patch in $(ls ../pjrt-artifacts/openxla/patches/rocm/*.patch | sort); do
               echo "Applying patch $patch"
               git apply "$patch"
           done
@@ -103,7 +104,7 @@ jobs:
           - target: rocm
             bazel_opts: ""
             # todo: restore `--disk_cache=/home/runner/.cache/bazel-disk` after merge
-            config: "--spawn_strategy=local --config=rocm_ci_hermetic"
+            config: "--spawn_strategy=local --config=rocm_ci"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
@@ -161,9 +162,9 @@ jobs:
           sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" -- 18
           sudo apt update -y
           sudo apt install llvm-18 lld-18 clang-18 libnuma-dev -y
-      #     wget https://repo.radeon.com/amdgpu-install/7.1.1/ubuntu/jammy/amdgpu-install_7.1.1.70101-1_all.deb
-      #     sudo apt install ./amdgpu-install_7.1.1.70101-1_all.deb -y
-      #     sudo amdgpu-install --usecase=hiplibsdk --no-dkms -y
+          wget https://repo.radeon.com/amdgpu-install/7.1.1/ubuntu/jammy/amdgpu-install_7.1.1.70101-1_all.deb
+          sudo apt install ./amdgpu-install_7.1.1.70101-1_all.deb -y
+          sudo amdgpu-install --usecase=rocm,rocmdev,hiplibsdk -y --no-dkms
 
       - name: Download xla artifact
         if: matrix.pjrt.target != 'rocm'
