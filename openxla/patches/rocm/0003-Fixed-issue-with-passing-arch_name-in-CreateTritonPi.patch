@@ -1,6 +1,6 @@
-From 8cd15718bbd53843236a0ce6359875fa882ae1ca Mon Sep 17 00:00:00 2001
-From: Corentin Godeau <corentin.godeau@zml.ai>
-Date: Fri, 12 Dec 2025 19:07:35 +0100
+From 0bf20a5cf3d65dd53007938487c915d1ea15f9c1 Mon Sep 17 00:00:00 2001
+From: Corentin Godeau <corentin@zml.ai>
+Date: Fri, 12 Dec 2025 19:47:14 +0000
 Subject: [PATCH] Fixed issue with passing arch_name in CreateTritonPipeline
  for ROCm.
 
@@ -9,7 +9,7 @@ Subject: [PATCH] Fixed issue with passing arch_name in CreateTritonPipeline
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
-index d2ef805ad4..3353bfd8b3 100644
+index d2ef805ad4..666ce37933 100644
 --- a/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
 +++ b/xla/backends/gpu/codegen/triton/compilation_pipeline_rocm.cc
 @@ -66,7 +66,7 @@ static void MakeTTGIR(mlir::OpPassManager* pm,
@@ -17,7 +17,7 @@ index d2ef805ad4..3353bfd8b3 100644
    pm->addPass(mt::gpu::createTritonGPUOptimizeThreadLocality());
    // TODO ROCm Pass rocm_cc.gfx_version() after fixing issue with fmfa
 -  pm->addPass(mlir::createTritonAMDGPUAccelerateMatmul({arch_name}));
-+  pm->addPass(mlir::createTritonAMDGPUAccelerateMatmul({cc.gfx_version()}));
++  pm->addPass(mlir::createTritonAMDGPUAccelerateMatmul({rocm_cc.gfx_version()}));
    pm->addPass(mt::gpu::createTritonGPURemoveLayoutConversions());
    // TODO ROCm Check if we want to compare MI100 and greater
    pm->addPass(mlir::createTritonAMDGPUOptimizeEpilogue());
@@ -26,10 +26,10 @@ index d2ef805ad4..3353bfd8b3 100644
      pm->addPass(mlir::createTritonAMDGPUCanonicalizePointers());
      pm->addPass(mlir::createCanonicalizerPass());
 -    pm->addPass(mlir::createTritonAMDGPUConvertToBufferOps({arch_name}));
-+    pm->addPass(mlir::createTritonAMDGPUConvertToBufferOps({cc.gfx_version()}));
++    pm->addPass(mlir::createTritonAMDGPUConvertToBufferOps({rocm_cc.gfx_version()}));
    }
    pm->addPass(mlir::createTritonAMDFoldTrueCmpI());
    pm->addPass(mlir::createCanonicalizerPass());
 -- 
-2.39.3 (Apple Git-145)
+2.43.0
 
