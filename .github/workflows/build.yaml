@@ -14,6 +14,16 @@ on:
         required: true
         type: string
         default: "main"
+  workflow_call:
+    inputs:
+      xla_commit:
+        required: false
+        type: string
+        default: "main"
+      rocm_xla_commit:
+        required: false
+        type: string
+        default: "main"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
