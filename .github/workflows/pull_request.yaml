@@ -1,18 +1,19 @@
-name: nightly - PJRT CUDA library
+name: PJRT GPU library
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'
+  push:
+    tags:
+      - "*"
+  pull_request:
 
 concurrency:
-  group: ${{ github.workflow_sha }}-${{ github.ref }}
+  group: ${{ github.workflow_sha }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: write
 
 jobs:
-  nightly-pjrt-artifacts:
+  pjrt-artifacts:
     uses: ./.github/workflows/build.yaml
     with:
       xla_commit: main
