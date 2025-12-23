@@ -1,4 +1,5 @@
-name: nightly - PJRT CUDA library
+name: Nightly
+
 on:
   workflow_dispatch:
   schedule:
@@ -8,12 +9,9 @@ concurrency:
   group: ${{ github.workflow_sha }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: write
-
 jobs:
   nightly-pjrt-artifacts:
-    uses: ./.github/workflows/build.yaml
+    uses: ./.github/workflows/_build.yaml
     with:
       xla_commit: main
       rocm_xla_commit: rocm-jaxlib-v0.8.0

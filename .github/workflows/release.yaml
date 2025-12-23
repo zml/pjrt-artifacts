@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+concurrency:
+  group: ${{ github.workflow_sha }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  pjrt-artifacts:
+    uses: ./.github/workflows/_build.yaml
+
+  release:
+    name: "Release PJRT Artifacts"
+    needs: ["pjrt-artifacts"]
+    runs-on: ubuntu-latest
+    steps:
+      - run: rm -rf pjrt*.tar.gz
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.tar.gz/*.tar.gz

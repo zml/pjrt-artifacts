@@ -1,0 +1,11 @@
+name: CI
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow_sha }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pjrt-artifacts:
+    uses: ./.github/workflows/_build.yaml
