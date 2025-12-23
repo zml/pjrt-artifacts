@@ -14,6 +14,7 @@ Nightly runs are defined in `.github/workflows/nightly.yaml`. Always read that f
    - Clone `openxla/xla` at `XLA_COMMIT` and apply `openxla/patches/upstream/*.patch`.
    - Clone `ROCm/xla` at `ROCM_XLA_COMMIT` and apply `openxla/patches/rocm/*.patch` when debugging ROCm nightly failures.
 2. Only update the commit values in `_build.yaml`/`nightly.yaml` after verifying both the upstream checkout and `bazel` commands succeed.
+3. When you do update them, always write the exact SHA (not branch names) and mirror those SHAs in `.github/workflows/_build.yaml`'s `XLA_COMMIT`/`ROCM_XLA_COMMIT` so the reusable `_build` workflow matches nightly.
 
 ## 3. Updating to a new OpenXLA commit
 1. **Clone upstream via SSH**
