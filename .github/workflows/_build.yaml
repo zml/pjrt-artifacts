@@ -96,7 +96,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ matrix.pjrt.target == 'rocm' && env.ROCM_XLA_COMMIT || env.XLA_COMMIT }}
-          repository: ${{ matrix.pjrt.repository }}
+          repository: ${{ matrix.pjrt.target == 'rocm' && 'ROCm/xla' || 'openxla/xla' }}
           path: "xla"
       - name: Apply patches to openxla
         id: patches
