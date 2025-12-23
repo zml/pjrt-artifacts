@@ -121,10 +121,13 @@ jobs:
             common --color=yes
             common --show_timestamps
 
+      - name: "Setup bazelrc for openxla"
+        run: |
+          cp pjrt-artifacts/openxla/bazelrc/${{ matrix.pjrt.target }}.bazelrc xla/xla_configure.bazelrc
+
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
         working-directory: ./xla
         run: |
-          cp pjrt-artifacts/openxla/bazelrc/${{ matrix.pjrt.target }}.bazelrc xla/xla_configure.bazelrc
           bazel ${{ matrix.pjrt.bazel_opts }} build ${{ matrix.pjrt.config }} ${{ matrix.pjrt.bazel_target }}
 
       - name: Set file at the right path
