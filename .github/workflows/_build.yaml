@@ -71,6 +71,27 @@ jobs:
         with:
           path: "pjrt-artifacts"
 
+      - name: "Checking out openxla repository"
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.pjrt.target == 'rocm' && env.ROCM_XLA_COMMIT || env.XLA_COMMIT }}
+          repository: ${{ matrix.pjrt.target == 'rocm' && 'ROCm/xla' || 'openxla/xla' }}
+          path: "xla"
+
+      - name: Apply patches to openxla
+        id: patches
+        working-directory: ./xla
+        env:
+          PATCH_DIRECTORY: ${{ matrix.pjrt.target == 'rocm' && 'rocm' || 'upstream' }}
+        run: |
+          xla_commit=$(git rev-parse HEAD)
+          echo "XLA_COMMIT_ID=$xla_commit" >> $GITHUB_OUTPUT
+          echo ::notice::Applying patches to openxla $xla_commit
+          for patch in $(ls ../pjrt-artifacts/openxla/patches/$PATCH_DIRECTORY/*.patch | sort); do
+              echo "Applying patch $patch"
+              git apply "$patch"
+          done
+
       - uses: runs-on/snapshot@v1
         if: matrix.pjrt.platform != 'darwin-arm64' && matrix.pjrt.platform != 'darwin-amd64'
         with:
@@ -91,26 +112,6 @@ jobs:
           wget https://repo.radeon.com/amdgpu-install/7.1.1/ubuntu/jammy/amdgpu-install_7.1.1.70101-1_all.deb
           sudo apt install ./amdgpu-install_7.1.1.70101-1_all.deb -y
           sudo amdgpu-install --usecase=rocm,rocmdev,hiplibsdk -y --no-dkms
-
-      - name: "Checking out openxla repository"
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ matrix.pjrt.target == 'rocm' && env.ROCM_XLA_COMMIT || env.XLA_COMMIT }}
-          repository: ${{ matrix.pjrt.target == 'rocm' && 'ROCm/xla' || 'openxla/xla' }}
-          path: "xla"
-      - name: Apply patches to openxla
-        id: patches
-        working-directory: ./xla
-        env:
-          PATCH_DIRECTORY: ${{ matrix.pjrt.target == 'rocm' && 'rocm' || 'upstream' }}
-        run: |
-          xla_commit=$(git rev-parse HEAD)
-          echo "XLA_COMMIT_ID=$xla_commit" >> $GITHUB_OUTPUT
-          echo ::notice::Applying patches to openxla $xla_commit
-          for patch in $(ls ../pjrt-artifacts/openxla/patches/$PATCH_DIRECTORY/*.patch | sort); do
-              echo "Applying patch $patch"
-              git apply "$patch"
-          done
 
       - uses: bazel-contrib/setup-bazel@0.15.0
         with:
