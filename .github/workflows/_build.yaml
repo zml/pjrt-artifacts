@@ -12,7 +12,7 @@ on:
 
 env:
   XLA_COMMIT: ${{ inputs.xla_commit || '9caad7b3520548142ccd6a2d528a06be6c474de1' }} # main from 2025-12-23
-  ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit || '85e2c6cc8ed98027e8542e5d331d3f8b3836f557' }} # rocm-jaxlib-v0.8.0 from 2025-12-23
+  ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit || 'a841f7a22e36f856032eed3f4e9e83903d482198' }} # rocm-jaxlib-v0.8.0 from 2025-12-30
   TF_ROCM_AMDGPU_TARGETS: "gfx900,gfx906,gfx908,gfx90a,gfx942,gfx1030,gfx1100"
 
 jobs:
