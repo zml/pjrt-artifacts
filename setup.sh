@@ -5,6 +5,7 @@ ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 WORKFLOW_FILE="$ROOT_DIR/.github/workflows/_build.yaml"
 PATCH_ROOT="$ROOT_DIR/openxla/patches"
 BUILD_DIR="$ROOT_DIR/build"
+YQ_MODE=""
 
 FORK="upstream"
 REF=""
@@ -26,6 +27,35 @@ require_cmd() {
   fi
 }
 
+detect_yq_mode() {
+  if yq e -r '.env.XLA_COMMIT' "$WORKFLOW_FILE" >/dev/null 2>&1; then
+    YQ_MODE="mikefarah"
+    return
+  fi
+  if yq -r '.env.XLA_COMMIT' "$WORKFLOW_FILE" >/dev/null 2>&1; then
+    YQ_MODE="python"
+    return
+  fi
+  echo "Unable to determine yq flavor. Install mikefarah/yq or python yq with jq support." >&2
+  exit 1
+}
+
+yq_read() {
+  local expr="$1"
+  case "$YQ_MODE" in
+    mikefarah)
+      yq e -r "$expr" "$WORKFLOW_FILE"
+      ;;
+    python)
+      yq -r "$expr" "$WORKFLOW_FILE"
+      ;;
+    *)
+      echo "Internal error: yq mode not initialized" >&2
+      exit 1
+      ;;
+  esac
+}
+
 extract_sha() {
   local raw="$1"
   local sha
@@ -40,7 +70,7 @@ extract_sha() {
 get_env_commit() {
   local key="$1"
   local raw
-  raw=$(yq e -r ".env.${key}" "$WORKFLOW_FILE")
+  raw=$(yq_read ".env.${key}")
   if [[ -z "$raw" || "$raw" == "null" ]]; then
     echo "";
     return
@@ -81,6 +111,8 @@ if [[ ! -f "$WORKFLOW_FILE" ]]; then
   echo "Workflow file not found: $WORKFLOW_FILE" >&2
   exit 1
 fi
+
+detect_yq_mode
 
 case "$FORK" in
   upstream)
@@ -132,7 +164,7 @@ for patch in $(ls "$PATCH_ROOT/$PATCH_DIR"/*.patch | sort); do
   git -C "$CLONE_DIR" apply "$patch"
 done
 
-rocm_install=$(yq e -r '.jobs["pjrt-artifacts"].steps[] | select(.name == "Download ROCm toolchain (not fully hermetic)") | .run' "$WORKFLOW_FILE")
+rocm_install=$(yq_read '.jobs["pjrt-artifacts"].steps[] | select(.name == "Download ROCm toolchain (not fully hermetic)") | .run')
 if [[ "$rocm_install" == "null" ]]; then
   rocm_install=""
 fi
@@ -140,7 +172,7 @@ fi
 echo ""
 echo "=== Build commands (from $WORKFLOW_FILE) ==="
 
-matrix_entries=$(yq e -r '.jobs["pjrt-artifacts"].strategy.matrix.pjrt[] | [.target,.platform,.bazel_opts,.config,.bazel_target] | @tsv' "$WORKFLOW_FILE")
+matrix_entries=$(yq_read '.jobs["pjrt-artifacts"].strategy.matrix.pjrt[] | [.target,.platform,.bazel_opts,.config,.bazel_target] | @tsv')
 
 while IFS=$'\t' read -r target platform bazel_opts config bazel_target; do
   if [[ -z "$target" ]]; then
