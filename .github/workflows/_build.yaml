@@ -147,7 +147,6 @@ jobs:
           bazel build ${{ matrix.pjrt.config }} ${{ matrix.pjrt.bazel_target }}
 
       - name: Set file at the right path
-        if: matrix.pjrt.platform != 'darwin-arm64' && matrix.pjrt.platform != 'darwin-amd64'
         working-directory: ./xla
         run: |
           cp ${{ matrix.pjrt.artifact }} ../${{ matrix.pjrt.renamed_artifact }}
