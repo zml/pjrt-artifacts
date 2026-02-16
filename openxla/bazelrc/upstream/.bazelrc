@@ -1,0 +1,134 @@
+# Disable Bzlmod for now
+common --noenable_bzlmod
+common:bzlmod --enable_bzlmod --noenable_workspace
+
+common --incompatible_enable_cc_toolchain_resolution
+common --repo_env USE_HERMETIC_CC_TOOLCHAIN=1
+
+# TODO: Migrate for https://github.com/bazelbuild/bazel/issues/7260
+common:clang_local --noincompatible_enable_cc_toolchain_resolution
+common:clang_local --@rules_ml_toolchain//common:enable_hermetic_cc=False
+common:clang_local --repo_env USE_HERMETIC_CC_TOOLCHAIN=0
+
+# Load the TensorFlow bazelrc
+import %workspace%/tensorflow.bazelrc
+import %workspace%/warnings.bazelrc
+
+try-import %workspace%/xla_configure.bazelrc
+
+####
+
+common:bzlmod --noincompatible_disallow_empty_glob
+
+common:remote --bes_results_url=https://app.buildbuddy.io/invocation/
+common:remote --bes_backend=grpcs://remote.buildbuddy.io
+common:remote --remote_cache=grpcs://remote.buildbuddy.io
+common:remote --remote_cache_compression
+common:remote --remote_download_toplevel
+common:remote --nobuild_runfile_links
+common:remote --remote_timeout=3600
+common:remote --noexperimental_throttle_remote_action_building
+common:remote --experimental_remote_execution_keepalive
+common:remote --grpc_keepalive_time=30s
+common:remote --remote_executor=grpcs://remote.buildbuddy.io
+common:remote --jobs=800
+common:remote --extra_execution_platforms=@toolchains_llvm_bootstrapped//:rbe_platform
+common:remote --spawn_strategy=remote
+
+# Additive-only configs for hermetic/custom cc toolchain flows.
+common:hermetic_clang --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+common:hermetic_clang --repo_env=BAZEL_NO_APPLE_CPP_TOOLCHAIN=1
+common:hermetic_clang --repo_env=BAZEL_DO_NOT_DETECT_SWIFT_TOOLCHAIN=1
+common:hermetic_clang --incompatible_enable_cc_toolchain_resolution
+common:hermetic_clang --repo_env=USE_HERMETIC_CC_TOOLCHAIN=1
+# common:hermetic_clang --@rules_ml_toolchain//common:enable_hermetic_cc=True
+common:hermetic_clang --@rules_python//python/config_settings:bootstrap_impl=script
+
+common:hermetic_linux_x86 --config=hermetic_clang
+common:hermetic_linux_x86 --config=avx_linux
+common:hermetic_linux_x86 --platforms @toolchains_llvm_bootstrapped//platforms:linux_x86_64
+common:hermetic_linux_x86 --cpu=k8
+
+common:hermetic_linux_arm64 --config=hermetic_clang
+common:hermetic_linux_arm64 --platforms @toolchains_llvm_bootstrapped//platforms:linux_arm64
+common:hermetic_linux_arm64 --cpu=aarch64
+
+### OSX
+
+# Base build configs for macOS
+
+common:hermetic_macos_base --define=no_nccl_support=true --output_filter=^$
+common:hermetic_macos_base --config=cpu_cross
+common:hermetic_macos_base --config=hermetic_clang
+common:hermetic_macos_base --copt=-DGRPC_BAZEL_BUILD
+
+# Build configs for macOS Arm64
+common:hermetic_macos_arm64 --config=hermetic_macos_base
+common:hermetic_macos_arm64 --cpu=darwin_arm64
+common:hermetic_macos_arm64 --platforms=@build_bazel_apple_support//platforms:darwin_arm64
+common:hermetic_macos_arm64 --define=tensorflow_mkldnn_contraction_kernel=0 # release only stuff apparently
+# Target Moneterey as the minimum compatible OS version
+common:hermetic_macos_arm64 --macos_minimum_os=12.0
+# common:hermetic_macos_arm64 --macos_sdk_version=12.0
+
+# Build configs for macOS x86
+common:hermetic_macos_x86 --config=hermetic_macos_base
+common:hermetic_macos_x86 --config=avx_linux
+common:hermetic_macos_x86 --cpu=darwin
+common:hermetic_macos_x86 --platforms=@build_bazel_apple_support//platforms:darwin_x86_64
+# Target Catalina as the minimum compatible OS version
+common:hermetic_macos_x86 --macos_minimum_os=10.15
+# common:hermetic_macos_x86 --macos_sdk_version=10.15
+
+### CUDA
+
+# CUDA: This config refers to building CUDA op kernels with nvcc.
+common:cuda --repo_env TF_NEED_CUDA=1
+common:cuda --@rules_ml_toolchain//common:enable_cuda
+# common:cuda --config=cuda_version
+# This flag is needed to include CUDA libraries.
+common:cuda --@local_config_cuda//cuda:include_cuda_libs=true
+
+build:cuda --copt -Wno-sign-compare
+build:cuda --copt -Wno-error=unused-command-line-argument
+build:cuda --copt -Wno-gnu-offsetof-extensions
+build:cuda --build_tag_filters -no_oss
+build:cuda --test_tag_filters -no_oss
+# build:cuda --config cuda_nvcc
+build:cuda --repo_env=HERMETIC_PYTHON_VERSION=3.11
+build:cuda --repo_env HERMETIC_CUDA_COMPUTE_CAPABILITIES="7.5,8.0,8.6,8.7,8.9,9.0,10.0,10.3,12.0,12.1"
+build:cuda --repo_env=HERMETIC_CUDA_VERSION="13.0.2"
+build:cuda --repo_env=HERMETIC_CUDNN_VERSION="9.14.0"
+build:cuda --repo_env=HERMETIC_NVSHMEM_VERSION="3.4.5"
+build:cuda --repo_env=HERMETIC_NCCL_VERSION="2.27.7"
+# build:cuda --@//xla/stream_executor/cuda:enable_libnvjitlink_support=True
+# build:cuda --@//xla/stream_executor/cuda:enable_libnvptxcompiler_support=True
+
+test:cuda       --build_tag_filters -no_oss
+test:cuda       --test_tag_filters -no_oss
+
+# CUDA NVCC
+common:cuda_nvcc --config=cuda
+common:cuda_nvcc --action_env=TF_NVCC_CLANG="1"
+common:cuda_nvcc --@local_config_cuda//:cuda_compiler=nvcc
+
+# CUDA CLANG (Doesn't work yet)
+common:cuda_clang --config=cuda
+common:cuda_clang --@local_config_cuda//:cuda_compiler=clang
+common:cuda_clang --copt=-Qunused-arguments
+# Select supported compute capabilities (supported graphics cards).
+# This is the same as the official TensorFlow builds.
+# See https://developer.nvidia.com/cuda-gpus#compute
+# `compute_XY` enables PTX embedding in addition to SASS. PTX
+# is forward compatible beyond the current compute capability major
+# release while SASS is only forward compatible inside the current
+# major release. Example: sm_80 kernels can run on sm_89 GPUs but
+# not on sm_90 GPUs. compute_80 kernels though can also run on sm_90 GPUs.
+common:cuda_clang --repo_env=HERMETIC_CUDA_COMPUTE_CAPABILITIES="sm_60,sm_70,sm_80,sm_89,compute_90"
+# Permit newer CUDA versions than Clang is aware of
+common:cuda_clang --copt="-Wno-unknown-cuda-version"
+# Set lld as the linker.
+common:cuda_clang --host_linkopt="-fuse-ld=lld"
+common:cuda_clang --host_linkopt="-lm"
+common:cuda_clang --linkopt="-fuse-ld=lld"
+common:cuda_clang --linkopt="-lm"
