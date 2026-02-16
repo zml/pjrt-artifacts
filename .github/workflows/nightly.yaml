@@ -15,3 +15,5 @@ jobs:
     with:
       xla_commit: main
       rocm_xla_commit: rocm-jaxlib-v0.8.0
+    secrets:
+      BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}

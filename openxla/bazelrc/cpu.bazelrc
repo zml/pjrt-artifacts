@@ -1,7 +1,0 @@
-common                   --enable_platform_specific_config
-build                    --incompatible_strict_action_env
-build                    --strip=always
-build:linux              --incompatible_enable_cc_toolchain_resolution
-build:linux              --repo_env BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
-build:linux              --sandbox_add_mount_pair=/tmp
-build                    --repo_env=HERMETIC_PYTHON_VERSION=3.11

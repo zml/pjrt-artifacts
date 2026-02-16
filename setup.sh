@@ -5,14 +5,16 @@ ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 WORKFLOW_FILE="$ROOT_DIR/.github/workflows/_build.yaml"
 PATCH_ROOT="$ROOT_DIR/openxla/patches"
 BUILD_DIR="$ROOT_DIR/build"
+YQ_MODE=""
 
 FORK="upstream"
 REF=""
 CLONE_DIR=""
+TARGET_FILTER=""
 
 usage() {
   cat <<'USAGE'
-Usage: setup.sh [--fork upstream|rocm] [--ref <git-ref-or-sha>] [--dir <clone-dir>]
+Usage: setup.sh [--fork upstream|rocm] [--ref <git-ref-or-sha>] [--dir <clone-dir>] [--target cpu|cuda|rocm]
 
 Clones the requested OpenXLA fork, checks out the pinned commit (or --ref),
 applies patches, and prints build commands from the workflow matrix.
@@ -24,6 +26,35 @@ require_cmd() {
     echo "Missing required command: $1" >&2
     exit 1
   fi
+}
+
+detect_yq_mode() {
+  if yq e -r '.env.XLA_COMMIT' "$WORKFLOW_FILE" >/dev/null 2>&1; then
+    YQ_MODE="mikefarah"
+    return
+  fi
+  if yq -r '.env.XLA_COMMIT' "$WORKFLOW_FILE" >/dev/null 2>&1; then
+    YQ_MODE="python"
+    return
+  fi
+  echo "Unable to determine yq flavor. Install mikefarah/yq or python yq with jq support." >&2
+  exit 1
+}
+
+yq_read() {
+  local expr="$1"
+  case "$YQ_MODE" in
+    mikefarah)
+      yq e -r "$expr" "$WORKFLOW_FILE"
+      ;;
+    python)
+      yq -r "$expr" "$WORKFLOW_FILE"
+      ;;
+    *)
+      echo "Internal error: yq mode not initialized" >&2
+      exit 1
+      ;;
+  esac
 }
 
 extract_sha() {
@@ -40,7 +71,7 @@ extract_sha() {
 get_env_commit() {
   local key="$1"
   local raw
-  raw=$(yq e -r ".env.${key}" "$WORKFLOW_FILE")
+  raw=$(yq_read ".env.${key}")
   if [[ -z "$raw" || "$raw" == "null" ]]; then
     echo "";
     return
@@ -62,6 +93,10 @@ while [[ $# -gt 0 ]]; do
       CLONE_DIR="$2"
       shift 2
       ;;
+    --target)
+      TARGET_FILTER="$2"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -81,6 +116,8 @@ if [[ ! -f "$WORKFLOW_FILE" ]]; then
   echo "Workflow file not found: $WORKFLOW_FILE" >&2
   exit 1
 fi
+
+detect_yq_mode
 
 case "$FORK" in
   upstream)
@@ -132,7 +169,31 @@ for patch in $(ls "$PATCH_ROOT/$PATCH_DIR"/*.patch | sort); do
   git -C "$CLONE_DIR" apply "$patch"
 done
 
-rocm_install=$(yq e -r '.jobs["pjrt-artifacts"].steps[] | select(.name == "Download ROCm toolchain (not fully hermetic)") | .run' "$WORKFLOW_FILE")
+cpu_patch_dir=""
+if [[ -d "$PATCH_ROOT/upstream-cpu" ]]; then
+  cpu_patch_dir="$PATCH_ROOT/upstream-cpu"
+fi
+
+if [[ "$FORK" == "upstream" && "$TARGET_FILTER" == "cpu" && -n "$cpu_patch_dir" ]]; then
+  echo "Applying CPU-only patches from $cpu_patch_dir"
+  for patch in $(ls "$cpu_patch_dir"/*.patch | sort); do
+    echo "Applying patch $patch"
+    git -C "$CLONE_DIR" apply "$patch"
+  done
+fi
+
+bazelrc_dir="upstream"
+if [[ "$FORK" == "rocm" ]]; then
+  bazelrc_dir="rocm"
+fi
+
+echo "Copying bazelrc files from $ROOT_DIR/openxla/bazelrc/$bazelrc_dir"
+if [ -f "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}/.bazelrc" ]; then
+  cp -v "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}/.bazelrc" "$CLONE_DIR/"
+fi
+cp -v "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}"/*.bazelrc "$CLONE_DIR/"
+
+rocm_install=$(yq_read '.jobs["pjrt-artifacts"].steps[] | select(.name == "Download ROCm toolchain (not fully hermetic)") | .run')
 if [[ "$rocm_install" == "null" ]]; then
   rocm_install=""
 fi
@@ -140,10 +201,13 @@ fi
 echo ""
 echo "=== Build commands (from $WORKFLOW_FILE) ==="
 
-matrix_entries=$(yq e -r '.jobs["pjrt-artifacts"].strategy.matrix.pjrt[] | [.target,.platform,.bazel_opts,.config,.bazel_target] | @tsv' "$WORKFLOW_FILE")
+matrix_entries=$(yq_read '.jobs["pjrt-artifacts"].strategy.matrix.pjrt[] | [.target,.platform,.config,.bazel_target] | @tsv')
 
-while IFS=$'\t' read -r target platform bazel_opts config bazel_target; do
+while IFS=$'\t' read -r target platform config bazel_target; do
   if [[ -z "$target" ]]; then
+    continue
+  fi
+  if [[ -n "$TARGET_FILTER" && "$target" != "$TARGET_FILTER" ]]; then
     continue
   fi
   if [[ "$FORK" == "rocm" && "$target" != "rocm" ]]; then
@@ -151,9 +215,6 @@ while IFS=$'\t' read -r target platform bazel_opts config bazel_target; do
   fi
   if [[ "$FORK" == "upstream" && "$target" == "rocm" ]]; then
     continue
-  fi
-  if [[ "$bazel_opts" == "null" ]]; then
-    bazel_opts=""
   fi
   if [[ "$config" == "null" ]]; then
     config=""
@@ -174,11 +235,16 @@ while IFS=$'\t' read -r target platform bazel_opts config bazel_target; do
   else
     echo "# Target: $target | Platform: $platform | Fork: upstream"
   fi
-  echo "cp \"$ROOT_DIR/openxla/bazelrc/${target}.bazelrc\" \"$CLONE_DIR/xla_configure.bazelrc\""
-  if [[ -n "$bazel_opts" ]]; then
-    echo "cd \"$CLONE_DIR\" && bazel $bazel_opts build $config $bazel_target"
-  else
-    echo "cd \"$CLONE_DIR\" && bazel build $config $bazel_target"
+  if [[ "$target" == "cpu" && "$FORK" == "upstream" && -n "$cpu_patch_dir" && "$TARGET_FILTER" != "cpu" ]]; then
+    echo "# CPU builds require upstream-cpu patches"
+    echo "git -C $CLONE_DIR apply $cpu_patch_dir/*.patch"
   fi
+  echo "cd $CLONE_DIR"
+  if [[ "$target" == "cpu" ]]; then
+    echo "export USE_BAZEL_VERSION=8.5.1"
+  else
+    echo "export USE_BAZEL_VERSION=7.7.0"
+  fi
+  echo "bazel build $config $bazel_target"
 
 done <<< "$matrix_entries"
