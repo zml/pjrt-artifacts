@@ -169,6 +169,7 @@ for patch in $(ls "$PATCH_ROOT/$PATCH_DIR"/*.patch | sort); do
   git -C "$CLONE_DIR" apply "$patch"
 done
 
+<<<<<<< HEAD
 cpu_patch_dir=""
 if [[ -d "$PATCH_ROOT/upstream-cpu" ]]; then
   cpu_patch_dir="$PATCH_ROOT/upstream-cpu"
@@ -193,6 +194,8 @@ if [ -f "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}/.bazelrc" ]; then
 fi
 cp -v "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}"/*.bazelrc "$CLONE_DIR/"
 
+=======
+>>>>>>> 4e4eb9e (support linux yq...)
 rocm_install=$(yq_read '.jobs["pjrt-artifacts"].steps[] | select(.name == "Download ROCm toolchain (not fully hermetic)") | .run')
 if [[ "$rocm_install" == "null" ]]; then
   rocm_install=""
@@ -201,7 +204,11 @@ fi
 echo ""
 echo "=== Build commands (from $WORKFLOW_FILE) ==="
 
+<<<<<<< HEAD
 matrix_entries=$(yq_read '.jobs["pjrt-artifacts"].strategy.matrix.pjrt[] | [.target,.platform,.config,.bazel_target] | @tsv')
+=======
+matrix_entries=$(yq_read '.jobs["pjrt-artifacts"].strategy.matrix.pjrt[] | [.target,.platform,.bazel_opts,.config,.bazel_target] | @tsv')
+>>>>>>> 4e4eb9e (support linux yq...)
 
 while IFS=$'\t' read -r target platform config bazel_target; do
   if [[ -z "$target" ]]; then
