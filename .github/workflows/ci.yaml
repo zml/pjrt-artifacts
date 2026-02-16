@@ -9,3 +9,5 @@ concurrency:
 jobs:
   pjrt-artifacts:
     uses: ./.github/workflows/_build.yaml
+    secrets:
+      BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
