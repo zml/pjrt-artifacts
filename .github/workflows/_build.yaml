@@ -65,6 +65,13 @@ jobs:
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+          - target: cpu
+            config: "--config=hermetic_linux_arm64 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY --platforms @toolchains_llvm_bootstrapped//platforms:linux_arm64"
+            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
+            renamed_artifact: libpjrt_cpu.so
+            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+            platform: linux-arm64
+            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
     steps:
       - uses: runs-on/action@v1
         if: matrix.pjrt.platform != 'darwin-arm64' && matrix.pjrt.platform != 'darwin-amd64'
