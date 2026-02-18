@@ -12,6 +12,9 @@ on:
       rocm_xla_commit:
         required: false
         type: string
+      bazel_extra_args:
+        required: false
+        type: string
 
 env:
   XLA_COMMIT: ${{ inputs.xla_commit || '9caad7b3520548142ccd6a2d528a06be6c474de1' }} # main from 2025-12-23
@@ -143,8 +146,9 @@ jobs:
         working-directory: ./xla
         env:
           USE_BAZEL_VERSION: ${{ matrix.pjrt.target == 'cpu' && '8.5.1' || '7.7.0' }}
+          BAZEL_EXTRA_ARGS: ${{ inputs.bazel_extra_args || '' }}
         run: |
-          bazel build ${{ matrix.pjrt.config }} ${{ matrix.pjrt.bazel_target }}
+          bazel build ${{ matrix.pjrt.config }} ${{ env.BAZEL_EXTRA_ARGS }} ${{ matrix.pjrt.bazel_target }}
 
       - name: Set file at the right path
         working-directory: ./xla
