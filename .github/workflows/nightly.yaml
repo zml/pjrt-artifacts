@@ -15,5 +15,6 @@ jobs:
     with:
       xla_commit: main
       rocm_xla_commit: rocm-jaxlib-v0.8.0
+      bazel_extra_args: "--config=dbg"
     secrets:
       BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
