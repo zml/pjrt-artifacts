@@ -17,8 +17,8 @@ on:
         type: string
 
 env:
-  XLA_COMMIT: ${{ inputs.xla_commit || '9caad7b3520548142ccd6a2d528a06be6c474de1' }} # main from 2025-12-23
-  ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit || 'a841f7a22e36f856032eed3f4e9e83903d482198' }} # rocm-jaxlib-v0.8.0 from 2025-12-30
+  XLA_COMMIT: ${{ inputs.xla_commit || '9e9a0fb13b164c9875349246d1d8616a267c9bf5' }} # main from 2026-03-12
+  ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit || 'c40171e49b63e8a12498fae2b64f90c2406802ec' }} # rocm-jaxlib-v0.8.0 from 2025-12-30
   TF_ROCM_AMDGPU_TARGETS: "gfx900,gfx906,gfx908,gfx90a,gfx942,gfx1030,gfx1100"
   BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
 
@@ -97,16 +97,20 @@ jobs:
           xla_commit=$(git rev-parse HEAD)
           echo "XLA_COMMIT_ID=$xla_commit" >> $GITHUB_OUTPUT
           echo ::notice::Applying patches to openxla $xla_commit
-          for patch in $(ls ../pjrt-artifacts/openxla/patches/$PATCH_DIRECTORY/*.patch | sort); do
-              echo "Applying patch $patch"
-              git apply "$patch"
-          done
-          # apply patches from upstream-cpu if target = cpu
-          if [ "${{ matrix.pjrt.target }}" = "cpu" ]; then
-            for patch in $(ls ../pjrt-artifacts/openxla/patches/upstream-cpu/*.patch | sort); do
+          if compgen -G "../pjrt-artifacts/openxla/patches/$PATCH_DIRECTORY/*.patch" > /dev/null; then
+            for patch in ../pjrt-artifacts/openxla/patches/$PATCH_DIRECTORY/*.patch; do
                 echo "Applying patch $patch"
                 git apply "$patch"
             done
+          fi
+          # apply patches from upstream-cpu if target = cpu
+          if [ "${{ matrix.pjrt.target }}" = "cpu" ]; then
+            if compgen -G "../pjrt-artifacts/openxla/patches/upstream-cpu/*.patch" > /dev/null; then
+              for patch in ../pjrt-artifacts/openxla/patches/upstream-cpu/*.patch; do
+                  echo "Applying patch $patch"
+                  git apply "$patch"
+              done
+            fi
           fi
 
       - uses: runs-on/snapshot@v1
