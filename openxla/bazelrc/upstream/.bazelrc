@@ -33,7 +33,7 @@ common:remote --grpc_keepalive_time=30s
 common:remote --remote_executor=grpcs://remote.buildbuddy.io
 common:remote --jobs=800
 common:remote --extra_execution_platforms=@llvm//:rbe_platform
-common:remote --spawn_strategy=remote
+# common:remote --spawn_strategy=remote
 
 # Additive-only configs for hermetic/custom cc toolchain flows.
 common:hermetic_clang --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
