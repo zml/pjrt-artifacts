@@ -14,13 +14,13 @@ index d6866a2..7d82e18 100644
  bazel_dep(name = "rules_python", version = "1.8.4")
  bazel_dep(name = "rules_shell", version = "0.6.1")
  bazel_dep(name = "snappy", version = "1.2.1")
-+bazel_dep(name = "toolchains_llvm_bootstrapped", version = "0.5.5")
++bazel_dep(name = "llvm", version = "0.6.7")
  bazel_dep(name = "xxd", version = "9.1.0917")
  bazel_dep(name = "zlib", version = "1.3.1.bcr.5")
  # go/keep-sorted end
  
 +register_toolchains(
-+    "@toolchains_llvm_bootstrapped//toolchain:all",
++    "@llvm//toolchain:all",
 +)
 +
  # Only for compatibility, not directly used, change repo_name to None after upgrading Bazel to latest 7.x

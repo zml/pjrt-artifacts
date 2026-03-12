@@ -32,7 +32,7 @@ common:remote --experimental_remote_execution_keepalive
 common:remote --grpc_keepalive_time=30s
 common:remote --remote_executor=grpcs://remote.buildbuddy.io
 common:remote --jobs=800
-common:remote --extra_execution_platforms=@toolchains_llvm_bootstrapped//:rbe_platform
+common:remote --extra_execution_platforms=@llvm//:rbe_platform
 common:remote --spawn_strategy=remote
 
 # Additive-only configs for hermetic/custom cc toolchain flows.
@@ -46,11 +46,11 @@ common:hermetic_clang --@rules_python//python/config_settings:bootstrap_impl=scr
 
 common:hermetic_linux_x86 --config=hermetic_clang
 common:hermetic_linux_x86 --config=avx_linux
-common:hermetic_linux_x86 --platforms @toolchains_llvm_bootstrapped//platforms:linux_x86_64
+common:hermetic_linux_x86 --platforms @llvm//platforms:linux_x86_64
 common:hermetic_linux_x86 --cpu=k8
 
 common:hermetic_linux_arm64 --config=hermetic_clang
-common:hermetic_linux_arm64 --platforms @toolchains_llvm_bootstrapped//platforms:linux_arm64
+common:hermetic_linux_arm64 --platforms @llvm//platforms:linux_aarch64
 common:hermetic_linux_arm64 --cpu=aarch64
 
 ### OSX
