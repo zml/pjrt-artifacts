@@ -201,7 +201,7 @@ fi
 echo ""
 echo "=== Build commands (from $WORKFLOW_FILE) ==="
 
-matrix_entries=$(yq_read '.jobs["pjrt-artifacts"].strategy.matrix.pjrt[] | [.target,.platform,.config,.bazel_target] | @tsv')
+matrix_entries=$(yq_read '.jobs["pjrt-artifacts"].strategy.matrix.pjrt[] | [.target,.platform,.bazel_opts,.config,.bazel_target] | @tsv')
 
 while IFS=$'\t' read -r target platform config bazel_target; do
   if [[ -z "$target" ]]; then
