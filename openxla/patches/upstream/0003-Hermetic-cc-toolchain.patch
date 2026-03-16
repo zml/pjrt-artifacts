@@ -14,7 +14,7 @@ index d6866a2..7d82e18 100644
  bazel_dep(name = "rules_python", version = "1.8.4")
  bazel_dep(name = "rules_shell", version = "0.6.1")
  bazel_dep(name = "snappy", version = "1.2.1")
-+bazel_dep(name = "llvm", version = "0.6.7")
++bazel_dep(name = "llvm", version = "0.6.8")
  bazel_dep(name = "xxd", version = "9.1.0917")
  bazel_dep(name = "zlib", version = "1.3.1.bcr.5")
  # go/keep-sorted end
@@ -26,3 +26,18 @@ index d6866a2..7d82e18 100644
  # Only for compatibility, not directly used, change repo_name to None after upgrading Bazel to latest 7.x
  bazel_dep(name = "eigen", version = "4.0.0-20241125.bcr.3", repo_name = "DO_NOT_USE_eigen")
  bazel_dep(name = "grpc-java", version = "1.75.0", repo_name = "DO_NOT_USE_grpc_java")
+@@ -173,6 +178,14 @@ use_repo(tsl_extension, "tsl")
+ ### LLVM
+ llvm = use_extension("//third_party/extensions:llvm.bzl", "llvm_extension")
+ use_repo(llvm, "llvm-project")
++
++osx = use_extension("@llvm//extensions:osx.bzl", "osx")
++osx.from_archive(
++    sha256 = "6a4922f89487a96d7054ec6ca5065bfddd9f1d017c74d82f1d79cecf7feb8228",
++    strip_prefix = "Payload/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk",
++    type = "pkg",
++    urls = ["https://swcdn.apple.com/content/downloads/26/44/047-81934-A_28TPKM5SD1/ps6pk6dk4x02vgfa5qsctq6tgf23t5f0w2/CLTools_macOSNMOS_SDK.pkg"],
++)
+ 
+ ### pybind
+ pybind11_internal_configure = use_extension(
