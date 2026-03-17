@@ -18,7 +18,7 @@ on:
 
 env:
   XLA_COMMIT: ${{ inputs.xla_commit || '9e9a0fb13b164c9875349246d1d8616a267c9bf5' }} # main from 2026-03-12
-  ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit || 'eed0c521295c040b4d6f9deecd7cde745dad02a2' }} # rocm-jaxlib-v0.9.0 from 2026-03-09
+  ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit || 'b61fa4053afd43f0a40880b7046382540f698af6' }} # rocm-jaxlib 0.9.1.post1 from 2026-03-13
   TF_ROCM_AMDGPU_TARGETS: "gfx942,gfx950,gfx1100,gfx1101,gfx1150,gfx1151,gfx1200,gfx1201"
   BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
 
