@@ -17,7 +17,7 @@ index 8d7f1384d8..8cd8df86a0 100644
  
 +HERMETIC_CC_TOOLCHAIN_VERSION = "v3.1.1"
 +
-+http_archive(
++tf_http_archive(
 +    name = "hermetic_cc_toolchain",
 +    sha256 = "907745bf91555f77e8234c0b953371e6cac5ba715d1cf12ff641496dd1bce9d1",
 +    urls = [
