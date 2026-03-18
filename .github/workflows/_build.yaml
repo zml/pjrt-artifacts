@@ -52,7 +52,7 @@ jobs:
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
             config: "--config=hermetic_macos_x86 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY --//xla/tsl/framework/contraction:disable_onednn_contraction_kernel=True"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
+            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
             renamed_artifact: libpjrt_cpu.dylib
             runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
             platform: darwin-amd64
