@@ -21,45 +21,11 @@ env:
   BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
 
 jobs:
-  resolve-commits:
-    runs-on: ubuntu-latest
-    outputs:
-      xla_commit: ${{ steps.resolve.outputs.xla_commit }}
-      rocm_xla_commit: ${{ steps.resolve.outputs.rocm_xla_commit }}
-    steps:
-      - name: "Checking out repository"
-        uses: actions/checkout@v4
-        with:
-          path: "pjrt-artifacts"
-
-      - name: Resolve OpenXLA commits
-        id: resolve
-        shell: bash
-        env:
-          INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
-          INPUT_ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
-        run: |
-          set -a
-          source pjrt-artifacts/openxla/commits.env
-          set +a
-
-          if [ -n "$INPUT_XLA_COMMIT" ]; then
-            XLA_COMMIT="$INPUT_XLA_COMMIT"
-          fi
-
-          if [ -n "$INPUT_ROCM_XLA_COMMIT" ]; then
-            ROCM_XLA_COMMIT="$INPUT_ROCM_XLA_COMMIT"
-          fi
-
-          echo "xla_commit=$XLA_COMMIT" >> "$GITHUB_OUTPUT"
-          echo "rocm_xla_commit=$ROCM_XLA_COMMIT" >> "$GITHUB_OUTPUT"
-
   pjrt-artifacts:
-    needs: resolve-commits
     runs-on: ${{ matrix.pjrt.runs_on }}
     env:
-      XLA_COMMIT: ${{ needs.resolve-commits.outputs.xla_commit }}
-      ROCM_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
+      XLA_COMMIT: ${{ inputs.xla_commit }}
+      ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
     strategy:
       fail-fast: false
       matrix:

@@ -7,7 +7,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  resolve-commits:
+    runs-on: ubuntu-latest
+    outputs:
+      xla_commit: ${{ steps.resolve.outputs.xla_commit }}
+      rocm_xla_commit: ${{ steps.resolve.outputs.rocm_xla_commit }}
+    steps:
+      - name: "Checking out repository"
+        uses: actions/checkout@v4
+        with:
+          path: "pjrt-artifacts"
+
+      - name: Resolve OpenXLA commits
+        id: resolve
+        shell: bash
+        run: |
+          set -a
+          source pjrt-artifacts/openxla/commits.env
+          set +a
+          echo "xla_commit=$XLA_COMMIT" >> "$GITHUB_OUTPUT"
+          echo "rocm_xla_commit=$ROCM_XLA_COMMIT" >> "$GITHUB_OUTPUT"
+
   pjrt-artifacts:
+    needs: resolve-commits
     uses: ./.github/workflows/_build.yaml
+    with:
+      xla_commit: ${{ needs.resolve-commits.outputs.xla_commit }}
+      rocm_xla_commit: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
     secrets:
       BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
