@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 WORKFLOW_FILE="$ROOT_DIR/.github/workflows/_build.yaml"
+COMMITS_FILE="$ROOT_DIR/openxla/commits.env"
 PATCH_ROOT="$ROOT_DIR/openxla/patches"
 BUILD_DIR="$ROOT_DIR/build"
 YQ_MODE=""
@@ -29,11 +30,19 @@ require_cmd() {
 }
 
 detect_yq_mode() {
-  if yq e -r '.env.XLA_COMMIT' "$WORKFLOW_FILE" >/dev/null 2>&1; then
+  local version
+  local yq_path
+  local yq_file
+  version=$(yq --version 2>/dev/null || true)
+
+  if [[ "$version" == *"mikefarah/yq"* ]]; then
     YQ_MODE="mikefarah"
     return
   fi
-  if yq -r '.env.XLA_COMMIT' "$WORKFLOW_FILE" >/dev/null 2>&1; then
+
+  yq_path=$(which yq 2>/dev/null || true)
+  yq_file=$(file "$yq_path" 2>/dev/null || true)
+  if [[ "$yq_file" == *"Python"* ]]; then
     YQ_MODE="python"
     return
   fi
@@ -55,28 +64,6 @@ yq_read() {
       exit 1
       ;;
   esac
-}
-
-extract_sha() {
-  local raw="$1"
-  local sha
-  sha=$(echo "$raw" | sed -E "s/.*'([0-9a-f]{40})'.*/\1/")
-  if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
-    echo "$sha"
-  else
-    echo "$raw"
-  fi
-}
-
-get_env_commit() {
-  local key="$1"
-  local raw
-  raw=$(yq_read ".env.${key}")
-  if [[ -z "$raw" || "$raw" == "null" ]]; then
-    echo "";
-    return
-  fi
-  extract_sha "$raw"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -117,18 +104,26 @@ if [[ ! -f "$WORKFLOW_FILE" ]]; then
   exit 1
 fi
 
+if [[ ! -f "$COMMITS_FILE" ]]; then
+  echo "Commits file not found: $COMMITS_FILE" >&2
+  exit 1
+fi
+
 detect_yq_mode
+set -a
+source "$COMMITS_FILE"
+set +a
 
 case "$FORK" in
   upstream)
     REPO="git@github.com:openxla/xla.git"
     PATCH_DIR="upstream"
-    DEFAULT_REF=$(get_env_commit "XLA_COMMIT")
+    DEFAULT_REF="${XLA_COMMIT:-}"
     ;;
   rocm)
     REPO="git@github.com:ROCm/xla.git"
     PATCH_DIR="rocm"
-    DEFAULT_REF=$(get_env_commit "ROCM_XLA_COMMIT")
+    DEFAULT_REF="${ROCM_XLA_COMMIT:-}"
     ;;
   *)
     echo "Invalid --fork value: $FORK (expected upstream|rocm)" >&2
@@ -193,11 +188,6 @@ if [ -f "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}/.bazelrc" ]; then
 fi
 cp -v "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}"/*.bazelrc "$CLONE_DIR/"
 
-rocm_install=$(yq_read '.jobs["pjrt-artifacts"].steps[] | select(.name == "Download ROCm toolchain (not fully hermetic)") | .run')
-if [[ "$rocm_install" == "null" ]]; then
-  rocm_install=""
-fi
-
 echo ""
 echo "=== Build commands (from $WORKFLOW_FILE) ==="
 
@@ -221,12 +211,6 @@ while IFS=$'\t' read -r target platform config bazel_target; do
   fi
   if [[ "$bazel_target" == "null" ]]; then
     bazel_target=""
-  fi
-
-  if [[ "$target" == "rocm" && -n "$rocm_install" ]]; then
-    echo ""
-    echo "# ROCm toolchain install (from workflow)"
-    printf '%s\n' "$rocm_install"
   fi
 
   echo ""

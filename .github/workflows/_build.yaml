@@ -7,24 +7,59 @@ on:
         required: true
     inputs:
       xla_commit:
-        required: false
+        required: true
         type: string
       rocm_xla_commit:
-        required: false
+        required: true
         type: string
       bazel_extra_args:
         required: false
         type: string
 
 env:
-  XLA_COMMIT: ${{ inputs.xla_commit || '9e9a0fb13b164c9875349246d1d8616a267c9bf5' }} # main from 2026-03-12
-  ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit || 'c40171e49b63e8a12498fae2b64f90c2406802ec' }} # rocm-jaxlib-v0.8.0 from 2025-12-30
   TF_ROCM_AMDGPU_TARGETS: "gfx942,gfx950,gfx1100,gfx1101,gfx1150,gfx1151,gfx1200,gfx1201"
   BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
 
 jobs:
+  resolve-commits:
+    runs-on: ubuntu-latest
+    outputs:
+      xla_commit: ${{ steps.resolve.outputs.xla_commit }}
+      rocm_xla_commit: ${{ steps.resolve.outputs.rocm_xla_commit }}
+    steps:
+      - name: "Checking out repository"
+        uses: actions/checkout@v4
+        with:
+          path: "pjrt-artifacts"
+
+      - name: Resolve OpenXLA commits
+        id: resolve
+        shell: bash
+        env:
+          INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
+          INPUT_ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
+        run: |
+          set -a
+          source pjrt-artifacts/openxla/commits.env
+          set +a
+
+          if [ -n "$INPUT_XLA_COMMIT" ]; then
+            XLA_COMMIT="$INPUT_XLA_COMMIT"
+          fi
+
+          if [ -n "$INPUT_ROCM_XLA_COMMIT" ]; then
+            ROCM_XLA_COMMIT="$INPUT_ROCM_XLA_COMMIT"
+          fi
+
+          echo "xla_commit=$XLA_COMMIT" >> "$GITHUB_OUTPUT"
+          echo "rocm_xla_commit=$ROCM_XLA_COMMIT" >> "$GITHUB_OUTPUT"
+
   pjrt-artifacts:
+    needs: resolve-commits
     runs-on: ${{ matrix.pjrt.runs_on }}
+    env:
+      XLA_COMMIT: ${{ needs.resolve-commits.outputs.xla_commit }}
+      ROCM_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
     strategy:
       fail-fast: false
       matrix:
