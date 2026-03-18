@@ -39,6 +39,7 @@ jobs:
           SOURCE: ${{ inputs.source }}
           INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
           INPUT_ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
+          GH_TOKEN: ${{ github.token }}
         working-directory: ./pjrt-artifacts
         run: |
           if [ -n "$INPUT_XLA_COMMIT" ] || [ -n "$INPUT_ROCM_XLA_COMMIT" ]; then
