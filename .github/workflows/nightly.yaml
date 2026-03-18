@@ -60,14 +60,16 @@ jobs:
 
       - name: Commit nightly pins
         env:
+          BASE_REF: ${{ github.ref_name }}
           XLA_COMMIT: ${{ needs.resolve-commits.outputs.xla_commit }}
           ROCM_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin master nightly --tags || true
-          git checkout -B nightly origin/master
+          git fetch origin "$BASE_REF" --tags
+          git fetch origin nightly || true
+          git checkout -B nightly "origin/$BASE_REF"
           cat > openxla/commits.env <<EOF
           XLA_COMMIT=$XLA_COMMIT
           ROCM_XLA_COMMIT=$ROCM_XLA_COMMIT
