@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "*"
+      - "!nightly-*"
 
 concurrency:
   group: ${{ github.workflow_sha }}-${{ github.ref_name }}

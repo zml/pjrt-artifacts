@@ -9,12 +9,91 @@ concurrency:
   group: ${{ github.workflow_sha }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
+  resolve-commits:
+    runs-on: ubuntu-latest
+    outputs:
+      xla_commit: ${{ steps.resolve.outputs.xla_commit }}
+      rocm_xla_commit: ${{ steps.resolve.outputs.rocm_xla_commit }}
+    steps:
+      - name: "Checking out repository"
+        uses: actions/checkout@v4
+        with:
+          path: "pjrt-artifacts"
+
+      - name: Resolve upstream heads
+        id: resolve
+        shell: bash
+        working-directory: ./pjrt-artifacts
+        run: |
+          eval "$(tools/resolve-openxla-heads.sh)"
+          echo "xla_commit=$XLA_COMMIT" >> "$GITHUB_OUTPUT"
+          echo "rocm_xla_commit=$ROCM_XLA_COMMIT" >> "$GITHUB_OUTPUT"
+
   nightly-pjrt-artifacts:
+    needs: resolve-commits
     uses: ./.github/workflows/_build.yaml
     with:
-      xla_commit: main
-      rocm_xla_commit: rocm-jaxlib-v0.8.0
+      xla_commit: ${{ needs.resolve-commits.outputs.xla_commit }}
+      rocm_xla_commit: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
       # bazel_extra_args: "--config=dbg"
     secrets:
       BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
+
+  publish-nightly:
+    needs:
+      - resolve-commits
+      - nightly-pjrt-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checking out repository"
+        uses: actions/checkout@v4
+
+      - name: Compute nightly tag
+        id: nightly-tag
+        shell: bash
+        run: |
+          echo "tag=nightly-$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
+      - name: Commit nightly pins
+        env:
+          XLA_COMMIT: ${{ needs.resolve-commits.outputs.xla_commit }}
+          ROCM_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin master nightly --tags || true
+          git checkout -B nightly origin/master
+          cat > openxla/commits.env <<EOF
+          XLA_COMMIT=$XLA_COMMIT
+          ROCM_XLA_COMMIT=$ROCM_XLA_COMMIT
+          EOF
+          git add openxla/commits.env
+          git commit --allow-empty -m "chore: nightly pins ${{ steps.nightly-tag.outputs.tag }}"
+
+      - name: Push nightly branch and tag
+        shell: bash
+        run: |
+          if git ls-remote --exit-code --tags origin "${{ steps.nightly-tag.outputs.tag }}" >/dev/null 2>&1; then
+            echo "Tag ${{ steps.nightly-tag.outputs.tag }} already exists" >&2
+            exit 1
+          fi
+
+          git tag "${{ steps.nightly-tag.outputs.tag }}"
+          git push --force-with-lease origin HEAD:nightly
+          git push origin "refs/tags/${{ steps.nightly-tag.outputs.tag }}"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Release nightly artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.nightly-tag.outputs.tag }}
+          prerelease: true
+          files: |
+            *.tar.gz/*.tar.gz
