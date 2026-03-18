@@ -23,38 +23,11 @@ permissions:
 
 jobs:
   resolve-commits:
-    runs-on: ubuntu-latest
-    outputs:
-      xla_commit: ${{ steps.resolve.outputs.xla_commit }}
-      rocm_xla_commit: ${{ steps.resolve.outputs.rocm_xla_commit }}
-    steps:
-      - name: "Checking out repository"
-        uses: actions/checkout@v4
-        with:
-          path: "pjrt-artifacts"
-
-      - name: Resolve upstream heads
-        id: resolve
-        shell: bash
-        env:
-          INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
-          INPUT_ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
-        working-directory: ./pjrt-artifacts
-        run: |
-          if [ -n "$INPUT_XLA_COMMIT" ] || [ -n "$INPUT_ROCM_XLA_COMMIT" ]; then
-            if [ -z "$INPUT_XLA_COMMIT" ] || [ -z "$INPUT_ROCM_XLA_COMMIT" ]; then
-              echo "Both xla_commit and rocm_xla_commit must be provided together" >&2
-              exit 1
-            fi
-
-            XLA_COMMIT="$INPUT_XLA_COMMIT"
-            ROCM_XLA_COMMIT="$INPUT_ROCM_XLA_COMMIT"
-          else
-            eval "$(tools/resolve-openxla-heads.sh)"
-          fi
-
-          echo "xla_commit=$XLA_COMMIT" >> "$GITHUB_OUTPUT"
-          echo "rocm_xla_commit=$ROCM_XLA_COMMIT" >> "$GITHUB_OUTPUT"
+    uses: ./.github/workflows/_resolve_openxla_commits.yaml
+    with:
+      source: head
+      xla_commit: ${{ inputs.xla_commit }}
+      rocm_xla_commit: ${{ inputs.rocm_xla_commit }}
 
   nightly-pjrt-artifacts:
     needs: resolve-commits
