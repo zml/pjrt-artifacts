@@ -2,6 +2,15 @@ name: Nightly
 
 on:
   workflow_dispatch:
+    inputs:
+      xla_commit:
+        description: "Explicit openxla/xla commit to build"
+        required: false
+        type: string
+      rocm_xla_commit:
+        description: "Explicit ROCm/xla commit to build"
+        required: false
+        type: string
   schedule:
     - cron: '0 0 * * *'
 
@@ -27,9 +36,23 @@ jobs:
       - name: Resolve upstream heads
         id: resolve
         shell: bash
+        env:
+          INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
+          INPUT_ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
         working-directory: ./pjrt-artifacts
         run: |
-          eval "$(tools/resolve-openxla-heads.sh)"
+          if [ -n "$INPUT_XLA_COMMIT" ] || [ -n "$INPUT_ROCM_XLA_COMMIT" ]; then
+            if [ -z "$INPUT_XLA_COMMIT" ] || [ -z "$INPUT_ROCM_XLA_COMMIT" ]; then
+              echo "Both xla_commit and rocm_xla_commit must be provided together" >&2
+              exit 1
+            fi
+
+            XLA_COMMIT="$INPUT_XLA_COMMIT"
+            ROCM_XLA_COMMIT="$INPUT_ROCM_XLA_COMMIT"
+          else
+            eval "$(tools/resolve-openxla-heads.sh)"
+          fi
+
           echo "xla_commit=$XLA_COMMIT" >> "$GITHUB_OUTPUT"
           echo "rocm_xla_commit=$ROCM_XLA_COMMIT" >> "$GITHUB_OUTPUT"
 
@@ -55,12 +78,19 @@ jobs:
       - name: Compute nightly tag
         id: nightly-tag
         shell: bash
+        env:
+          INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
         run: |
-          echo "tag=nightly-$(date -u +%F)" >> "$GITHUB_OUTPUT"
+          if [ -n "$INPUT_XLA_COMMIT" ]; then
+            echo "tag=manual-$(date -u +%Y-%m-%dT%H-%M-%SZ)" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=nightly-$(date -u +%F)" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Commit nightly pins
         env:
           BASE_REF: ${{ github.ref_name }}
+          INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
           XLA_COMMIT: ${{ needs.resolve-commits.outputs.xla_commit }}
           ROCM_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
         shell: bash
@@ -68,8 +98,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin "$BASE_REF" --tags
-          git fetch origin nightly || true
-          git checkout -B nightly "origin/$BASE_REF"
+
+          if [ -z "$INPUT_XLA_COMMIT" ]; then
+            git fetch origin nightly || true
+            git checkout -B nightly "origin/$BASE_REF"
+          else
+            git checkout -B "${{ steps.nightly-tag.outputs.tag }}" "origin/$BASE_REF"
+          fi
+
           cat > openxla/commits.env <<EOF
           XLA_COMMIT=$XLA_COMMIT
           ROCM_XLA_COMMIT=$ROCM_XLA_COMMIT
@@ -79,6 +115,8 @@ jobs:
 
       - name: Push nightly branch and tag
         shell: bash
+        env:
+          INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
         run: |
           if git ls-remote --exit-code --tags origin "${{ steps.nightly-tag.outputs.tag }}" >/dev/null 2>&1; then
             echo "Tag ${{ steps.nightly-tag.outputs.tag }} already exists" >&2
@@ -86,7 +124,11 @@ jobs:
           fi
 
           git tag "${{ steps.nightly-tag.outputs.tag }}"
-          git push --force-with-lease origin HEAD:nightly
+
+          if [ -z "$INPUT_XLA_COMMIT" ]; then
+            git push --force-with-lease origin HEAD:nightly
+          fi
+
           git push origin "refs/tags/${{ steps.nightly-tag.outputs.tag }}"
 
       - name: Download all artifacts
