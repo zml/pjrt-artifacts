@@ -2,6 +2,15 @@ name: Nightly
 
 on:
   workflow_dispatch:
+    inputs:
+      xla_commit:
+        description: "Explicit openxla/xla commit to build"
+        required: false
+        type: string
+      rocm_xla_commit:
+        description: "Explicit ROCm/xla commit to build"
+        required: false
+        type: string
   schedule:
     - cron: '0 0 * * *'
 
@@ -9,12 +18,99 @@ concurrency:
   group: ${{ github.workflow_sha }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
+  resolve-commits:
+    uses: ./.github/workflows/_resolve_openxla_commits.yaml
+    with:
+      source: head
+      xla_commit: ${{ inputs.xla_commit }}
+      rocm_xla_commit: ${{ inputs.rocm_xla_commit }}
+
   nightly-pjrt-artifacts:
+    needs: resolve-commits
     uses: ./.github/workflows/_build.yaml
     with:
-      xla_commit: main
-      rocm_xla_commit: rocm-jaxlib-v0.8.0
+      xla_commit: ${{ needs.resolve-commits.outputs.xla_commit }}
+      rocm_xla_commit: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
       # bazel_extra_args: "--config=dbg"
     secrets:
       BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
+
+  publish-nightly:
+    needs:
+      - resolve-commits
+      - nightly-pjrt-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checking out repository"
+        uses: actions/checkout@v4
+
+      - name: Compute nightly tag
+        id: nightly-tag
+        shell: bash
+        env:
+          INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
+        run: |
+          if [ -n "$INPUT_XLA_COMMIT" ]; then
+            echo "tag=manual-$(date -u +%Y-%m-%dT%H-%M-%SZ)" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=nightly-$(date -u +%F)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit nightly pins
+        env:
+          BASE_REF: ${{ github.ref_name }}
+          INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
+          XLA_COMMIT: ${{ needs.resolve-commits.outputs.xla_commit }}
+          ROCM_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "$BASE_REF" --tags
+
+          if [ -z "$INPUT_XLA_COMMIT" ]; then
+            git fetch origin nightly || true
+            git checkout -B nightly "origin/$BASE_REF"
+          else
+            git checkout -B "${{ steps.nightly-tag.outputs.tag }}" "origin/$BASE_REF"
+          fi
+
+          cat > openxla/commits.env <<EOF
+          XLA_COMMIT=$XLA_COMMIT
+          ROCM_XLA_COMMIT=$ROCM_XLA_COMMIT
+          EOF
+          git add openxla/commits.env
+          git commit --allow-empty -m "chore: nightly pins ${{ steps.nightly-tag.outputs.tag }}"
+
+      - name: Push nightly branch and tag
+        shell: bash
+        env:
+          INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
+        run: |
+          if git ls-remote --exit-code --tags origin "${{ steps.nightly-tag.outputs.tag }}" >/dev/null 2>&1; then
+            echo "Tag ${{ steps.nightly-tag.outputs.tag }} already exists" >&2
+            exit 1
+          fi
+
+          git tag "${{ steps.nightly-tag.outputs.tag }}"
+
+          if [ -z "$INPUT_XLA_COMMIT" ]; then
+            git push --force-with-lease origin HEAD:nightly
+          fi
+
+          git push origin "refs/tags/${{ steps.nightly-tag.outputs.tag }}"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Release nightly artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.nightly-tag.outputs.tag }}
+          prerelease: true
+          files: |
+            *.tar.gz/*.tar.gz

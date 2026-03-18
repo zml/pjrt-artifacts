@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "*"
+      - "!nightly-*"
 
 concurrency:
   group: ${{ github.workflow_sha }}-${{ github.ref_name }}
@@ -13,8 +14,17 @@ permissions:
   contents: write
 
 jobs:
+  resolve-commits:
+    uses: ./.github/workflows/_resolve_openxla_commits.yaml
+    with:
+      source: pinned
+
   pjrt-artifacts:
+    needs: resolve-commits
     uses: ./.github/workflows/_build.yaml
+    with:
+      xla_commit: ${{ needs.resolve-commits.outputs.xla_commit }}
+      rocm_xla_commit: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
     secrets:
       BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
 

@@ -1,0 +1,70 @@
+name: Resolve OpenXLA Commits
+
+on:
+  workflow_call:
+    inputs:
+      source:
+        required: true
+        type: string
+      xla_commit:
+        required: false
+        type: string
+      rocm_xla_commit:
+        required: false
+        type: string
+    outputs:
+      xla_commit:
+        description: "Resolved openxla/xla commit"
+        value: ${{ jobs.resolve-commits.outputs.xla_commit }}
+      rocm_xla_commit:
+        description: "Resolved ROCm/xla commit"
+        value: ${{ jobs.resolve-commits.outputs.rocm_xla_commit }}
+
+jobs:
+  resolve-commits:
+    runs-on: ubuntu-latest
+    outputs:
+      xla_commit: ${{ steps.resolve.outputs.xla_commit }}
+      rocm_xla_commit: ${{ steps.resolve.outputs.rocm_xla_commit }}
+    steps:
+      - name: "Checking out repository"
+        uses: actions/checkout@v4
+        with:
+          path: "pjrt-artifacts"
+
+      - name: Resolve OpenXLA commits
+        id: resolve
+        shell: bash
+        env:
+          SOURCE: ${{ inputs.source }}
+          INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
+          INPUT_ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
+        working-directory: ./pjrt-artifacts
+        run: |
+          if [ -n "$INPUT_XLA_COMMIT" ] || [ -n "$INPUT_ROCM_XLA_COMMIT" ]; then
+            if [ -z "$INPUT_XLA_COMMIT" ] || [ -z "$INPUT_ROCM_XLA_COMMIT" ]; then
+              echo "Both xla_commit and rocm_xla_commit must be provided together" >&2
+              exit 1
+            fi
+
+            XLA_COMMIT="$INPUT_XLA_COMMIT"
+            ROCM_XLA_COMMIT="$INPUT_ROCM_XLA_COMMIT"
+          else
+            case "$SOURCE" in
+              pinned)
+                set -a
+                source openxla/commits.env
+                set +a
+                ;;
+              head)
+                eval "$(tools/resolve-openxla-heads.sh)"
+                ;;
+              *)
+                echo "Unsupported source: $SOURCE" >&2
+                exit 1
+                ;;
+            esac
+          fi
+
+          echo "xla_commit=$XLA_COMMIT" >> "$GITHUB_OUTPUT"
+          echo "rocm_xla_commit=$ROCM_XLA_COMMIT" >> "$GITHUB_OUTPUT"
