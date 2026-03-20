@@ -3,7 +3,7 @@
 set -euo pipefail
 
 xla_branch="main"
-rocm_xla_branch="rocm-jaxlib-v0.9.1"
+rocm_xla_branch="rocm-jaxlib-v0.9.0"
 
 xla_commit="$(
   gh api "repos/openxla/xla/commits/${xla_branch}" --jq '.sha'
