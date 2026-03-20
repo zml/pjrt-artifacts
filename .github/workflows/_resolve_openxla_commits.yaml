@@ -13,9 +13,15 @@ on:
         required: false
         type: string
     outputs:
+      xla_branch:
+        description: "Resolved openxla/xla branch"
+        value: ${{ jobs.resolve-commits.outputs.xla_branch }}
       xla_commit:
         description: "Resolved openxla/xla commit"
         value: ${{ jobs.resolve-commits.outputs.xla_commit }}
+      rocm_xla_branch:
+        description: "Resolved ROCm/xla branch"
+        value: ${{ jobs.resolve-commits.outputs.rocm_xla_branch }}
       rocm_xla_commit:
         description: "Resolved ROCm/xla commit"
         value: ${{ jobs.resolve-commits.outputs.rocm_xla_commit }}
@@ -24,7 +30,9 @@ jobs:
   resolve-commits:
     runs-on: ubuntu-latest
     outputs:
+      xla_branch: ${{ steps.resolve.outputs.xla_branch }}
       xla_commit: ${{ steps.resolve.outputs.xla_commit }}
+      rocm_xla_branch: ${{ steps.resolve.outputs.rocm_xla_branch }}
       rocm_xla_commit: ${{ steps.resolve.outputs.rocm_xla_commit }}
     steps:
       - name: "Checking out repository"
@@ -48,11 +56,15 @@ jobs:
               exit 1
             fi
 
+            XLA_BRANCH=""
             XLA_COMMIT="$INPUT_XLA_COMMIT"
+            ROCM_XLA_BRANCH=""
             ROCM_XLA_COMMIT="$INPUT_ROCM_XLA_COMMIT"
           else
             case "$SOURCE" in
               pinned)
+                XLA_BRANCH=""
+                ROCM_XLA_BRANCH=""
                 set -a
                 source openxla/commits.env
                 set +a
@@ -67,5 +79,7 @@ jobs:
             esac
           fi
 
+          echo "xla_branch=$XLA_BRANCH" >> "$GITHUB_OUTPUT"
           echo "xla_commit=$XLA_COMMIT" >> "$GITHUB_OUTPUT"
+          echo "rocm_xla_branch=$ROCM_XLA_BRANCH" >> "$GITHUB_OUTPUT"
           echo "rocm_xla_commit=$ROCM_XLA_COMMIT" >> "$GITHUB_OUTPUT"

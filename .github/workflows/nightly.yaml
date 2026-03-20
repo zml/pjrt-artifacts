@@ -111,15 +111,29 @@ jobs:
         id: release-notes
         shell: bash
         env:
+          XLA_BRANCH: ${{ needs.resolve-commits.outputs.xla_branch }}
           XLA_COMMIT: ${{ needs.resolve-commits.outputs.xla_commit }}
+          ROCM_XLA_BRANCH: ${{ needs.resolve-commits.outputs.rocm_xla_branch }}
           ROCM_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
         run: |
+          if [ -n "$XLA_BRANCH" ]; then
+            xla_line="- openxla/xla: $XLA_BRANCH @ $XLA_COMMIT"
+          else
+            xla_line="- openxla/xla: $XLA_COMMIT"
+          fi
+
+          if [ -n "$ROCM_XLA_BRANCH" ]; then
+            rocm_xla_line="- ROCm/xla: $ROCM_XLA_BRANCH @ $ROCM_XLA_COMMIT"
+          else
+            rocm_xla_line="- ROCm/xla: $ROCM_XLA_COMMIT"
+          fi
+
           {
             echo "body<<EOF"
             echo "OpenXLA commits used for this nightly:"
             echo
-            echo "- openxla/xla: $XLA_COMMIT"
-            echo "- ROCm/xla: $ROCM_XLA_COMMIT"
+            echo "$xla_line"
+            echo "$rocm_xla_line"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
