@@ -31,23 +31,26 @@ jobs:
       matrix:
         pjrt:
           - target: cuda
-            config: "--enable_workspace --spawn_strategy=local --config=cuda_nvcc" 
+            config: "--enable_workspace --spawn_strategy=local --config=cuda_nvcc"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+            runs_on:
+              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             config: "--spawn_strategy=local --disk_cache=/home/runner/.cache/bazel-disk --config=rocm_ci"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+            runs_on:
+              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: cpu
             config: "--config=hermetic_macos_arm64 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+            runs_on:
+              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
             renamed_artifact: libpjrt_cpu.dylib
             platform: darwin-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
@@ -55,21 +58,24 @@ jobs:
             config: "--config=hermetic_macos_x86 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY --//xla/tsl/framework/contraction:disable_onednn_contraction_kernel=True"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
             renamed_artifact: libpjrt_cpu.dylib
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+            runs_on:
+              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
             platform: darwin-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
             config: "--config=hermetic_linux_x86 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
             renamed_artifact: libpjrt_cpu.so
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+            runs_on:
+              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
             config: "--config=hermetic_linux_arm64 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
             renamed_artifact: libpjrt_cpu.so
-            runs_on: ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+            runs_on:
+              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
             platform: linux-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
     steps:
@@ -129,8 +135,8 @@ jobs:
           sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" -- 18
           sudo apt update -y
           sudo apt install llvm-18 lld-18 clang-18 libnuma-dev -y
-          wget https://repo.radeon.com/amdgpu-install/latest/ubuntu/jammy/amdgpu-install_7.2.70200-1_all.deb
-          sudo apt install ./amdgpu-install_7.2.70200-1_all.deb -y
+          wget https://repo.radeon.com/amdgpu-install/7.2.1/ubuntu/jammy/amdgpu-install_7.2.1.70201-1_all.deb
+          sudo apt install ./amdgpu-install_7.2.1.70201-1_all.deb -y
           sudo amdgpu-install --usecase=rocm,rocmdev,hiplibsdk -y --no-dkms
 
       - uses: bazel-contrib/setup-bazel@0.15.0
