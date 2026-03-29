@@ -1,0 +1,49 @@
+From 41b9428b4dcecd6ec3cc503504e19617142d4ef0 Mon Sep 17 00:00:00 2001
+From: Guillaume Wenzek <gwenzek@users.noreply.github.com>
+Date: Fri, 12 Sep 2025 16:50:12 +0200
+Subject: [PATCH] propagate memory_space
+
+---
+ xla/pjrt/gpu/se_gpu_pjrt_client.cc      | 2 +-
+ xla/pjrt/pjrt_stream_executor_client.cc | 5 +++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/xla/pjrt/gpu/se_gpu_pjrt_client.cc b/xla/pjrt/gpu/se_gpu_pjrt_client.cc
+index 662a1831c0..6a6763c426 100644
+--- a/xla/pjrt/gpu/se_gpu_pjrt_client.cc
++++ b/xla/pjrt/gpu/se_gpu_pjrt_client.cc
+@@ -1082,7 +1082,7 @@ StreamExecutorGpuClient::MakeCrossHostReceiveBuffers(
+       AllocateDestinationBuffer(shape, device, local_device,
+                                 /*copy_stream=*/stream,
+                                 /*is_uninitialized_create=*/true, this,
+-                                definition_event));
++                                definition_event, /*memory_space=*/nullptr));
+ 
+   // Acquire a hold on the buffer to access the underlying memory.
+   PjRtStreamExecutorBuffer::ScopedHold hold = buffer->GetBufferWithUsageHold();
+diff --git a/xla/pjrt/pjrt_stream_executor_client.cc b/xla/pjrt/pjrt_stream_executor_client.cc
+index d4765249fa..17f305917c 100644
+--- a/xla/pjrt/pjrt_stream_executor_client.cc
++++ b/xla/pjrt/pjrt_stream_executor_client.cc
+@@ -1326,7 +1326,7 @@ PjRtStreamExecutorClient::CreateUninitializedBuffer(
+       AllocateDestinationBuffer(compact_shape, device, local_device,
+                                 /*copy_stream=*/nullptr,
+                                 /*is_uninitialized_create=*/true, this,
+-                                definition_event));
++                                definition_event, memory_space));
+   return std::unique_ptr<PjRtBuffer>(std::move(py_buffer));
+ }
+ 
+@@ -1392,7 +1392,8 @@ PjRtStreamExecutorClient::BufferFromHostLiteral(const LiteralSlice& literal,
+       std::unique_ptr<PjRtStreamExecutorBuffer> py_buffer,
+       AllocateDestinationBuffer(compact_shape, device, local_device,
+                                 local_device->host_to_device_stream(),
+-                                /*is_uninitialized_create=*/false, this));
++                                /*is_uninitialized_create=*/false, this,
++                                /*definition_event=*/nullptr, memory_space));
+ 
+   PjRtStreamExecutorBuffer::ScopedHold device_buffer(
+       py_buffer->GetBufferWithUsageHold());
+-- 
+2.39.5 (Apple Git-154)
+
