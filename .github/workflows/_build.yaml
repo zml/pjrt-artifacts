@@ -43,7 +43,7 @@ jobs:
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
             runs_on:
-              ["runs-on", "cpu=96", "family=m+c", "image=ubuntu22-arm64"]
+              ["runs-on", "cpu=96", "family=m+c", "image=ubuntu22-full-arm64"]
             platform: linux-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           # - target: rocm
