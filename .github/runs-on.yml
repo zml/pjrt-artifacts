@@ -18,6 +18,7 @@ images:
   ubuntu22-arm64:
     platform: "linux"
     arch: "arm64"
+    ami: "ami-080565b2a8d78af19"
     disk: large
     preinstall: |
       #!/bin/bash
