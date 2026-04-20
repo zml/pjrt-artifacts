@@ -35,8 +35,16 @@ jobs:
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
             runs_on:
-              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+              ["runs-on", "cpu=128", "family=m+c", "image=ubuntu22-amd64"]
             platform: linux-amd64
+            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
+          - target: cuda
+            config: "--enable_workspace --spawn_strategy=local --config=cuda_nvcc"
+            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
+            renamed_artifact: libpjrt_cuda.so
+            runs_on:
+              ["runs-on", "cpu=96", "family=m+c", "image=ubuntu22-full-arm64"]
+            platform: linux-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
             config: "--spawn_strategy=local --disk_cache=/home/runner/.cache/bazel-disk --config=rocm_ci"
