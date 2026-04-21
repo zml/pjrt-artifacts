@@ -1,17 +1,26 @@
+From 4643b6956e6b21a7b5468a12020ac057cba0d705 Mon Sep 17 00:00:00 2001
+From: Corentin Kerisit <corentin.kerisit@gmail.com>
+Date: Thu, 12 Mar 2026 11:00:00 +0000
+Subject: [PATCH 3/6] Hermetic cc toolchain
+
+---
+ MODULE.bazel | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
 diff --git a/MODULE.bazel b/MODULE.bazel
-index f74ff90e6f..4907941b84 100644
+index 06d5dd130b..d7c71b5e9a 100644
 --- a/MODULE.bazel
 +++ b/MODULE.bazel
 @@ -6,6 +6,7 @@ module(name = "xla")
  # go/keep-sorted start
- bazel_dep(name = "abseil-cpp", version = "20260107.1", repo_name = "com_google_absl")
+ bazel_dep(name = "abseil-cpp", version = "20250814.1", repo_name = "com_google_absl")
  bazel_dep(name = "abseil-py", version = "2.1.0", repo_name = "absl_py")
 +bazel_dep(name = "apple_support", version = "1.24.4", repo_name = "build_bazel_apple_support")
  bazel_dep(name = "bazel_features", version = "1.36.0")
  bazel_dep(name = "bazel_skylib", version = "1.8.2")
  bazel_dep(name = "boringssl", version = "0.20250818.0")
 @@ -28,10 +29,15 @@ bazel_dep(name = "rules_license", version = "1.0.0")
- bazel_dep(name = "rules_python", version = "1.8.5")
+ bazel_dep(name = "rules_python", version = "1.8.4")
  bazel_dep(name = "rules_shell", version = "0.6.1")
  bazel_dep(name = "snappy", version = "1.2.1")
 +bazel_dep(name = "llvm", version = "0.7.0")
@@ -26,7 +35,7 @@ index f74ff90e6f..4907941b84 100644
  # Only for compatibility, not directly used, change repo_name to None after upgrading Bazel to latest 7.x
  bazel_dep(name = "eigen", version = "4.0.0-20241125.bcr.3", repo_name = "DO_NOT_USE_eigen")
  bazel_dep(name = "grpc-java", version = "1.75.0", repo_name = "DO_NOT_USE_grpc_java")
-@@ -196,6 +202,14 @@ use_repo(tsl_extension, "tsl")
+@@ -194,6 +200,14 @@ use_repo(tsl_extension, "tsl")
  llvm = use_extension("//third_party/extensions:llvm.bzl", "llvm_extension")
  use_repo(llvm, "llvm-project")
  
@@ -41,3 +50,6 @@ index f74ff90e6f..4907941b84 100644
  ### pybind
  pybind11_internal_configure = use_extension(
      "@pybind11_bazel//:internal_configure.bzl",
+-- 
+2.53.0
+

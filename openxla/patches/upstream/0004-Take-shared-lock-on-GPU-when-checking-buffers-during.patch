@@ -1,8 +1,8 @@
-From 591dcd093106de8cfb498237be0aabd79a928054 Mon Sep 17 00:00:00 2001
+From 27d53c52afcd37a4c3845a2d55157f2362e338b9 Mon Sep 17 00:00:00 2001
 From: Benjamin Rabier <benjamin@zml.ai>
 Date: Sun, 19 Apr 2026 10:39:33 +0000
-Subject: [PATCH 4/6] [xla:gpu] Take shared lock on GPU when checking buffers
- during autotune
+Subject: [PATCH 4/6] Take shared lock on GPU when checking buffers during
+ autotune
 
 When compiling multiple programs with PJRT_Client_Compile in parallel we
 see a lot of DelayKernels timing out. From my investigation and
@@ -18,30 +18,31 @@ Taking the shared lock before doing any checks solves almost all the
 problems I've seen with parallel autotuning and also avoids any impact
 on the timings.
 ---
- xla/backends/gpu/autotuner/gpu_profiler.cc | 4 ++++
- 1 file changed, 4 insertions(+)
+ xla/backends/gpu/autotuner/gpu_profiler.cc | 5 +++++
+ 1 file changed, 5 insertions(+)
 
 diff --git a/xla/backends/gpu/autotuner/gpu_profiler.cc b/xla/backends/gpu/autotuner/gpu_profiler.cc
-index a3feb34c0b..ec5d1e0f72 100644
+index 29048e08a8..cff1c69eb6 100644
 --- a/xla/backends/gpu/autotuner/gpu_profiler.cc
 +++ b/xla/backends/gpu/autotuner/gpu_profiler.cc
-@@ -27,6 +27,7 @@ limitations under the License.
+@@ -24,6 +24,8 @@ limitations under the License.
+ #include "absl/memory/memory.h"
  #include "absl/status/status.h"
  #include "absl/status/statusor.h"
- #include "absl/strings/str_format.h"
++#include "absl/strings/str_format.h"
 +#include "absl/synchronization/mutex.h"
  #include "absl/time/time.h"
  #include "absl/types/span.h"
  #include "xla/backends/autotuner/profiler.h"
-@@ -41,6 +42,7 @@ limitations under the License.
- #include "xla/service/gpu/backend_configs.pb.h"
+@@ -33,6 +35,7 @@ limitations under the License.
+ #include "xla/service/executable.h"
+ #include "xla/service/gpu/autotuning/redzone_buffers.h"
  #include "xla/service/gpu/gpu_executable_run_options.h"
- #include "xla/service/gpu/matmul_utils.h"
 +#include "xla/service/gpu/stream_executor_util.h"
  #include "xla/service/maybe_owning_device_address.h"
  #include "xla/service/service_executable_run_options.h"
  #include "xla/service/shaped_buffer.h"
-@@ -314,6 +316,7 @@ absl::Status GpuProfiler::CheckInputBuffers(InputBuffers& buffers) {
+@@ -192,6 +195,7 @@ absl::Status GpuProfiler::CheckInputBuffers(InputBuffers& buffers) {
    if (options_.redzone_padding_bytes == 0) {
      return absl::OkStatus();
    }
@@ -49,7 +50,7 @@ index a3feb34c0b..ec5d1e0f72 100644
    const GpuInputBuffers& gpu_buffers =
        tsl::down_cast<const GpuInputBuffers&>(buffers);
    const RedzoneBuffers& rz_buffers = gpu_buffers.redzone_buffers;
-@@ -329,6 +332,7 @@ absl::Status GpuProfiler::CheckInputBuffers(InputBuffers& buffers) {
+@@ -207,6 +211,7 @@ absl::Status GpuProfiler::CheckInputBuffers(InputBuffers& buffers) {
  absl::Status GpuProfiler::CheckOutputBuffer(ScopedShapedBuffer& output,
                                              ScopedShapedBuffer& reference,
                                              float rtol) {
@@ -58,5 +59,5 @@ index a3feb34c0b..ec5d1e0f72 100644
        reference.on_device_shape(),
        [&](const Shape& subshape, const ShapeIndex& index) -> absl::Status {
 -- 
-2.43.0
+2.53.0
 
