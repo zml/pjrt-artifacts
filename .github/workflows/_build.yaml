@@ -31,7 +31,7 @@ jobs:
       matrix:
         pjrt:
           - target: cuda
-            config: "--enable_workspace --spawn_strategy=local --config=cuda_nvcc"
+            config: "--enable_workspace --spawn_strategy=local --config=cuda_nvcc --config=baseline_x86_64"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
             runs_on:
@@ -39,7 +39,7 @@ jobs:
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: cuda
-            config: "--enable_workspace --spawn_strategy=local --config=cuda_nvcc"
+            config: "--enable_workspace --spawn_strategy=local --config=cuda_nvcc --config=baseline_arm64"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_cuda.so
             runs_on:
@@ -47,7 +47,7 @@ jobs:
             platform: linux-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
-            config: "--spawn_strategy=local --disk_cache=/home/runner/.cache/bazel-disk --config=rocm_ci"
+            config: "--spawn_strategy=local --disk_cache=/home/runner/.cache/bazel-disk --config=rocm_ci --config=baseline_x86_64"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
             runs_on:
@@ -71,7 +71,7 @@ jobs:
             platform: darwin-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
-            config: "--config=hermetic_linux_x86 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
+            config: "--config=hermetic_linux_x86 --config=baseline_x86 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
             renamed_artifact: libpjrt_cpu.so
             runs_on:
@@ -79,7 +79,7 @@ jobs:
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: cpu
-            config: "--config=hermetic_linux_arm64 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
+            config: "--config=hermetic_linux_arm64 --config=baseline_arm64 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
             renamed_artifact: libpjrt_cpu.so
             runs_on:
