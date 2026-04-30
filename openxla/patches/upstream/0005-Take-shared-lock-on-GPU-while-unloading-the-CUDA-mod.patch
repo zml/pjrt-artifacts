@@ -1,7 +1,7 @@
-From 5992643d5f8bdcbc9de58c83857c83b29c86957b Mon Sep 17 00:00:00 2001
+From 9fe67621cea76236a69c4f20034c42b43f22769d Mon Sep 17 00:00:00 2001
 From: Benjamin Rabier <benjamin@zml.ai>
 Date: Sun, 19 Apr 2026 17:19:36 +0000
-Subject: [PATCH 5/6] Take shared lock on GPU while unloading the CUDA modules
+Subject: [PATCH 5/7] Take shared lock on GPU while unloading the CUDA modules
 
 This is an improvement over the previous commit regarding the parallel
 compilation with PJRT_Client_Compile. Similar to `cuMemcpyDtoHAsync_`
@@ -14,10 +14,10 @@ also blocked now. It's only unblocked by the DelayKernel timing out.
  2 files changed, 40 insertions(+), 2 deletions(-)
 
 diff --git a/xla/service/gpu/gpu_executable.cc b/xla/service/gpu/gpu_executable.cc
-index ee40b5fea0..5a6059b571 100644
+index e3a7d94a51..9569a1de4b 100644
 --- a/xla/service/gpu/gpu_executable.cc
 +++ b/xla/service/gpu/gpu_executable.cc
-@@ -180,7 +180,7 @@ class GpuExecutableThunkPassBufferAllocator : public ThunkPassBufferAllocator {
+@@ -181,7 +181,7 @@ class GpuExecutableThunkPassBufferAllocator : public ThunkPassBufferAllocator {
        BufferAllocation::Index start_idx)
        : next_idx_(start_idx) {}
  
@@ -26,7 +26,7 @@ index ee40b5fea0..5a6059b571 100644
        int64_t size) override {
      allocations_.push_back(BufferAllocation(next_idx_++, size, /*color=*/0));
      return &allocations_.back();
-@@ -367,6 +367,31 @@ GpuExecutable::GpuExecutable(
+@@ -462,6 +462,31 @@ GpuExecutable::GpuExecutable(
  }
  
  GpuExecutable::~GpuExecutable() {
@@ -58,7 +58,7 @@ index ee40b5fea0..5a6059b571 100644
    if (has_module() && enable_debug_info_manager_) {
      XlaDebugInfoManager::Get()->UnregisterModule(module().unique_id());
    }
-@@ -1104,6 +1129,13 @@ absl::StatusOr<ExecutionOutput> GpuExecutable::ExecuteAsyncOnStreamImpl(
+@@ -1255,6 +1280,13 @@ absl::StatusOr<ExecutionOutput> GpuExecutable::ExecuteAsyncOnStreamImpl(
      ASSIGN_OR_RETURN(globals, ResolveConstantGlobals(run_options->stream()));
    }
  
@@ -73,10 +73,10 @@ index ee40b5fea0..5a6059b571 100644
    // the ordinal of the logical devices (e.g., virtual GPUs). If it is not
    // provided, the ordinals of the logical and physical devices are the same.
 diff --git a/xla/service/gpu/gpu_executable.h b/xla/service/gpu/gpu_executable.h
-index e4aef7e73c..ea19dafc58 100644
+index 105ad2273c..449936d3b0 100644
 --- a/xla/service/gpu/gpu_executable.h
 +++ b/xla/service/gpu/gpu_executable.h
-@@ -191,7 +191,7 @@ class GpuExecutable : public Executable {
+@@ -196,7 +196,7 @@ class GpuExecutable : public Executable {
        const ServiceExecutableRunOptions* run_options,
        VariantArguments arguments);
  
@@ -85,7 +85,7 @@ index e4aef7e73c..ea19dafc58 100644
        const override {
      return allocation_ptrs_;
    }
-@@ -372,6 +372,12 @@ class GpuExecutable : public Executable {
+@@ -422,6 +422,12 @@ class GpuExecutable : public Executable {
    // executable is destroyed.
    absl::flat_hash_map<stream_executor::StreamExecutor*, se::ScopedModuleHandle>
        module_handles_ ABSL_GUARDED_BY(module_handle_mutex_);

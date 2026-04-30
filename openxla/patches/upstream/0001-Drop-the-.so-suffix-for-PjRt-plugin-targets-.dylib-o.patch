@@ -1,7 +1,7 @@
-From f7bd94e52488935fd4a81b707011b12ffcea702c Mon Sep 17 00:00:00 2001
+From 62241e96347b064dd01dd687ca86ac9b7a708f5d Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Wed, 5 Nov 2025 14:45:20 +0100
-Subject: [PATCH 1/6] Drop the .so suffix for PjRt plugin targets (.dylib on
+Subject: [PATCH 1/7] Drop the .so suffix for PjRt plugin targets (.dylib on
  macOS)
 
 ---
@@ -9,10 +9,10 @@ Subject: [PATCH 1/6] Drop the .so suffix for PjRt plugin targets (.dylib on
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/xla/pjrt/c/BUILD b/xla/pjrt/c/BUILD
-index 75f7b1ab7c..7ea8e38dff 100644
+index e620ad271a..1fad146c11 100644
 --- a/xla/pjrt/c/BUILD
 +++ b/xla/pjrt/c/BUILD
-@@ -513,7 +513,7 @@ cc_library(
+@@ -545,7 +545,7 @@ cc_library(
  
  # PJRT CPU plugin.
  xla_cc_binary(
@@ -21,7 +21,7 @@ index 75f7b1ab7c..7ea8e38dff 100644
      additional_linker_inputs = [
          ":pjrt_c_api_cpu_version_script.lds",
      ],
-@@ -627,7 +627,7 @@ cc_library(
+@@ -662,7 +662,7 @@ cc_library(
  
  # PJRT GPU plugin. Can be configured to be built for CUDA or ROCM.
  xla_cc_binary(
