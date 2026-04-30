@@ -1,8 +1,8 @@
-From 79764aaadbe055f5a1742d9450c6cc04e23253ee Mon Sep 17 00:00:00 2001
+From 21e82a8cfd4f802c11b140547e4fb89d994f6d3f Mon Sep 17 00:00:00 2001
 From: Benjamin Rabier <benjamin@zml.ai>
 Date: Wed, 29 Apr 2026 07:13:21 +0000
-Subject: [PATCH] [XLA:GPU] Add host execute buffer uses and disable transfer
- buffer coalescing
+Subject: [PATCH 7/7] Add host execute buffer uses and disable transfer buffer
+ coalescing
 
 Add explicit result buffer uses to `HostExecuteStartThunk` and
 `HostExecuteDoneThunk` so host-execute dependencies are reflected in
@@ -42,10 +42,10 @@ index cc3d66dbff..c5ec2e6f4b 100644
   private:
    stream_executor::StreamExecutor* executor_;
 diff --git a/xla/backends/gpu/runtime/host_execute_thunk.cc b/xla/backends/gpu/runtime/host_execute_thunk.cc
-index 31e2ca87e8..7d026897f9 100644
+index caae0f03c5..54a6001458 100644
 --- a/xla/backends/gpu/runtime/host_execute_thunk.cc
 +++ b/xla/backends/gpu/runtime/host_execute_thunk.cc
-@@ -440,6 +440,15 @@ HostExecuteStartThunk::HostExecuteStartThunk(
+@@ -438,6 +438,15 @@ HostExecuteStartThunk::HostExecuteStartThunk(
  
  std::string HostExecuteStartThunk::ToString(int indent) const { return ""; }
  
@@ -61,13 +61,13 @@ index 31e2ca87e8..7d026897f9 100644
  absl::StatusOr<ThunkProto> HostExecuteStartThunk::ToProto() const {
    ThunkProto proto;
    *proto.mutable_thunk_info() = thunk_info().ToProto();
-@@ -629,14 +638,25 @@ HostExecuteStartThunk::GetAsyncEventsUniqueId() const {
+@@ -627,14 +636,25 @@ HostExecuteStartThunk::GetAsyncEventsUniqueId() const {
  
  HostExecuteDoneThunk::HostExecuteDoneThunk(
      Thunk::ThunkInfo thunk_info,
 +    absl::InlinedVector<HostExecuteStartThunk::SliceAndShape, 4> results,
      std::shared_ptr<HostExecuteAsyncEvents> async_events)
-     : Thunk(Thunk::Kind::kHostExecuteDone, std::move(thunk_info)),
+     : HostAsyncThunk(Thunk::Kind::kHostExecuteDone, std::move(thunk_info)),
 +      results_(std::move(results)),
        async_events_(std::move(async_events)) {
    CHECK(async_events_) << "async_events must not be null";
@@ -87,7 +87,7 @@ index 31e2ca87e8..7d026897f9 100644
  absl::StatusOr<ThunkProto> HostExecuteDoneThunk::ToProto() const {
    ThunkProto proto;
    *proto.mutable_thunk_info() = thunk_info().ToProto();
-@@ -650,6 +670,12 @@ absl::StatusOr<ThunkProto> HostExecuteDoneThunk::ToProto() const {
+@@ -648,6 +668,12 @@ absl::StatusOr<ThunkProto> HostExecuteDoneThunk::ToProto() const {
  
    host_execute_done_thunk_proto->set_async_events_unique_id(
        async_events_unique_id.value().value());
@@ -100,16 +100,16 @@ index 31e2ca87e8..7d026897f9 100644
  
    return proto;
  }
-@@ -659,13 +685,23 @@ HostExecuteDoneThunk::FromProto(
+@@ -657,13 +683,23 @@ HostExecuteDoneThunk::FromProto(
      ThunkInfo thunk_info, const HostExecuteDoneThunkProto& proto,
      absl::Span<const BufferAllocation> buffer_allocations,
      HostExecuteAsyncEventsMap& async_events_map) {
 +  absl::InlinedVector<HostExecuteStartThunk::SliceAndShape, 4> results;
 +  results.reserve(proto.results_size());
 +  for (const ShapedSliceProto& result_proto : proto.results()) {
-+    TF_ASSIGN_OR_RETURN(auto slice, BufferAllocation::Slice::FromProto(
-+                                        result_proto.slice(),
-+                                        buffer_allocations));
++    TF_ASSIGN_OR_RETURN(auto slice,
++                        BufferAllocation::Slice::FromProto(result_proto.slice(),
++                                                           buffer_allocations));
 +    TF_ASSIGN_OR_RETURN(auto shape, Shape::FromProto(result_proto.shape()));
 +    results.push_back({slice, shape});
 +  }
@@ -126,10 +126,10 @@ index 31e2ca87e8..7d026897f9 100644
  }
  
 diff --git a/xla/backends/gpu/runtime/host_execute_thunk.h b/xla/backends/gpu/runtime/host_execute_thunk.h
-index ee1585fdf6..01382e374a 100644
+index 6f22b9bc8c..162a046492 100644
 --- a/xla/backends/gpu/runtime/host_execute_thunk.h
 +++ b/xla/backends/gpu/runtime/host_execute_thunk.h
-@@ -112,6 +112,8 @@ class HostExecuteStartThunk : public Thunk {
+@@ -113,6 +113,8 @@ class HostExecuteStartThunk : public HostAsyncThunk {
    absl::Status Initialize(const InitializeParams& params) override;
    absl::Status ExecuteOnStream(const ExecuteParams& params) override;
  
@@ -138,7 +138,7 @@ index ee1585fdf6..01382e374a 100644
    // Returns the async events for the host offloading execution. This is
    // intended to be shared with the corresponding HostExecuteDoneThunk.
    std::shared_ptr<HostExecuteAsyncEvents> async_events() const {
-@@ -151,6 +153,7 @@ class HostExecuteDoneThunk : public Thunk {
+@@ -152,6 +154,7 @@ class HostExecuteDoneThunk : public HostAsyncThunk {
   public:
    explicit HostExecuteDoneThunk(
        Thunk::ThunkInfo thunk_info,
@@ -146,7 +146,7 @@ index ee1585fdf6..01382e374a 100644
        std::shared_ptr<HostExecuteAsyncEvents> async_events);
    HostExecuteDoneThunk(const HostExecuteDoneThunk&) = delete;
    HostExecuteDoneThunk& operator=(const HostExecuteDoneThunk&) = delete;
-@@ -167,9 +170,12 @@ class HostExecuteDoneThunk : public Thunk {
+@@ -168,9 +171,12 @@ class HostExecuteDoneThunk : public HostAsyncThunk {
    absl::Status Initialize(const InitializeParams& params) override;
    absl::Status ExecuteOnStream(const ExecuteParams& params) override;
  
@@ -160,10 +160,10 @@ index ee1585fdf6..01382e374a 100644
  };
  
 diff --git a/xla/backends/gpu/runtime/thunk.proto b/xla/backends/gpu/runtime/thunk.proto
-index 5ac9d93549..9fd3a451fc 100644
+index f5087202c2..2709183038 100644
 --- a/xla/backends/gpu/runtime/thunk.proto
 +++ b/xla/backends/gpu/runtime/thunk.proto
-@@ -175,6 +175,7 @@ message HostExecuteStartThunkProto {
+@@ -171,6 +171,7 @@ message HostExecuteStartThunkProto {
  
  message HostExecuteDoneThunkProto {
    uint64 async_events_unique_id = 1;
@@ -172,10 +172,10 @@ index 5ac9d93549..9fd3a451fc 100644
  
  message DynamicSliceThunkProto {
 diff --git a/xla/service/gpu/thunk_emitter.cc b/xla/service/gpu/thunk_emitter.cc
-index 878e00771d..5e4def0141 100644
+index e0b08f78cb..56abde3ab1 100644
 --- a/xla/service/gpu/thunk_emitter.cc
 +++ b/xla/service/gpu/thunk_emitter.cc
-@@ -2313,10 +2313,20 @@ absl::StatusOr<ThunkSequence> ThunkEmitter::EmitAsyncDone(
+@@ -2486,10 +2486,20 @@ absl::StatusOr<ThunkSequence> ThunkEmitter::EmitAsyncDone(
          auto async_events =
              GetInstructionToHostExecuteAsyncEvents().at(custom_call);
  
@@ -198,5 +198,5 @@ index 878e00771d..5e4def0141 100644
        }
        auto it = hlo_async_executions_.find(wrapped);
 -- 
-2.43.0
+2.53.0
 

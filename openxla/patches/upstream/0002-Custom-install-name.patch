@@ -1,17 +1,17 @@
-From 8f21968b6a908858f9ca6797af181f88af545752 Mon Sep 17 00:00:00 2001
+From 91d5121cb7876a81cea72684d1deee5790439abe Mon Sep 17 00:00:00 2001
 From: Corentin Kerisit <corentin.kerisit@gmail.com>
 Date: Thu, 12 Mar 2026 11:00:00 +0000
-Subject: [PATCH 2/6] Custom install name
+Subject: [PATCH 2/7] Custom install name
 
 ---
  xla/pjrt/c/BUILD | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/xla/pjrt/c/BUILD b/xla/pjrt/c/BUILD
-index 7ea8e38dff..bf5a8c886e 100644
+index 1fad146c11..a16bbd6d5e 100644
 --- a/xla/pjrt/c/BUILD
 +++ b/xla/pjrt/c/BUILD
-@@ -520,7 +520,7 @@ xla_cc_binary(
+@@ -552,7 +552,7 @@ xla_cc_binary(
      linkopts = if_macos(
          [
              "-Wl,-exported_symbol,_GetPjrtApi",
