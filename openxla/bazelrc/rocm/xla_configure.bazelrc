@@ -10,5 +10,5 @@ build --test_tag_filters -no_oss
 test  --build_tag_filters -no_oss
 test  --test_tag_filters -no_oss
 
-common:baseline_arm64 --copt=-march=armv8.1-a # LSE atomics, server baseline ~2018+
-common:baseline_x86_64   --copt=-march=x86-64-v3 # AVX2/FMA/BMI1/BMI2, Haswell-class servers+
+common:baseline_arm64   --copt=-march=armv8.2-a # LSE atomics, server baseline ~2018+
+common:baseline_x86_64  --copt=-march=x86-64-v3 # AVX2/FMA/BMI1/BMI2, Haswell-class servers+
