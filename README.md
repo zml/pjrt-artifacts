@@ -14,6 +14,12 @@ This repo mirrors the GitHub Actions workflow for OpenXLA builds. Use the setup 
 	./setup.sh --fork rocm
 	```
 
+	For oneAPI:
+
+	```bash
+	./setup.sh --fork oneapi
+	```
+
 	Optional overrides:
 	- `--ref <git-ref-or-sha>` to override the pinned commit.
 	- `--dir <clone-dir>` to change the clone location.
