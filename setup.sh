@@ -15,7 +15,7 @@ TARGET_FILTER=""
 
 usage() {
   cat <<'USAGE'
-Usage: setup.sh [--fork upstream|rocm] [--ref <git-ref-or-sha>] [--dir <clone-dir>] [--target cpu|cuda|rocm]
+Usage: setup.sh [--fork upstream|rocm|oneapi] [--ref <git-ref-or-sha>] [--dir <clone-dir>] [--target cpu|cuda|rocm|oneapi]
 
 Clones the requested OpenXLA fork, checks out the pinned commit (or --ref),
 applies patches, and prints build commands from the workflow matrix.
@@ -125,8 +125,14 @@ case "$FORK" in
     PATCH_DIR="rocm"
     DEFAULT_REF="${ROCM_XLA_COMMIT:-}"
     ;;
+  oneapi)
+    REPO="git@github.com:zml/xla.git"
+    PATCH_DIR=""
+    DEFAULT_REF="${ONEAPI_XLA_COMMIT:-}"
+    TARGET_FILTER="${TARGET_FILTER:-oneapi}"
+    ;;
   *)
-    echo "Invalid --fork value: $FORK (expected upstream|rocm)" >&2
+    echo "Invalid --fork value: $FORK (expected upstream|rocm|oneapi)" >&2
     exit 2
     ;;
  esac
@@ -153,16 +159,18 @@ fi
 echo "Checking out $CHECKOUT_REF"
 git -C "$CLONE_DIR" checkout "$CHECKOUT_REF"
 
-if [[ ! -d "$PATCH_ROOT/$PATCH_DIR" ]]; then
+if [[ -n "$PATCH_DIR" && ! -d "$PATCH_ROOT/$PATCH_DIR" ]]; then
   echo "Patch directory not found: $PATCH_ROOT/$PATCH_DIR" >&2
   exit 1
 fi
 
-echo "Applying patches from $PATCH_ROOT/$PATCH_DIR"
-for patch in $(ls "$PATCH_ROOT/$PATCH_DIR"/*.patch | sort); do
-  echo "Applying patch $patch"
-  git -C "$CLONE_DIR" apply "$patch"
-done
+if [[ -n "$PATCH_DIR" ]]; then
+  echo "Applying patches from $PATCH_ROOT/$PATCH_DIR"
+  for patch in $(ls "$PATCH_ROOT/$PATCH_DIR"/*.patch | sort); do
+    echo "Applying patch $patch"
+    git -C "$CLONE_DIR" apply "$patch"
+  done
+fi
 
 cpu_patch_dir=""
 if [[ -d "$PATCH_ROOT/upstream-cpu" ]]; then
@@ -182,11 +190,13 @@ if [[ "$FORK" == "rocm" ]]; then
   bazelrc_dir="rocm"
 fi
 
-echo "Copying bazelrc files from $ROOT_DIR/openxla/bazelrc/$bazelrc_dir"
-if [ -f "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}/.bazelrc" ]; then
-  cp -v "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}/.bazelrc" "$CLONE_DIR/"
+if [[ "$FORK" != "oneapi" ]]; then
+  echo "Copying bazelrc files from $ROOT_DIR/openxla/bazelrc/$bazelrc_dir"
+  if [ -f "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}/.bazelrc" ]; then
+    cp -v "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}/.bazelrc" "$CLONE_DIR/"
+  fi
+  cp -v "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}"/*.bazelrc "$CLONE_DIR/"
 fi
-cp -v "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}"/*.bazelrc "$CLONE_DIR/"
 
 echo ""
 echo "=== Build commands (from $WORKFLOW_FILE) ==="
@@ -203,7 +213,13 @@ while IFS=$'\t' read -r target platform config bazel_target; do
   if [[ "$FORK" == "rocm" && "$target" != "rocm" ]]; then
     continue
   fi
+  if [[ "$FORK" == "oneapi" && "$target" != "oneapi" ]]; then
+    continue
+  fi
   if [[ "$FORK" == "upstream" && "$target" == "rocm" ]]; then
+    continue
+  fi
+  if [[ "$FORK" == "upstream" && "$target" == "oneapi" ]]; then
     continue
   fi
   if [[ "$config" == "null" ]]; then
@@ -216,6 +232,8 @@ while IFS=$'\t' read -r target platform config bazel_target; do
   echo ""
   if [[ "$target" == "rocm" ]]; then
     echo "# Target: $target | Platform: $platform | Fork: rocm"
+  elif [[ "$target" == "oneapi" ]]; then
+    echo "# Target: $target | Platform: $platform | Fork: oneapi"
   else
     echo "# Target: $target | Platform: $platform | Fork: upstream"
   fi
