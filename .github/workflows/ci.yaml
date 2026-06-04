@@ -19,5 +19,7 @@ jobs:
       xla_commit: ${{ needs.resolve-commits.outputs.xla_commit }}
       rocm_xla_commit: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
       oneapi_xla_commit: ${{ needs.resolve-commits.outputs.oneapi_xla_commit }}
+      musa_xla_commit: ${{ needs.resolve-commits.outputs.musa_xla_commit }}
     secrets:
       BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
+      MUSA_DISTRO_URL: ${{ secrets.MUSA_DISTRO_URL }}

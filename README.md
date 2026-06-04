@@ -20,6 +20,14 @@ This repo mirrors the GitHub Actions workflow for OpenXLA builds. Use the setup 
 	./setup.sh --fork oneapi
 	```
 
+	For MUSA:
+
+	```bash
+	./setup.sh --fork musa --target musa
+	```
+
+	MUSA builds require `MUSA_DISTRO_URL` and `MUSA_DISTRO_HASH` so the SDK archive is supplied explicitly instead of being checked into this repository.
+
 	Optional overrides:
 	- `--ref <git-ref-or-sha>` to override the pinned commit.
 	- `--dir <clone-dir>` to change the clone location.
