@@ -15,7 +15,7 @@ TARGET_FILTER=""
 
 usage() {
   cat <<'USAGE'
-Usage: setup.sh [--fork upstream|rocm|oneapi] [--ref <git-ref-or-sha>] [--dir <clone-dir>] [--target cpu|cuda|rocm|oneapi]
+Usage: setup.sh [--fork upstream|rocm|oneapi|musa] [--ref <git-ref-or-sha>] [--dir <clone-dir>] [--target cpu|cuda|rocm|oneapi|musa]
 
 Clones the requested OpenXLA fork, checks out the pinned commit (or --ref),
 applies patches, and prints build commands from the workflow matrix.
@@ -131,8 +131,14 @@ case "$FORK" in
     DEFAULT_REF="${ONEAPI_XLA_COMMIT:-}"
     TARGET_FILTER="${TARGET_FILTER:-oneapi}"
     ;;
+  musa)
+    REPO="git@github.com:zml/xla.git"
+    PATCH_DIR=""
+    DEFAULT_REF="${MUSA_XLA_COMMIT:-}"
+    TARGET_FILTER="${TARGET_FILTER:-musa}"
+    ;;
   *)
-    echo "Invalid --fork value: $FORK (expected upstream|rocm|oneapi)" >&2
+    echo "Invalid --fork value: $FORK (expected upstream|rocm|oneapi|musa)" >&2
     exit 2
     ;;
  esac
@@ -190,7 +196,7 @@ if [[ "$FORK" == "rocm" ]]; then
   bazelrc_dir="rocm"
 fi
 
-if [[ "$FORK" != "oneapi" ]]; then
+if [[ "$FORK" != "oneapi" && "$FORK" != "musa" ]]; then
   echo "Copying bazelrc files from $ROOT_DIR/openxla/bazelrc/$bazelrc_dir"
   if [ -f "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}/.bazelrc" ]; then
     cp -v "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}/.bazelrc" "$CLONE_DIR/"
@@ -201,7 +207,7 @@ fi
 echo ""
 echo "=== Build commands (from $WORKFLOW_FILE) ==="
 
-matrix_entries=$(yq_read '.jobs["pjrt-artifacts"].strategy.matrix.pjrt[] | [.target,.platform,.bazel_opts,.config,.bazel_target] | @tsv')
+matrix_entries=$(yq_read '.jobs["pjrt-artifacts"].strategy.matrix.pjrt[] | [.target,.platform,.config,.bazel_target] | @tsv')
 
 while IFS=$'\t' read -r target platform config bazel_target; do
   if [[ -z "$target" ]]; then
@@ -216,10 +222,16 @@ while IFS=$'\t' read -r target platform config bazel_target; do
   if [[ "$FORK" == "oneapi" && "$target" != "oneapi" ]]; then
     continue
   fi
+  if [[ "$FORK" == "musa" && "$target" != "musa" ]]; then
+    continue
+  fi
   if [[ "$FORK" == "upstream" && "$target" == "rocm" ]]; then
     continue
   fi
   if [[ "$FORK" == "upstream" && "$target" == "oneapi" ]]; then
+    continue
+  fi
+  if [[ "$FORK" == "upstream" && "$target" == "musa" ]]; then
     continue
   fi
   if [[ "$config" == "null" ]]; then
@@ -234,6 +246,8 @@ while IFS=$'\t' read -r target platform config bazel_target; do
     echo "# Target: $target | Platform: $platform | Fork: rocm"
   elif [[ "$target" == "oneapi" ]]; then
     echo "# Target: $target | Platform: $platform | Fork: oneapi"
+  elif [[ "$target" == "musa" ]]; then
+    echo "# Target: $target | Platform: $platform | Fork: musa"
   else
     echo "# Target: $target | Platform: $platform | Fork: upstream"
   fi
@@ -246,6 +260,10 @@ while IFS=$'\t' read -r target platform config bazel_target; do
     echo "export USE_BAZEL_VERSION=8.5.1"
   else
     echo "export USE_BAZEL_VERSION=7.7.0"
+  fi
+  if [[ "$target" == "musa" ]]; then
+    echo 'export MUSA_VERSION="${MUSA_VERSION:-rc3.1.1}"'
+    echo 'export MUSA_GPU_ARCHS="${MUSA_GPU_ARCHS:-mp_21}"'
   fi
   echo "bazel build $config $bazel_target"
 

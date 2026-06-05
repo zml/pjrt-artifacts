@@ -15,6 +15,10 @@ on:
         description: "Explicit zml/xla oneAPI commit to build"
         required: false
         type: string
+      musa_xla_commit:
+        description: "Explicit zml/xla MUSA commit to build"
+        required: false
+        type: string
   schedule:
     - cron: '0 0 * * *'
 
@@ -33,6 +37,7 @@ jobs:
       xla_commit: ${{ inputs.xla_commit }}
       rocm_xla_commit: ${{ inputs.rocm_xla_commit }}
       oneapi_xla_commit: ${{ inputs.oneapi_xla_commit }}
+      musa_xla_commit: ${{ inputs.musa_xla_commit }}
 
   nightly-pjrt-artifacts:
     needs: resolve-commits
@@ -41,6 +46,7 @@ jobs:
       xla_commit: ${{ needs.resolve-commits.outputs.xla_commit }}
       rocm_xla_commit: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
       oneapi_xla_commit: ${{ needs.resolve-commits.outputs.oneapi_xla_commit }}
+      musa_xla_commit: ${{ needs.resolve-commits.outputs.musa_xla_commit }}
       # bazel_extra_args: "--config=dbg"
     secrets:
       BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
@@ -59,8 +65,11 @@ jobs:
         shell: bash
         env:
           INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
+          INPUT_ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
+          INPUT_ONEAPI_XLA_COMMIT: ${{ inputs.oneapi_xla_commit }}
+          INPUT_MUSA_XLA_COMMIT: ${{ inputs.musa_xla_commit }}
         run: |
-          if [ -n "$INPUT_XLA_COMMIT" ]; then
+          if [ -n "$INPUT_XLA_COMMIT$INPUT_ROCM_XLA_COMMIT$INPUT_ONEAPI_XLA_COMMIT$INPUT_MUSA_XLA_COMMIT" ]; then
             echo "tag=manual-$(date -u +%Y-%m-%dT%H-%M-%SZ)" >> "$GITHUB_OUTPUT"
           else
             echo "tag=nightly-$(date -u +%F)" >> "$GITHUB_OUTPUT"
@@ -70,16 +79,20 @@ jobs:
         env:
           BASE_REF: ${{ github.ref_name }}
           INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
+          INPUT_ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
+          INPUT_ONEAPI_XLA_COMMIT: ${{ inputs.oneapi_xla_commit }}
+          INPUT_MUSA_XLA_COMMIT: ${{ inputs.musa_xla_commit }}
           XLA_COMMIT: ${{ needs.resolve-commits.outputs.xla_commit }}
           ROCM_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
           ONEAPI_XLA_COMMIT: ${{ needs.resolve-commits.outputs.oneapi_xla_commit }}
+          MUSA_XLA_COMMIT: ${{ needs.resolve-commits.outputs.musa_xla_commit }}
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin "$BASE_REF" --tags
 
-          if [ -z "$INPUT_XLA_COMMIT" ]; then
+          if [ -z "$INPUT_XLA_COMMIT$INPUT_ROCM_XLA_COMMIT$INPUT_ONEAPI_XLA_COMMIT$INPUT_MUSA_XLA_COMMIT" ]; then
             git fetch origin nightly || true
             git checkout -B nightly "origin/$BASE_REF"
           else
@@ -90,6 +103,7 @@ jobs:
           XLA_COMMIT=$XLA_COMMIT
           ROCM_XLA_COMMIT=$ROCM_XLA_COMMIT
           ONEAPI_XLA_COMMIT=$ONEAPI_XLA_COMMIT
+          MUSA_XLA_COMMIT=$MUSA_XLA_COMMIT
           EOF
           git add openxla/commits.env
           git commit --allow-empty -m "chore: nightly pins ${{ steps.nightly-tag.outputs.tag }}"
@@ -98,6 +112,9 @@ jobs:
         shell: bash
         env:
           INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
+          INPUT_ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
+          INPUT_ONEAPI_XLA_COMMIT: ${{ inputs.oneapi_xla_commit }}
+          INPUT_MUSA_XLA_COMMIT: ${{ inputs.musa_xla_commit }}
         run: |
           if git ls-remote --exit-code --tags origin "${{ steps.nightly-tag.outputs.tag }}" >/dev/null 2>&1; then
             echo "Tag ${{ steps.nightly-tag.outputs.tag }} already exists" >&2
@@ -106,7 +123,7 @@ jobs:
 
           git tag "${{ steps.nightly-tag.outputs.tag }}"
 
-          if [ -z "$INPUT_XLA_COMMIT" ]; then
+          if [ -z "$INPUT_XLA_COMMIT$INPUT_ROCM_XLA_COMMIT$INPUT_ONEAPI_XLA_COMMIT$INPUT_MUSA_XLA_COMMIT" ]; then
             git push --force-with-lease origin HEAD:nightly
           fi
 
@@ -125,6 +142,8 @@ jobs:
           ROCM_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
           ONEAPI_XLA_BRANCH: ${{ needs.resolve-commits.outputs.oneapi_xla_branch }}
           ONEAPI_XLA_COMMIT: ${{ needs.resolve-commits.outputs.oneapi_xla_commit }}
+          MUSA_XLA_BRANCH: ${{ needs.resolve-commits.outputs.musa_xla_branch }}
+          MUSA_XLA_COMMIT: ${{ needs.resolve-commits.outputs.musa_xla_commit }}
         run: |
           if [ -n "$XLA_BRANCH" ]; then
             xla_line="- openxla/xla: $XLA_BRANCH @ $XLA_COMMIT"
@@ -144,6 +163,12 @@ jobs:
             oneapi_xla_line="- zml/xla oneAPI: $ONEAPI_XLA_COMMIT"
           fi
 
+          if [ -n "$MUSA_XLA_BRANCH" ]; then
+            musa_xla_line="- zml/xla MUSA: $MUSA_XLA_BRANCH @ $MUSA_XLA_COMMIT"
+          else
+            musa_xla_line="- zml/xla MUSA: $MUSA_XLA_COMMIT"
+          fi
+
           {
             echo "body<<EOF"
             echo "OpenXLA commits used for this nightly:"
@@ -151,6 +176,7 @@ jobs:
             echo "$xla_line"
             echo "$rocm_xla_line"
             echo "$oneapi_xla_line"
+            echo "$musa_xla_line"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 

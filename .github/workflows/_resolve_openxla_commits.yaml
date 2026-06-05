@@ -15,6 +15,9 @@ on:
       oneapi_xla_commit:
         required: false
         type: string
+      musa_xla_commit:
+        required: false
+        type: string
     outputs:
       xla_branch:
         description: "Resolved openxla/xla branch"
@@ -34,6 +37,12 @@ on:
       oneapi_xla_commit:
         description: "Resolved zml/xla oneAPI commit"
         value: ${{ jobs.resolve-commits.outputs.oneapi_xla_commit }}
+      musa_xla_branch:
+        description: "Resolved zml/xla MUSA branch"
+        value: ${{ jobs.resolve-commits.outputs.musa_xla_branch }}
+      musa_xla_commit:
+        description: "Resolved zml/xla MUSA commit"
+        value: ${{ jobs.resolve-commits.outputs.musa_xla_commit }}
 
 jobs:
   resolve-commits:
@@ -45,6 +54,8 @@ jobs:
       rocm_xla_commit: ${{ steps.resolve.outputs.rocm_xla_commit }}
       oneapi_xla_branch: ${{ steps.resolve.outputs.oneapi_xla_branch }}
       oneapi_xla_commit: ${{ steps.resolve.outputs.oneapi_xla_commit }}
+      musa_xla_branch: ${{ steps.resolve.outputs.musa_xla_branch }}
+      musa_xla_commit: ${{ steps.resolve.outputs.musa_xla_commit }}
     steps:
       - name: "Checking out repository"
         uses: actions/checkout@v4
@@ -59,12 +70,13 @@ jobs:
           INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
           INPUT_ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
           INPUT_ONEAPI_XLA_COMMIT: ${{ inputs.oneapi_xla_commit }}
+          INPUT_MUSA_XLA_COMMIT: ${{ inputs.musa_xla_commit }}
           GH_TOKEN: ${{ github.token }}
         working-directory: ./pjrt-artifacts
         run: |
-          if [ -n "$INPUT_XLA_COMMIT" ] || [ -n "$INPUT_ROCM_XLA_COMMIT" ] || [ -n "$INPUT_ONEAPI_XLA_COMMIT" ]; then
-            if [ -z "$INPUT_XLA_COMMIT" ] || [ -z "$INPUT_ROCM_XLA_COMMIT" ] || [ -z "$INPUT_ONEAPI_XLA_COMMIT" ]; then
-              echo "xla_commit, rocm_xla_commit, and oneapi_xla_commit must be provided together" >&2
+          if [ -n "$INPUT_XLA_COMMIT" ] || [ -n "$INPUT_ROCM_XLA_COMMIT" ] || [ -n "$INPUT_ONEAPI_XLA_COMMIT" ] || [ -n "$INPUT_MUSA_XLA_COMMIT" ]; then
+            if [ -z "$INPUT_XLA_COMMIT" ] || [ -z "$INPUT_ROCM_XLA_COMMIT" ] || [ -z "$INPUT_ONEAPI_XLA_COMMIT" ] || [ -z "$INPUT_MUSA_XLA_COMMIT" ]; then
+              echo "xla_commit, rocm_xla_commit, oneapi_xla_commit, and musa_xla_commit must be provided together" >&2
               exit 1
             fi
 
@@ -74,11 +86,15 @@ jobs:
             ROCM_XLA_COMMIT="$INPUT_ROCM_XLA_COMMIT"
             ONEAPI_XLA_BRANCH=""
             ONEAPI_XLA_COMMIT="$INPUT_ONEAPI_XLA_COMMIT"
+            MUSA_XLA_BRANCH=""
+            MUSA_XLA_COMMIT="$INPUT_MUSA_XLA_COMMIT"
           else
             case "$SOURCE" in
               pinned)
                 XLA_BRANCH=""
                 ROCM_XLA_BRANCH=""
+                ONEAPI_XLA_BRANCH=""
+                MUSA_XLA_BRANCH=""
                 set -a
                 source openxla/commits.env
                 set +a
@@ -99,3 +115,5 @@ jobs:
           echo "rocm_xla_commit=$ROCM_XLA_COMMIT" >> "$GITHUB_OUTPUT"
           echo "oneapi_xla_branch=$ONEAPI_XLA_BRANCH" >> "$GITHUB_OUTPUT"
           echo "oneapi_xla_commit=$ONEAPI_XLA_COMMIT" >> "$GITHUB_OUTPUT"
+          echo "musa_xla_branch=$MUSA_XLA_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "musa_xla_commit=$MUSA_XLA_COMMIT" >> "$GITHUB_OUTPUT"

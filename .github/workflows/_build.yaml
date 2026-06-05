@@ -15,6 +15,9 @@ on:
       oneapi_xla_commit:
         required: true
         type: string
+      musa_xla_commit:
+        required: true
+        type: string
       bazel_extra_args:
         required: false
         type: string
@@ -30,74 +33,85 @@ jobs:
       XLA_COMMIT: ${{ inputs.xla_commit }}
       ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
       ONEAPI_XLA_COMMIT: ${{ inputs.oneapi_xla_commit }}
+      MUSA_XLA_COMMIT: ${{ inputs.musa_xla_commit }}
     strategy:
       fail-fast: false
       matrix:
         pjrt:
-          - target: cuda
-            config: "--enable_workspace --spawn_strategy=local --config=cuda_nvcc --config=baseline_x86_64"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
-            renamed_artifact: libpjrt_cuda.so
-            runs_on:
-              ["runs-on", "cpu=128", "family=m+c", "image=ubuntu22-amd64"]
-            platform: linux-amd64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
-          - target: cuda
-            config: "--enable_workspace --spawn_strategy=local --config=cuda_nvcc --config=baseline_arm64"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
-            renamed_artifact: libpjrt_cuda.so
-            runs_on:
-              ["runs-on", "cpu=96", "family=m+c", "image=ubuntu22-full-arm64"]
-            platform: linux-arm64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
-          - target: rocm
-            config: "--spawn_strategy=local --disk_cache=/home/runner/.cache/bazel-disk --config=rocm_ci --config=baseline_x86_64"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
-            renamed_artifact: libpjrt_rocm.so
-            runs_on:
-              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
-            platform: linux-amd64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
-          - target: cpu
-            config: "--config=hermetic_macos_arm64 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
-            runs_on:
-              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
-            renamed_artifact: libpjrt_cpu.dylib
-            platform: darwin-arm64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
-          - target: cpu
-            config: "--config=hermetic_macos_x86 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY --//xla/tsl/framework/contraction:disable_onednn_contraction_kernel=True"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
-            renamed_artifact: libpjrt_cpu.dylib
-            runs_on:
-              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
-            platform: darwin-amd64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
-          - target: cpu
-            config: "--config=hermetic_linux_x86 --config=baseline_x86_64 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
-            renamed_artifact: libpjrt_cpu.so
-            runs_on:
-              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
-            platform: linux-amd64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
-          - target: cpu
-            config: "--config=hermetic_linux_arm64 --config=baseline_arm64 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
-            artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
-            renamed_artifact: libpjrt_cpu.so
-            runs_on:
-              ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
-            platform: linux-arm64
-            bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
-          - target: oneapi
-            config: "--config=sycl_hermetic -c opt"
+          # - target: cuda
+          #   config: "--enable_workspace --spawn_strategy=local --config=cuda_nvcc --config=baseline_x86_64"
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
+          #   renamed_artifact: libpjrt_cuda.so
+          #   runs_on:
+          #     ["runs-on", "cpu=128", "family=m+c", "image=ubuntu22-amd64"]
+          #   platform: linux-amd64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
+          # - target: cuda
+          #   config: "--enable_workspace --spawn_strategy=local --config=cuda_nvcc --config=baseline_arm64"
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
+          #   renamed_artifact: libpjrt_cuda.so
+          #   runs_on:
+          #     ["runs-on", "cpu=96", "family=m+c", "image=ubuntu22-full-arm64"]
+          #   platform: linux-arm64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
+          # - target: rocm
+          #   config: "--spawn_strategy=local --disk_cache=/home/runner/.cache/bazel-disk --config=rocm_ci --config=baseline_x86_64"
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
+          #   renamed_artifact: libpjrt_rocm.so
+          #   runs_on:
+          #     ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+          #   platform: linux-amd64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
+          # - target: cpu
+          #   config: "--config=hermetic_macos_arm64 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
+          #   runs_on:
+          #     ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+          #   renamed_artifact: libpjrt_cpu.dylib
+          #   platform: darwin-arm64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+          # - target: cpu
+          #   config: "--config=hermetic_macos_x86 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY --//xla/tsl/framework/contraction:disable_onednn_contraction_kernel=True"
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.dylib
+          #   renamed_artifact: libpjrt_cpu.dylib
+          #   runs_on:
+          #     ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+          #   platform: darwin-amd64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+          # - target: cpu
+          #   config: "--config=hermetic_linux_x86 --config=baseline_x86_64 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
+          #   renamed_artifact: libpjrt_cpu.so
+          #   runs_on:
+          #     ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+          #   platform: linux-amd64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+          # - target: cpu
+          #   config: "--config=hermetic_linux_arm64 --config=baseline_arm64 --config=remote --config=bzlmod --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
+          #   artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_cpu_plugin.so
+          #   renamed_artifact: libpjrt_cpu.so
+          #   runs_on:
+          #     ["runs-on", "runner=32cpu-linux-x64", "image=ubuntu22-amd64"]
+          #   platform: linux-arm64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
+          # - target: oneapi
+          #   config: "--config=sycl_hermetic -c opt"
+          #   artifact: bazel-bin/xla/pjrt/c/pjrt_c_api_gpu_plugin.so
+          #   renamed_artifact: libpjrt_oneapi.so
+          #   runs_on:
+          #     ["runs-on", "cpu=128", "family=m+c", "image=ubuntu22-amd64"]
+          #   platform: linux-amd64
+          #   bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin.so
+          - target: musa
+            config: "--config=musa -c opt"
             artifact: bazel-bin/xla/pjrt/c/pjrt_c_api_gpu_plugin.so
-            renamed_artifact: libpjrt_oneapi.so
+            renamed_artifact: libpjrt_musa.so
             runs_on:
               ["runs-on", "cpu=128", "family=m+c", "image=ubuntu22-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin.so
+            musa_version: rc3.1.1
+            musa_gpu_archs: mp_21
     steps:
       - uses: runs-on/action@v1
 
@@ -109,8 +123,8 @@ jobs:
       - name: "Checking out openxla repository"
         uses: actions/checkout@v4
         with:
-          ref: ${{ matrix.pjrt.target == 'rocm' && env.ROCM_XLA_COMMIT || matrix.pjrt.target == 'oneapi' && env.ONEAPI_XLA_COMMIT || env.XLA_COMMIT }}
-          repository: ${{ matrix.pjrt.target == 'rocm' && 'ROCm/xla' || matrix.pjrt.target == 'oneapi' && 'zml/xla' || 'openxla/xla' }}
+          ref: ${{ matrix.pjrt.target == 'rocm' && env.ROCM_XLA_COMMIT || matrix.pjrt.target == 'oneapi' && env.ONEAPI_XLA_COMMIT || matrix.pjrt.target == 'musa' && env.MUSA_XLA_COMMIT || env.XLA_COMMIT }}
+          repository: ${{ matrix.pjrt.target == 'rocm' && 'ROCm/xla' || matrix.pjrt.target == 'oneapi' && 'zml/xla' || matrix.pjrt.target == 'musa' && 'zml/xla' || 'openxla/xla' }}
           path: "xla"
 
       - name: Apply patches to openxla
@@ -121,8 +135,8 @@ jobs:
         run: |
           xla_commit=$(git rev-parse HEAD)
           echo "XLA_COMMIT_ID=$xla_commit" >> $GITHUB_OUTPUT
-          if [ "${{ matrix.pjrt.target }}" = "oneapi" ]; then
-            echo ::notice::Using zml/xla oneAPI $xla_commit without pjrt-artifacts patches
+          if [ "${{ matrix.pjrt.target }}" = "oneapi" ] || [ "${{ matrix.pjrt.target }}" = "musa" ]; then
+            echo ::notice::Using zml/xla ${{ matrix.pjrt.target }} $xla_commit without pjrt-artifacts patches
           elif compgen -G "../pjrt-artifacts/openxla/patches/$PATCH_DIRECTORY/*.patch" > /dev/null; then
             echo ::notice::Applying patches to openxla $xla_commit
             for patch in ../pjrt-artifacts/openxla/patches/$PATCH_DIRECTORY/*.patch; do
@@ -171,7 +185,7 @@ jobs:
             common --show_timestamps
 
       - name: "Setup bazelrc for openxla"
-        if: matrix.pjrt.target != 'oneapi'
+        if: matrix.pjrt.target != 'oneapi' && matrix.pjrt.target != 'musa'
         env:
           BAZERLC_DIRECTORY: ${{ matrix.pjrt.target == 'rocm' && 'rocm' || 'upstream' }}
         run: |
@@ -186,6 +200,8 @@ jobs:
         env:
           USE_BAZEL_VERSION: ${{ matrix.pjrt.target == 'cpu' && '8.5.1' || '7.7.0' }}
           BAZEL_EXTRA_ARGS: ${{ inputs.bazel_extra_args || '' }}
+          MUSA_VERSION: ${{ matrix.pjrt.musa_version || '' }}
+          MUSA_GPU_ARCHS: ${{ matrix.pjrt.musa_gpu_archs || '' }}
         run: |
           bazel build ${{ matrix.pjrt.config }} ${{ env.BAZEL_EXTRA_ARGS }} ${{ matrix.pjrt.bazel_target }}
 
