@@ -50,7 +50,6 @@ jobs:
       # bazel_extra_args: "--config=dbg"
     secrets:
       BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
-      MUSA_DISTRO_URL: ${{ secrets.MUSA_DISTRO_URL }}
 
   publish-nightly:
     needs:

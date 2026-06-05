@@ -5,8 +5,6 @@ on:
     secrets:
       BUILDBUDDY_API_KEY:
         required: true
-      MUSA_DISTRO_URL:
-        required: false
     inputs:
       xla_commit:
         required: true
@@ -112,6 +110,8 @@ jobs:
               ["runs-on", "cpu=128", "family=m+c", "image=ubuntu22-amd64"]
             platform: linux-amd64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin.so
+            musa_version: rc3.1.1
+            musa_gpu_archs: mp_21
     steps:
       - uses: runs-on/action@v1
 
@@ -195,31 +195,13 @@ jobs:
           fi
           cp pjrt-artifacts/openxla/bazelrc/${BAZERLC_DIRECTORY}/*.bazelrc xla/
 
-      - name: Validate MUSA SDK env
-        if: matrix.pjrt.target == 'musa'
-        env:
-          MUSA_DISTRO_URL: ${{ secrets.MUSA_DISTRO_URL || vars.MUSA_DISTRO_URL }}
-          MUSA_DISTRO_HASH: ${{ vars.MUSA_DISTRO_HASH }}
-        run: |
-          if [ -z "${MUSA_DISTRO_URL:-}" ]; then
-            echo "MUSA_DISTRO_URL must be configured as a repository variable or secret for MUSA builds." >&2
-            exit 1
-          fi
-          if [ -z "${MUSA_DISTRO_HASH:-}" ]; then
-            echo "MUSA_DISTRO_HASH must be configured as a repository variable for MUSA builds." >&2
-            exit 1
-          fi
-
       - name: "Build ${{ matrix.pjrt.target }} ${{ matrix.pjrt.platform }}"
         working-directory: ./xla
         env:
           USE_BAZEL_VERSION: ${{ matrix.pjrt.target == 'cpu' && '8.5.1' || '7.7.0' }}
           BAZEL_EXTRA_ARGS: ${{ inputs.bazel_extra_args || '' }}
-          MUSA_DISTRO_URL: ${{ secrets.MUSA_DISTRO_URL || vars.MUSA_DISTRO_URL }}
-          MUSA_DISTRO_HASH: ${{ vars.MUSA_DISTRO_HASH }}
-          MUSA_DISTRO_STRIP_PREFIX: ${{ vars.MUSA_DISTRO_STRIP_PREFIX }}
-          MUSA_DISTRO_ROOT: ${{ vars.MUSA_DISTRO_ROOT }}
-          MUSA_GPU_ARCHS: ${{ vars.MUSA_GPU_ARCHS }}
+          MUSA_VERSION: ${{ matrix.pjrt.musa_version || '' }}
+          MUSA_GPU_ARCHS: ${{ matrix.pjrt.musa_gpu_archs || '' }}
         run: |
           bazel build ${{ matrix.pjrt.config }} ${{ env.BAZEL_EXTRA_ARGS }} ${{ matrix.pjrt.bazel_target }}
 

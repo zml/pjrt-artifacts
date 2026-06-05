@@ -262,11 +262,8 @@ while IFS=$'\t' read -r target platform config bazel_target; do
     echo "export USE_BAZEL_VERSION=7.7.0"
   fi
   if [[ "$target" == "musa" ]]; then
-    echo 'export MUSA_DISTRO_URL="${MUSA_DISTRO_URL:?Set MUSA_DISTRO_URL to a MUSA SDK archive URL}"'
-    echo 'export MUSA_DISTRO_HASH="${MUSA_DISTRO_HASH:?Set MUSA_DISTRO_HASH to the archive sha256}"'
-    echo 'export MUSA_DISTRO_STRIP_PREFIX="${MUSA_DISTRO_STRIP_PREFIX:-}"'
-    echo 'export MUSA_DISTRO_ROOT="${MUSA_DISTRO_ROOT:-}"'
-    echo 'export MUSA_GPU_ARCHS="${MUSA_GPU_ARCHS:-}"'
+    echo 'export MUSA_VERSION="${MUSA_VERSION:-rc3.1.1}"'
+    echo 'export MUSA_GPU_ARCHS="${MUSA_GPU_ARCHS:-mp_21}"'
   fi
   echo "bazel build $config $bazel_target"
 

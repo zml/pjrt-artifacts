@@ -22,4 +22,3 @@ jobs:
       musa_xla_commit: ${{ needs.resolve-commits.outputs.musa_xla_commit }}
     secrets:
       BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
-      MUSA_DISTRO_URL: ${{ secrets.MUSA_DISTRO_URL }}
