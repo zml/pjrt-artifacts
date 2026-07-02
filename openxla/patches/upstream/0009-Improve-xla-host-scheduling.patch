@@ -1,0 +1,752 @@
+From bee62bea1303ba5d3995b793df333e5dc09d4e0c Mon Sep 17 00:00:00 2001
+From: louis <louis@zml.ai>
+Date: Thu, 2 Jul 2026 16:02:44 +0200
+Subject: [PATCH] Improve xla host scheduling in 3 patches : -
+ ShouldCollectiveUseMinimalResource run once when exe is built and not at each
+ layer scheduling (reduce XlaModule overhead (before first thunk)) - vector
+ DeviceBufferPairs replaced with inlinedvector of size 4 (list of buffers
+ implied in collective for one device so 4 must be enough) - CliqueKey
+ (information for one collective) caching (reduce communication scheduling
+ duration)
+
+---
+ xla/backends/gpu/runtime/all_gather_thunk.cc  |  4 +-
+ xla/backends/gpu/runtime/all_gather_thunk.h   |  2 +-
+ xla/backends/gpu/runtime/all_reduce_thunk.cc  | 13 +++--
+ xla/backends/gpu/runtime/all_reduce_thunk.h   |  4 +-
+ .../runtime/all_reduce_thunk_multigpu_test.cc |  2 +-
+ xla/backends/gpu/runtime/all_to_all_thunk.cc  |  8 ++--
+ xla/backends/gpu/runtime/all_to_all_thunk.h   |  4 +-
+ .../gpu/runtime/collective_broadcast_thunk.cc |  4 +-
+ .../gpu/runtime/collective_broadcast_thunk.h  |  2 +-
+ .../gpu/runtime/collective_permute_thunk.cc   | 12 ++---
+ .../gpu/runtime/collective_permute_thunk.h    |  2 +-
+ xla/backends/gpu/runtime/collective_thunk.cc  | 47 ++++++++++++-------
+ xla/backends/gpu/runtime/collective_thunk.h   | 39 ++++++++++++++-
+ .../gpu/runtime/command_buffer_cmd.cc         | 12 ++---
+ .../gpu/runtime/nvshmem_all_reduce_thunk.cc   |  4 +-
+ .../gpu/runtime/nvshmem_all_reduce_thunk.h    |  2 +-
+ .../nvshmem_collective_permute_thunk.cc       |  4 +-
+ .../nvshmem_collective_permute_thunk.h        |  2 +-
+ .../gpu/runtime/nvshmem_recv_thunk.cc         |  2 +-
+ .../gpu/runtime/nvshmem_send_thunk.cc         |  2 +-
+ .../gpu/runtime/ragged_all_to_all_thunk.cc    | 10 ++--
+ .../gpu/runtime/ragged_all_to_all_thunk.h     |  2 +-
+ xla/service/gpu/gpu_executable.cc             |  8 +++-
+ xla/service/gpu/gpu_executable.h              |  5 ++
+ 24 files changed, 128 insertions(+), 68 deletions(-)
+
+diff --git a/xla/backends/gpu/runtime/all_gather_thunk.cc b/xla/backends/gpu/runtime/all_gather_thunk.cc
+index 6ea01e63cc68f..02e2824e457d4 100644
+--- a/xla/backends/gpu/runtime/all_gather_thunk.cc
++++ b/xla/backends/gpu/runtime/all_gather_thunk.cc
+@@ -132,14 +132,14 @@ absl::Status AllGatherThunk::RunCollective(const ExecuteParams& params,
+                                            const GpuCliqueKey& clique_key,
+                                            se::Stream& stream,
+                                            Communicator& comm) {
+-  ASSIGN_OR_RETURN(std::vector<DeviceBufferPair> device_buffers,
++  ASSIGN_OR_RETURN(DeviceBufferPairs device_buffers,
+                    ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
+                                           config_.config.operand_element_type));
+   return xla::gpu::RunAllGather(device_buffers, stream, comm,
+                                 config_.config.use_symmetric_buffer);
+ }
+ 
+-absl::Status RunAllGather(std::vector<DeviceBufferPair>& buffers,
++absl::Status RunAllGather(DeviceBufferPairs& buffers,
+                           se::Stream& stream, Communicator& comm,
+                           bool use_symmetric_buffer) {
+   int device_ordinal = stream.parent()->device_ordinal();
+diff --git a/xla/backends/gpu/runtime/all_gather_thunk.h b/xla/backends/gpu/runtime/all_gather_thunk.h
+index 38a7aa1cfb838..c7c07e937a7b1 100644
+--- a/xla/backends/gpu/runtime/all_gather_thunk.h
++++ b/xla/backends/gpu/runtime/all_gather_thunk.h
+@@ -77,7 +77,7 @@ class AllGatherThunk : public CollectiveThunk {
+   const AllGatherConfig config_;
+ };
+ 
+-absl::Status RunAllGather(std::vector<DeviceBufferPair>& buffers,
++absl::Status RunAllGather(DeviceBufferPairs& buffers,
+                           se::Stream& stream, Communicator& comm,
+                           bool use_symmetric_buffer = false);
+ 
+diff --git a/xla/backends/gpu/runtime/all_reduce_thunk.cc b/xla/backends/gpu/runtime/all_reduce_thunk.cc
+index d8306c42822fa..9e5c94d804456 100644
+--- a/xla/backends/gpu/runtime/all_reduce_thunk.cc
++++ b/xla/backends/gpu/runtime/all_reduce_thunk.cc
+@@ -91,7 +91,7 @@ AllReduceConfig GetAllReduceConfigInst(
+ }
+ 
+ absl::Status RunAllReduce(ReductionKind reduction_kind,
+-                          std::vector<DeviceBufferPair>& buffers,
++                          DeviceBufferPairs& buffers,
+                           se::Stream& stream, Communicator& comm,
+                           bool use_symmetric_buffer) {
+   int device_ordinal = stream.parent()->device_ordinal();
+@@ -164,9 +164,8 @@ absl::Status AllReduceThunk::Prepare(const PrepareParams& params) {
+ 
+ absl::Status AllReduceThunk::Initialize(const InitializeParams& params) {
+   TF_RETURN_IF_ERROR(CollectiveThunk::Initialize(params));
+-  TF_ASSIGN_OR_RETURN(
+-      GpuCliqueKey clique_key,
+-      GetCollectiveGpuCliqueKey(*params.collective_params, config()));
++  TF_ASSIGN_OR_RETURN(GpuCliqueKey clique_key,
++                      GetOrCreateCliqueKey(*params.collective_params));
+   TF_ASSIGN_OR_RETURN(
+       bool use_collective_kernel,
+       collective_kernel_thunk_->IsSupported(clique_key, *params.executor,
+@@ -182,7 +181,7 @@ absl::Status AllReduceThunk::RunCollective(const ExecuteParams& params,
+                                            se::Stream& stream,
+                                            Communicator& comm) {
+   TF_ASSIGN_OR_RETURN(
+-      std::vector<DeviceBufferPair> device_buffers,
++      DeviceBufferPairs device_buffers,
+       ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
+                              config_.config.operand_element_type));
+ 
+@@ -334,7 +333,7 @@ absl::Status ReduceScatterThunk::RunCollective(const ExecuteParams& params,
+                                                se::Stream& stream,
+                                                Communicator& comm) {
+   TF_ASSIGN_OR_RETURN(
+-      std::vector<DeviceBufferPair> device_buffers,
++      DeviceBufferPairs device_buffers,
+       ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
+                              config_.config.operand_element_type));
+   return RunReduceScatter(config_.reduction_kind, device_buffers, stream, comm,
+@@ -342,7 +341,7 @@ absl::Status ReduceScatterThunk::RunCollective(const ExecuteParams& params,
+ }
+ 
+ absl::Status RunReduceScatter(ReductionKind reduction_kind,
+-                              std::vector<DeviceBufferPair>& buffers,
++                              DeviceBufferPairs& buffers,
+                               se::Stream& stream, Communicator& comm,
+                               bool use_symmetric_buffer) {
+   int device_ordinal = stream.parent()->device_ordinal();
+diff --git a/xla/backends/gpu/runtime/all_reduce_thunk.h b/xla/backends/gpu/runtime/all_reduce_thunk.h
+index 3b77cafe66764..a48dea65c21c1 100644
+--- a/xla/backends/gpu/runtime/all_reduce_thunk.h
++++ b/xla/backends/gpu/runtime/all_reduce_thunk.h
+@@ -147,12 +147,12 @@ class ReduceScatterThunk : public AllReduceReduceScatterThunkBase {
+ // -----------------------------------------------------------------------------
+ 
+ absl::Status RunAllReduce(ReductionKind reduction_kind,
+-                          std::vector<DeviceBufferPair>& buffers,
++                          DeviceBufferPairs& buffers,
+                           se::Stream& stream, Communicator& comm,
+                           bool use_symmetric_buffer = false);
+ 
+ absl::Status RunReduceScatter(ReductionKind reduction_kind,
+-                              std::vector<DeviceBufferPair>& buffers,
++                              DeviceBufferPairs& buffers,
+                               se::Stream& stream, Communicator& comm,
+                               bool use_symmetric_buffer = false);
+ 
+diff --git a/xla/backends/gpu/runtime/all_reduce_thunk_multigpu_test.cc b/xla/backends/gpu/runtime/all_reduce_thunk_multigpu_test.cc
+index aca4a1da19de9..3d71c6491de62 100644
+--- a/xla/backends/gpu/runtime/all_reduce_thunk_multigpu_test.cc
++++ b/xla/backends/gpu/runtime/all_reduce_thunk_multigpu_test.cc
+@@ -114,7 +114,7 @@ class DirectAllReduceThunk : public AllReduceReduceScatterThunkBase {
+                              const GpuCliqueKey& /*clique_key*/,
+                              se::Stream& stream, Communicator& comm) override {
+     ASSIGN_OR_RETURN(
+-        std::vector<DeviceBufferPair> device_buffers,
++        DeviceBufferPairs device_buffers,
+         ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
+                                config_.config.operand_element_type));
+     return RunAllReduce(config_.reduction_kind, device_buffers, stream, comm,
+diff --git a/xla/backends/gpu/runtime/all_to_all_thunk.cc b/xla/backends/gpu/runtime/all_to_all_thunk.cc
+index a8d33646e5b55..4558815ca13df 100644
+--- a/xla/backends/gpu/runtime/all_to_all_thunk.cc
++++ b/xla/backends/gpu/runtime/all_to_all_thunk.cc
+@@ -166,7 +166,7 @@ absl::Status AllToAllThunk::Initialize(const InitializeParams& params) {
+         clique_key.rank(params.collective_params->global_device_id);
+     size_t chunk_element_count = buffers()[0].element_count / num_ranks;
+     TF_ASSIGN_OR_RETURN(
+-        std::vector<DeviceBufferPair> device_buffers,
++        DeviceBufferPairs device_buffers,
+         ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
+                                config_.config.operand_element_type));
+     if (config_.has_split_dimension) {
+@@ -223,7 +223,7 @@ absl::Status AllToAllThunk::RunCollective(const ExecuteParams& params,
+                                           se::Stream& stream,
+                                           Communicator& comm) {
+   TF_ASSIGN_OR_RETURN(
+-      std::vector<DeviceBufferPair> device_buffers,
++      DeviceBufferPairs device_buffers,
+       ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
+                              config_.config.operand_element_type));
+ 
+@@ -310,7 +310,7 @@ absl::StatusOr<ThunkProto> AllToAllThunk::ToProto() const {
+ }
+ 
+ absl::Status RunAllToAll(bool has_split_dimension,
+-                         std::vector<DeviceBufferPair>& buffers,
++                         DeviceBufferPairs& buffers,
+                          se::Stream& stream, Communicator& comm,
+                          bool use_symmetric_buffer) {
+   int device_ordinal = stream.parent()->device_ordinal();
+@@ -401,7 +401,7 @@ absl::Status SyncProgress(absl::string_view name,
+ }
+ 
+ absl::Status RunMemCpyAllToAll(bool has_split_dimension,
+-                               std::vector<DeviceBufferPair>& buffers,
++                               DeviceBufferPairs& buffers,
+                                se::Stream& stream, Communicator& comm,
+                                uint64_t receive_pointer_map[],
+                                const GpuCliqueKey& clique_key, RankId rank,
+diff --git a/xla/backends/gpu/runtime/all_to_all_thunk.h b/xla/backends/gpu/runtime/all_to_all_thunk.h
+index 3d94c73eb7d26..738823e732568 100644
+--- a/xla/backends/gpu/runtime/all_to_all_thunk.h
++++ b/xla/backends/gpu/runtime/all_to_all_thunk.h
+@@ -111,12 +111,12 @@ class AllToAllThunk : public CollectiveThunk {
+ };
+ 
+ absl::Status RunAllToAll(bool has_split_dimension,
+-                         std::vector<DeviceBufferPair>& buffers,
++                         DeviceBufferPairs& buffers,
+                          se::Stream& stream, Communicator& comm,
+                          bool use_symmetric_buffer = false);
+ 
+ absl::Status RunMemCpyAllToAll(bool has_split_dimension,
+-                               std::vector<DeviceBufferPair>& buffers,
++                               DeviceBufferPairs& buffers,
+                                se::Stream& stream, Communicator& comm,
+                                uint64_t receive_pointer_map[],
+                                const GpuCliqueKey& clique_key, RankId rank,
+diff --git a/xla/backends/gpu/runtime/collective_broadcast_thunk.cc b/xla/backends/gpu/runtime/collective_broadcast_thunk.cc
+index e395a3b149266..dfd793e4e5764 100644
+--- a/xla/backends/gpu/runtime/collective_broadcast_thunk.cc
++++ b/xla/backends/gpu/runtime/collective_broadcast_thunk.cc
+@@ -108,13 +108,13 @@ absl::StatusOr<ThunkProto> CollectiveBroadcastThunk::ToProto() const {
+ absl::Status CollectiveBroadcastThunk::RunCollective(
+     const ExecuteParams& params, const GpuCliqueKey& clique_key,
+     se::Stream& stream, Communicator& comm) {
+-  ASSIGN_OR_RETURN(std::vector<DeviceBufferPair> device_buffers,
++  ASSIGN_OR_RETURN(DeviceBufferPairs device_buffers,
+                    ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
+                                           config_.operand_element_type));
+   return ::xla::gpu::RunCollectiveBroadcast(device_buffers, stream, comm);
+ }
+ 
+-absl::Status RunCollectiveBroadcast(std::vector<DeviceBufferPair>& buffers,
++absl::Status RunCollectiveBroadcast(DeviceBufferPairs& buffers,
+                                     se::Stream& stream, Communicator& comm) {
+   auto* gpu_comm = tsl::down_cast<GpuCommunicator*>(&comm);
+   Future<> future = gpu_comm->GroupExecute(
+diff --git a/xla/backends/gpu/runtime/collective_broadcast_thunk.h b/xla/backends/gpu/runtime/collective_broadcast_thunk.h
+index a467aa381a550..7898508882878 100644
+--- a/xla/backends/gpu/runtime/collective_broadcast_thunk.h
++++ b/xla/backends/gpu/runtime/collective_broadcast_thunk.h
+@@ -76,7 +76,7 @@ class CollectiveBroadcastThunk : public CollectiveThunk {
+   const CollectiveConfig config_;
+ };
+ 
+-absl::Status RunCollectiveBroadcast(std::vector<DeviceBufferPair>& buffers,
++absl::Status RunCollectiveBroadcast(DeviceBufferPairs& buffers,
+                                     se::Stream& stream, Communicator& comm);
+ 
+ }  // namespace xla::gpu
+diff --git a/xla/backends/gpu/runtime/collective_permute_thunk.cc b/xla/backends/gpu/runtime/collective_permute_thunk.cc
+index 10bf6659677d8..c37b5d066ae50 100644
+--- a/xla/backends/gpu/runtime/collective_permute_thunk.cc
++++ b/xla/backends/gpu/runtime/collective_permute_thunk.cc
+@@ -85,12 +85,12 @@ struct Events {
+ 
+ static absl::Status RunPeerAccessPermute(
+     const P2PConfig::SourceTargetRanks& source_target,
+-    const std::vector<DeviceBufferPair>& device_buffers, se::Stream& stream,
++    const DeviceBufferPairs& device_buffers, se::Stream& stream,
+     const GpuCliqueKey& clique_key, const Thunk::ExecuteParams& params);
+ 
+ static absl::Status RunOneSidedPermute(
+     const P2PConfig::SourceTargetRanks& source_target,
+-    const std::vector<DeviceBufferPair>& device_buffers, se::Stream& stream,
++    const DeviceBufferPairs& device_buffers, se::Stream& stream,
+     const GpuCliqueKey& clique_key, const Thunk::ExecuteParams& params,
+     Communicator& comm);
+ 
+@@ -297,7 +297,7 @@ absl::Status CollectivePermuteThunk::RunCollective(
+   int device_ordinal = stream.parent()->device_ordinal();
+ 
+   ASSIGN_OR_RETURN(
+-      std::vector<DeviceBufferPair> device_buffers,
++      DeviceBufferPairs device_buffers,
+       ConvertToDeviceBuffers(params.buffer_allocations,
+                              std::vector<CollectiveThunk::Buffer>(buffers()),
+                              config_.config.operand_element_type));
+@@ -348,7 +348,7 @@ absl::Status CollectivePermuteThunk::RunCollective(
+ }
+ 
+ absl::Status RunCollectivePermute(P2PConfig::SourceTargetRanks source_target,
+-                                  const std::vector<DeviceBufferPair>& buffers,
++                                  const DeviceBufferPairs& buffers,
+                                   se::Stream& stream, Communicator& comm,
+                                   absl::string_view device_string,
+                                   int64_t current_id,
+@@ -425,7 +425,7 @@ absl::Status RunCollectivePermute(P2PConfig::SourceTargetRanks source_target,
+ // RequestPeerAllocation in PrepareCollective).
+ static absl::Status RunPeerAccessPermute(
+     const P2PConfig::SourceTargetRanks& source_target,
+-    const std::vector<DeviceBufferPair>& device_buffers, se::Stream& stream,
++    const DeviceBufferPairs& device_buffers, se::Stream& stream,
+     const GpuCliqueKey& clique_key, const Thunk::ExecuteParams& params) {
+   GlobalDeviceId gid = params.collective_params->global_device_id;
+   std::optional<RankId> rank = clique_key.rank(gid);
+@@ -522,7 +522,7 @@ static absl::Status RunPeerAccessPermute(
+ // NCCL's cumulative signal counter ensures correct ordering across invocations.
+ static absl::Status RunOneSidedPermute(
+     const P2PConfig::SourceTargetRanks& source_target,
+-    const std::vector<DeviceBufferPair>& device_buffers, se::Stream& stream,
++    const DeviceBufferPairs& device_buffers, se::Stream& stream,
+     const GpuCliqueKey& clique_key, const Thunk::ExecuteParams& params,
+     Communicator& comm) {
+   int device_ordinal = stream.parent()->device_ordinal();
+diff --git a/xla/backends/gpu/runtime/collective_permute_thunk.h b/xla/backends/gpu/runtime/collective_permute_thunk.h
+index 7e287096e19cd..aad0048b80f9f 100644
+--- a/xla/backends/gpu/runtime/collective_permute_thunk.h
++++ b/xla/backends/gpu/runtime/collective_permute_thunk.h
+@@ -101,7 +101,7 @@ class CollectivePermuteThunk : public CollectiveThunk {
+ };
+ 
+ absl::Status RunCollectivePermute(P2PConfig::SourceTargetRanks source_target,
+-                                  const std::vector<DeviceBufferPair>& buffers,
++                                  const DeviceBufferPairs& buffers,
+                                   se::Stream& stream, Communicator& comm,
+                                   absl::string_view device_string,
+                                   int64_t current_id,
+diff --git a/xla/backends/gpu/runtime/collective_thunk.cc b/xla/backends/gpu/runtime/collective_thunk.cc
+index a55e998c0332d..f7f18d305141f 100644
+--- a/xla/backends/gpu/runtime/collective_thunk.cc
++++ b/xla/backends/gpu/runtime/collective_thunk.cc
+@@ -231,7 +231,7 @@ absl::StatusOr<GpuCliqueKey> GetCollectiveGpuCliqueKey(
+                          collective_config.group_mode, communication_id);
+ }
+ 
+-absl::StatusOr<std::vector<DeviceBufferPair>> ConvertToDeviceBuffers(
++absl::StatusOr<DeviceBufferPairs> ConvertToDeviceBuffers(
+     const BufferAllocations* buffer_allocations,
+     const std::vector<CollectiveThunk::Buffer>& buffers,
+     const std::vector<PrimitiveType>& element_types) {
+@@ -239,7 +239,7 @@ absl::StatusOr<std::vector<DeviceBufferPair>> ConvertToDeviceBuffers(
+     return FailedPrecondition("Mismatch in operand buffer counts.");
+   }
+ 
+-  std::vector<DeviceBufferPair> device_buffers;
++  DeviceBufferPairs device_buffers;
+   device_buffers.reserve(buffers.size());
+   for (int i = 0; i < buffers.size(); ++i) {
+     device_buffers.emplace_back(DeviceBufferPair{
+@@ -302,8 +302,7 @@ absl::Status CollectiveThunk::Prepare(const PrepareParams& params) {
+ 
+   ASSIGN_OR_RETURN(
+       GpuCliqueKey clique_key,
+-      GetGpuCliqueKey(*params.collective_params, config().replica_groups,
+-                      config().group_mode, communication_id_));
++      GetOrCreateCliqueKey(*params.collective_params));
+ 
+   RETURN_IF_ERROR(params.collective_clique_requests->RequestClique(
+       clique_key, *device_groups_, GetCliqueRequirements(clique_key)));
+@@ -328,13 +327,33 @@ absl::Status CollectiveThunk::Prepare(const PrepareParams& params) {
+ }
+ 
+ absl::Status CollectiveThunk::Initialize(const InitializeParams& params) {
+-  ASSIGN_OR_RETURN(
+-      GpuCliqueKey clique_key,
+-      GetGpuCliqueKey(*params.collective_params, config().replica_groups,
+-                      config().group_mode, communication_id_));
++  ASSIGN_OR_RETURN(GpuCliqueKey clique_key,
++                   GetOrCreateCliqueKey(*params.collective_params));
+   return InitializeCollective(params, clique_key);
+ }
+ 
++absl::StatusOr<GpuCliqueKey> CollectiveThunk::GetOrCreateCliqueKey(
++    const CollectiveParams& params) const {
++  CliqueKeyCacheKey cache_key{params.global_device_id, params.device_assn,
++                              params.global_device_id_map,
++                              params.incarnations};
++  {
++    absl::MutexLock lock(clique_key_cache_mutex_);
++    auto it = clique_key_cache_.find(cache_key);
++    if (it != clique_key_cache_.end()) {
++      return it->second;
++    }
++  }
++
++  TF_ASSIGN_OR_RETURN(GpuCliqueKey clique_key,
++                      GetGpuCliqueKey(params, config().replica_groups,
++                                      config().group_mode,
++                                      communication_id_));
++  absl::MutexLock lock(clique_key_cache_mutex_);
++  auto [it, inserted] = clique_key_cache_.emplace(cache_key, clique_key);
++  return it->second;
++}
++
+ absl::Status CollectiveThunk::FirstCallRendezvous(
+     const ExecuteParams& params, const GpuCliqueKey& clique_key,
+     absl::string_view label, RendezvousFlag& flag) {
+@@ -375,10 +394,8 @@ absl::Status CollectiveThunk::FirstCallRendezvous(
+ absl::Status CollectiveThunk::RunWithCommAndRendezvous(
+     const ExecuteParams& params,
+     absl::FunctionRef<absl::Status(const GpuCliqueKey&, Communicator&)> fn) {
+-  ASSIGN_OR_RETURN(
+-      GpuCliqueKey clique_key,
+-      GetGpuCliqueKey(*params.collective_params, config().replica_groups,
+-                      config().group_mode, communication_id_));
++  ASSIGN_OR_RETURN(GpuCliqueKey clique_key,
++                   GetOrCreateCliqueKey(*params.collective_params));
+   ASSIGN_OR_RETURN(Communicator * comm,
+                    params.collective_cliques->GetComm(
+                        clique_key, params.collective_params->global_device_id));
+@@ -438,10 +455,8 @@ absl::StatusOr<const se::CommandBuffer::Command*> CollectiveThunk::Record(
+ 
+ absl::StatusOr<std::vector<Communicator*>> CollectiveThunk::GetCommunicators(
+     const ExecuteParams& params) const {
+-  ASSIGN_OR_RETURN(
+-      GpuCliqueKey clique_key,
+-      GetGpuCliqueKey(*params.collective_params, config().replica_groups,
+-                      config().group_mode, communication_id_));
++  ASSIGN_OR_RETURN(GpuCliqueKey clique_key,
++                   GetOrCreateCliqueKey(*params.collective_params));
+   ASSIGN_OR_RETURN(Communicator * comm,
+                    params.collective_cliques->GetComm(
+                        clique_key, params.collective_params->global_device_id));
+diff --git a/xla/backends/gpu/runtime/collective_thunk.h b/xla/backends/gpu/runtime/collective_thunk.h
+index 8cd333eba9e96..6910c4d968cf3 100644
+--- a/xla/backends/gpu/runtime/collective_thunk.h
++++ b/xla/backends/gpu/runtime/collective_thunk.h
+@@ -24,10 +24,13 @@ limitations under the License.
+ #include <vector>
+ 
+ #include "absl/base/call_once.h"
++#include "absl/container/flat_hash_map.h"
++#include "absl/container/inlined_vector.h"
+ #include "absl/functional/function_ref.h"
+ #include "absl/status/status.h"
+ #include "absl/status/statusor.h"
+ #include "absl/strings/string_view.h"
++#include "absl/synchronization/mutex.h"
+ #include "absl/types/span.h"
+ #include "xla/backends/gpu/collectives/gpu_clique_key.h"
+ #include "xla/backends/gpu/runtime/collective_clique_requests.h"
+@@ -180,6 +183,13 @@ class CollectiveThunk : public Command {
+     return absl::OkStatus();
+   }
+ 
++  // Returns the clique key for this collective, cached across executions.
++  // The device assignment is owned by PjRtExecutable and replica groups are
++  // baked into the thunk, so this avoids rebuilding identical keys on every
++  // collective launch.
++  absl::StatusOr<GpuCliqueKey> GetOrCreateCliqueKey(
++      const CollectiveParams& params) const;
++
+   // Run collective operation on a given stream.
+   //
+   // A collective thunk is normally an independent operation in a sense that
+@@ -219,6 +229,26 @@ class CollectiveThunk : public Command {
+       const ExecuteParams& params,
+       absl::FunctionRef<absl::Status(const GpuCliqueKey&, Communicator&)> fn);
+ 
++  struct CliqueKeyCacheKey {
++    GlobalDeviceId global_device_id;
++    const DeviceAssignment* device_assn;
++    const CollectiveParams::GlobalDeviceIdMap* global_device_id_map;
++    const absl::flat_hash_map<GlobalDeviceId, IncarnationId>* incarnations;
++
++    bool operator==(const CliqueKeyCacheKey& other) const {
++      return global_device_id == other.global_device_id &&
++             device_assn == other.device_assn &&
++             global_device_id_map == other.global_device_id_map &&
++             incarnations == other.incarnations;
++    }
++
++    template <typename H>
++    friend H AbslHashValue(H h, const CliqueKeyCacheKey& key) {
++      return H::combine(std::move(h), key.global_device_id, key.device_assn,
++                        key.global_device_id_map, key.incarnations);
++    }
++  };
++
+   const std::vector<Buffer> buffers_;
+   // Before and after a first call to this particular instance of a collective
+   // thunk we do a round of rendezvous to make sure that all participants are
+@@ -237,6 +267,10 @@ class CollectiveThunk : public Command {
+   // time. Device groups are the same for all devices, so computed once.
+   absl::once_flag device_groups_once_;
+   absl::StatusOr<std::vector<std::vector<GlobalDeviceId>>> device_groups_;
++
++  mutable absl::Mutex clique_key_cache_mutex_;
++  mutable absl::flat_hash_map<CliqueKeyCacheKey, GpuCliqueKey>
++      clique_key_cache_;
+ };
+ 
+ //===----------------------------------------------------------------------===//
+@@ -289,7 +323,10 @@ struct DeviceBufferPair {
+   int64_t destination_memory_space;
+ };
+ 
+-absl::StatusOr<std::vector<DeviceBufferPair>> ConvertToDeviceBuffers(
++// Buffers on one device for a collective operation
++using DeviceBufferPairs = absl::InlinedVector<DeviceBufferPair, 4>;
++
++absl::StatusOr<DeviceBufferPairs> ConvertToDeviceBuffers(
+     const BufferAllocations* buffer_allocations,
+     const std::vector<CollectiveThunk::Buffer>& buffers,
+     const std::vector<PrimitiveType>& element_types);
+diff --git a/xla/backends/gpu/runtime/command_buffer_cmd.cc b/xla/backends/gpu/runtime/command_buffer_cmd.cc
+index aacb78acddbd5..1da2b37c5520c 100644
+--- a/xla/backends/gpu/runtime/command_buffer_cmd.cc
++++ b/xla/backends/gpu/runtime/command_buffer_cmd.cc
+@@ -473,7 +473,7 @@ absl::StatusOr<const se::CommandBuffer::Command*> ReduceScatterCmd::Record(
+     const RecordParams& record_params, RecordAction record_action,
+     se::CommandBuffer* command_buffer) {
+   TF_ASSIGN_OR_RETURN(
+-      std::vector<DeviceBufferPair> device_buffers,
++      DeviceBufferPairs device_buffers,
+       ConvertToDeviceBuffers(execute_params.buffer_allocations, buffers_,
+                              config().operand_element_type));
+ 
+@@ -539,7 +539,7 @@ absl::StatusOr<const se::CommandBuffer::Command*> AllToAllCmd::Record(
+     const RecordParams& record_params, RecordAction record_action,
+     se::CommandBuffer* command_buffer) {
+   TF_ASSIGN_OR_RETURN(
+-      std::vector<DeviceBufferPair> device_buffers,
++      DeviceBufferPairs device_buffers,
+       ConvertToDeviceBuffers(execute_params.buffer_allocations, buffers_,
+                              config().operand_element_type));
+ 
+@@ -605,7 +605,7 @@ absl::StatusOr<const se::CommandBuffer::Command*> AllGatherCmd::Record(
+     const RecordParams& record_params, RecordAction record_action,
+     se::CommandBuffer* command_buffer) {
+   TF_ASSIGN_OR_RETURN(
+-      std::vector<DeviceBufferPair> device_buffers,
++      DeviceBufferPairs device_buffers,
+       ConvertToDeviceBuffers(execute_params.buffer_allocations, buffers_,
+                              config().operand_element_type));
+ 
+@@ -670,7 +670,7 @@ CollectiveBroadcastCmd::Record(const Thunk::ExecuteParams& execute_params,
+                                RecordAction record_action,
+                                se::CommandBuffer* command_buffer) {
+   TF_ASSIGN_OR_RETURN(
+-      std::vector<DeviceBufferPair> device_buffers,
++      DeviceBufferPairs device_buffers,
+       ConvertToDeviceBuffers(execute_params.buffer_allocations, buffers_,
+                              config().operand_element_type));
+ 
+@@ -917,7 +917,7 @@ absl::StatusOr<const se::CommandBuffer::Command*> CollectivePermuteCmd::Record(
+     const RecordParams& record_params, RecordAction record_action,
+     se::CommandBuffer* command_buffer) {
+   TF_ASSIGN_OR_RETURN(
+-      std::vector<DeviceBufferPair> device_buffers,
++      DeviceBufferPairs device_buffers,
+       ConvertToDeviceBuffers(execute_params.buffer_allocations, buffers_,
+                              config().operand_element_type));
+ 
+@@ -1113,7 +1113,7 @@ absl::StatusOr<const se::CommandBuffer::Command*> RaggedAllToAllCmd::Record(
+ 
+   // 5. Resolve Buffer Addresses (For the current run/capture)
+   TF_ASSIGN_OR_RETURN(
+-      std::vector<DeviceBufferPair> device_buffers,
++      DeviceBufferPairs device_buffers,
+       ConvertToDeviceBuffers(execute_params.buffer_allocations, buffers_,
+                              config().operand_element_type));
+ 
+diff --git a/xla/backends/gpu/runtime/nvshmem_all_reduce_thunk.cc b/xla/backends/gpu/runtime/nvshmem_all_reduce_thunk.cc
+index 30edc2de39052..53acf8cc9dab4 100644
+--- a/xla/backends/gpu/runtime/nvshmem_all_reduce_thunk.cc
++++ b/xla/backends/gpu/runtime/nvshmem_all_reduce_thunk.cc
+@@ -49,7 +49,7 @@ namespace xla {
+ namespace gpu {
+ 
+ absl::Status RunNvshmemAllReduce(ReductionKind reduction_kind,
+-                                 std::vector<DeviceBufferPair>& buffers,
++                                 DeviceBufferPairs& buffers,
+                                  se::Stream& stream) {
+   TF_ASSIGN_OR_RETURN(auto* collectives, GetNvshmemCollectivesFromRegistry());
+   TF_ASSIGN_OR_RETURN(std::unique_ptr<Communicator> nvshmem_comm,
+@@ -169,7 +169,7 @@ NvshmemAllReduceThunk::FromProto(
+ absl::Status NvshmemAllReduceThunk::RunNvshmemCollective(
+     const ExecuteParams& params, se::Stream& stream) {
+   TF_ASSIGN_OR_RETURN(
+-      std::vector<DeviceBufferPair> device_buffers,
++      DeviceBufferPairs device_buffers,
+       ConvertToDeviceBuffers(params.buffer_allocations, buffers_,
+                              config_.config.operand_element_type));
+   return ::xla::gpu::RunNvshmemAllReduce(config_.reduction_kind, device_buffers,
+diff --git a/xla/backends/gpu/runtime/nvshmem_all_reduce_thunk.h b/xla/backends/gpu/runtime/nvshmem_all_reduce_thunk.h
+index 910283c45523c..3510deabcd529 100644
+--- a/xla/backends/gpu/runtime/nvshmem_all_reduce_thunk.h
++++ b/xla/backends/gpu/runtime/nvshmem_all_reduce_thunk.h
+@@ -99,7 +99,7 @@ class NvshmemAllReduceThunk : public NvshmemAllReduceReduceScatterThunkBase {
+ ABSL_DEPRECATED("Use NCCL 2.28+ primitives instead.")
+ absl::Status RunNvshmemAllReduce(GpuCollectives* collectives,
+                                  ReductionKind reduction_kind,
+-                                 std::vector<DeviceBufferPair>& buffers,
++                                 DeviceBufferPairs& buffers,
+                                  se::Stream& stream);
+ 
+ }  // namespace gpu
+diff --git a/xla/backends/gpu/runtime/nvshmem_collective_permute_thunk.cc b/xla/backends/gpu/runtime/nvshmem_collective_permute_thunk.cc
+index 90c4a36b3398c..644e26308ce83 100644
+--- a/xla/backends/gpu/runtime/nvshmem_collective_permute_thunk.cc
++++ b/xla/backends/gpu/runtime/nvshmem_collective_permute_thunk.cc
+@@ -176,7 +176,7 @@ NvshmemCollectivePermuteThunk::FromProto(
+ absl::Status NvshmemCollectivePermuteThunk::RunNvshmemCollective(
+     const ExecuteParams& params, se::Stream& stream) {
+   TF_ASSIGN_OR_RETURN(
+-      std::vector<DeviceBufferPair> device_buffers,
++      DeviceBufferPairs device_buffers,
+       ConvertToDeviceBuffers(params.buffer_allocations,
+                              std::vector<CollectiveThunk::Buffer>(buffers_),
+                              config_.config.operand_element_type));
+@@ -194,7 +194,7 @@ absl::Status NvshmemCollectivePermuteThunk::RunNvshmemCollective(
+ }
+ 
+ absl::Status RunCollectivePermute(P2PConfig::SourceTargetMapEntry source_target,
+-                                  std::vector<DeviceBufferPair>& buffers,
++                                  DeviceBufferPairs& buffers,
+                                   se::Stream& stream,
+                                   absl::string_view device_string,
+                                   int64_t current_id) {
+diff --git a/xla/backends/gpu/runtime/nvshmem_collective_permute_thunk.h b/xla/backends/gpu/runtime/nvshmem_collective_permute_thunk.h
+index d4bdfbb817d03..e264f282a05f0 100644
+--- a/xla/backends/gpu/runtime/nvshmem_collective_permute_thunk.h
++++ b/xla/backends/gpu/runtime/nvshmem_collective_permute_thunk.h
+@@ -88,7 +88,7 @@ class NvshmemCollectivePermuteThunk : public NvshmemCollectiveThunk {
+ 
+ [[deprecated("Use NCCL 2.28+ primitives instead.")]]
+ absl::Status RunCollectivePermute(P2PConfig::SourceTargetMapEntry source_target,
+-                                  std::vector<DeviceBufferPair>& buffers,
++                                  DeviceBufferPairs& buffers,
+                                   se::Stream& stream,
+                                   absl::string_view device_string,
+                                   int64_t current_id);
+diff --git a/xla/backends/gpu/runtime/nvshmem_recv_thunk.cc b/xla/backends/gpu/runtime/nvshmem_recv_thunk.cc
+index c5c5846fbfbb0..4a7421120f7b3 100644
+--- a/xla/backends/gpu/runtime/nvshmem_recv_thunk.cc
++++ b/xla/backends/gpu/runtime/nvshmem_recv_thunk.cc
+@@ -114,7 +114,7 @@ absl::Status NvshmemRecvThunk::Initialize(const InitializeParams& params) {
+ absl::Status NvshmemRecvThunk::RunNvshmemCollective(const ExecuteParams& params,
+                                                     se::Stream& stream) {
+   TF_ASSIGN_OR_RETURN(
+-      std::vector<DeviceBufferPair> device_buffers,
++      DeviceBufferPairs device_buffers,
+       ConvertToDeviceBuffers(params.buffer_allocations, {buffer_},
+                              config_.config.operand_element_type));
+   TF_RET_CHECK(device_buffers.size() == 1) << "Expected one buffer pair.";
+diff --git a/xla/backends/gpu/runtime/nvshmem_send_thunk.cc b/xla/backends/gpu/runtime/nvshmem_send_thunk.cc
+index 1ee5f8d435d90..74ef6265d8db0 100644
+--- a/xla/backends/gpu/runtime/nvshmem_send_thunk.cc
++++ b/xla/backends/gpu/runtime/nvshmem_send_thunk.cc
+@@ -118,7 +118,7 @@ absl::Status NvshmemSendThunk::Initialize(const InitializeParams& params) {
+ absl::Status NvshmemSendThunk::RunNvshmemCollective(const ExecuteParams& params,
+                                                     se::Stream& stream) {
+   TF_ASSIGN_OR_RETURN(
+-      std::vector<DeviceBufferPair> device_buffers,
++      DeviceBufferPairs device_buffers,
+       ConvertToDeviceBuffers(params.buffer_allocations, {buffer_},
+                              config_.config.operand_element_type));
+   TF_RET_CHECK(device_buffers.size() == 1) << "Expected one buffer pair.";
+diff --git a/xla/backends/gpu/runtime/ragged_all_to_all_thunk.cc b/xla/backends/gpu/runtime/ragged_all_to_all_thunk.cc
+index 235e6b4d9e351..484200902eb15 100644
+--- a/xla/backends/gpu/runtime/ragged_all_to_all_thunk.cc
++++ b/xla/backends/gpu/runtime/ragged_all_to_all_thunk.cc
+@@ -351,7 +351,7 @@ absl::StatusOr<RaggedAllToAllStreamState*> RaggedAllToAllThunk::InitializeOnce(
+     RETURN_IF_ERROR(params.stream->BlockHostUntilDone());
+ 
+     ASSIGN_OR_RETURN(
+-        std::vector<DeviceBufferPair> device_buffers,
++        DeviceBufferPairs device_buffers,
+         ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
+                                config_.config.operand_element_type));
+   }
+@@ -402,7 +402,7 @@ absl::Status RaggedAllToAllThunk::Initialize(const InitializeParams& params) {
+   } else if (is_local(params.local_device_count)) {
+     // Rendezvous - Exchange output pointers and barrier signal buffers.
+     ASSIGN_OR_RETURN(
+-        std::vector<DeviceBufferPair> device_buffers,
++        DeviceBufferPairs device_buffers,
+         ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
+                                config_.config.operand_element_type));
+ 
+@@ -494,7 +494,7 @@ absl::Status RaggedAllToAllThunk::RunCollective(const ExecuteParams& params,
+                                                 const GpuCliqueKey& clique_key,
+                                                 se::Stream& stream,
+                                                 Communicator& comm) {
+-  ASSIGN_OR_RETURN(std::vector<DeviceBufferPair> device_buffers,
++  ASSIGN_OR_RETURN(DeviceBufferPairs device_buffers,
+                    ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
+                                           config_.config.operand_element_type));
+ 
+@@ -599,7 +599,7 @@ absl::Status RaggedAllToAllThunk::PrepareCollective(
+ 
+ absl::Status RunRaggedAllToAll(
+     int64_t ragged_row_element_size, int64_t num_total_updates,
+-    const std::vector<DeviceBufferPair>& original_buffers, se::Stream& stream,
++    const DeviceBufferPairs& original_buffers, se::Stream& stream,
+     Communicator& comm, absl::Span<int64_t* const> ragged_metadata_allocs,
+     const se::DeviceAddressBase& output_offsets_device_buffer,
+     bool use_symmetric_buffer) {
+@@ -608,7 +608,7 @@ absl::Status RunRaggedAllToAll(
+       << "Performing ragged-all-to-all from device ordinal: " << device_ordinal;
+   ASSIGN_OR_RETURN(int32_t num_ranks, comm.NumRanks());
+ 
+-  std::vector<DeviceBufferPair> buffers = original_buffers;
++  DeviceBufferPairs buffers = original_buffers;
+ 
+   int64_t num_updates_per_replica = num_total_updates / num_ranks;
+ 
+diff --git a/xla/backends/gpu/runtime/ragged_all_to_all_thunk.h b/xla/backends/gpu/runtime/ragged_all_to_all_thunk.h
+index 989df6096b441..235aafe0a6c55 100644
+--- a/xla/backends/gpu/runtime/ragged_all_to_all_thunk.h
++++ b/xla/backends/gpu/runtime/ragged_all_to_all_thunk.h
+@@ -237,7 +237,7 @@ RendezvousResources(int device_ordinal, RankId rank,
+ //    destination offsets will be written.
+ absl::Status RunRaggedAllToAll(
+     int64_t ragged_row_element_size, int64_t num_total_updates,
+-    const std::vector<DeviceBufferPair>& original_buffers, se::Stream& stream,
++    const DeviceBufferPairs& original_buffers, se::Stream& stream,
+     Communicator& comm, absl::Span<int64_t* const> ragged_metadata_allocs,
+     const se::DeviceAddressBase& output_offsets_device_buffer,
+     bool use_symmetric_buffer);
+diff --git a/xla/service/gpu/gpu_executable.cc b/xla/service/gpu/gpu_executable.cc
+index e3a7d94a51d4d..e4356d3dd0346 100644
+--- a/xla/service/gpu/gpu_executable.cc
++++ b/xla/service/gpu/gpu_executable.cc
+@@ -411,6 +411,10 @@ GpuExecutable::GpuExecutable(
+                                                buffer_assignment_);
+   }
+   set_module_stats(std::move(module_stats));
++  if (has_module()) {
++    collective_use_minimal_resource_ =
++        ShouldCollectiveUseMinimalResource(module());
++  }
+ 
+   // Populate command_buffer_allocation_indexes_ with buffer indices accessed by
+   // command buffer thunks. Skip constant and zero-size allocations since they
+@@ -1731,8 +1735,8 @@ absl::Status GpuExecutable::ExecuteThunks(
+ 
+   bool collective_use_minimal_resource = false;
+   if (has_module()) {
+-    ASSIGN_OR_RETURN(collective_use_minimal_resource,
+-                     ShouldCollectiveUseMinimalResource(module()));
++    TF_ASSIGN_OR_RETURN(collective_use_minimal_resource,
++                        collective_use_minimal_resource_);
+   }
+   if (use_command_buffer_va_remapping) {
+     TF_RETURN_IF_ERROR(ExecuteThunksWithVaRemapping(
+diff --git a/xla/service/gpu/gpu_executable.h b/xla/service/gpu/gpu_executable.h
+index 105ad2273c166..df05f2ae026b7 100644
+--- a/xla/service/gpu/gpu_executable.h
++++ b/xla/service/gpu/gpu_executable.h
+@@ -415,6 +415,11 @@ class GpuExecutable : public Executable {
+     return ModuleAnnotations(module_name_);
+   }();
+ 
++  // Cached result of scanning the HLO module for synchronous/asynchronous
++  // collective size heuristics. The module is immutable after construction,
++  // so this does not need to be recomputed for every execution.
++  absl::StatusOr<bool> collective_use_minimal_resource_ = false;
++
+   int64_t debug_buffer_assignment_show_max_;
+ 
+   absl::Mutex module_handle_mutex_;
