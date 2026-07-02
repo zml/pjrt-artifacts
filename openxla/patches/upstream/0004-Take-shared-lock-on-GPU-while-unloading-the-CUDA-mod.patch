@@ -1,32 +1,18 @@
-From 9fe67621cea76236a69c4f20034c42b43f22769d Mon Sep 17 00:00:00 2001
+From 19a786e0f688efb1a716bb1aefa280b55afbf03a Mon Sep 17 00:00:00 2001
 From: Benjamin Rabier <benjamin@zml.ai>
-Date: Sun, 19 Apr 2026 17:19:36 +0000
-Subject: [PATCH 5/7] Take shared lock on GPU while unloading the CUDA modules
+Date: Tue, 16 Jun 2026 10:57:08 +0200
+Subject: [PATCH 4/6] Take shared lock on GPU while unloading the CUDA modules
 
-This is an improvement over the previous commit regarding the parallel
-compilation with PJRT_Client_Compile. Similar to `cuMemcpyDtoHAsync_`
-`cuModuleUnload` blocks and prevents the thread that launched the
-DelayKernel to finish the profiling setup with its CUDA calls being
-also blocked now. It's only unblocked by the DelayKernel timing out.
 ---
- xla/service/gpu/gpu_executable.cc | 34 ++++++++++++++++++++++++++++++-
+ xla/service/gpu/gpu_executable.cc | 32 +++++++++++++++++++++++++++++++
  xla/service/gpu/gpu_executable.h  |  8 +++++++-
- 2 files changed, 40 insertions(+), 2 deletions(-)
+ 2 files changed, 39 insertions(+), 1 deletion(-)
 
 diff --git a/xla/service/gpu/gpu_executable.cc b/xla/service/gpu/gpu_executable.cc
-index e3a7d94a51..9569a1de4b 100644
+index 4dce6c63e6..3720d7f416 100644
 --- a/xla/service/gpu/gpu_executable.cc
 +++ b/xla/service/gpu/gpu_executable.cc
-@@ -181,7 +181,7 @@ class GpuExecutableThunkPassBufferAllocator : public ThunkPassBufferAllocator {
-       BufferAllocation::Index start_idx)
-       : next_idx_(start_idx) {}
- 
--  absl::StatusOr<BufferAllocation* absl_nonnull> NewEmptyAllocation(
-+  absl::StatusOr<BufferAllocation * absl_nonnull> NewEmptyAllocation(
-       int64_t size) override {
-     allocations_.push_back(BufferAllocation(next_idx_++, size, /*color=*/0));
-     return &allocations_.back();
-@@ -462,6 +462,31 @@ GpuExecutable::GpuExecutable(
+@@ -526,6 +526,31 @@ GpuExecutable::GpuExecutable(
  }
  
  GpuExecutable::~GpuExecutable() {
@@ -58,8 +44,8 @@ index e3a7d94a51..9569a1de4b 100644
    if (has_module() && enable_debug_info_manager_) {
      XlaDebugInfoManager::Get()->UnregisterModule(module().unique_id());
    }
-@@ -1255,6 +1280,13 @@ absl::StatusOr<ExecutionOutput> GpuExecutable::ExecuteAsyncOnStreamImpl(
-     ASSIGN_OR_RETURN(globals, ResolveConstantGlobals(run_options->stream()));
+@@ -1253,6 +1278,13 @@ absl::StatusOr<ExecutionOutput> GpuExecutable::ExecuteAsyncOnStreamImpl(
+     gpu_lock.emplace<1>(GetGpuMutex(executor));
    }
  
 +  // Record this executor so the destructor can take the GPU mutex reader lock
@@ -69,35 +55,42 @@ index e3a7d94a51..9569a1de4b 100644
 +    executors_.insert(executor);
 +  }
 +
-   // Use the `device_ordinal` from the `run_options` if it is provided. This is
-   // the ordinal of the logical devices (e.g., virtual GPUs). If it is not
-   // provided, the ordinals of the logical and physical devices are the same.
+   const GpuExecutable::BufferAllocToDeviceMemoryMap* globals;
+   {
+     tsl::profiler::TraceMe hlo_module_activity(
 diff --git a/xla/service/gpu/gpu_executable.h b/xla/service/gpu/gpu_executable.h
-index 105ad2273c..449936d3b0 100644
+index 0dff09b5ea..708ab60f38 100644
 --- a/xla/service/gpu/gpu_executable.h
 +++ b/xla/service/gpu/gpu_executable.h
-@@ -196,7 +196,7 @@ class GpuExecutable : public Executable {
-       const ServiceExecutableRunOptions* run_options,
-       VariantArguments arguments);
+@@ -30,6 +30,7 @@ limitations under the License.
+ #include "absl/base/thread_annotations.h"
+ #include "absl/container/btree_set.h"
+ #include "absl/container/flat_hash_map.h"
++#include "absl/container/flat_hash_set.h"
+ #include "absl/container/node_hash_map.h"
+ #include "absl/functional/function_ref.h"
+ #include "absl/status/status.h"
+@@ -385,7 +386,6 @@ class GpuExecutable : public Executable {
+       CollectiveMemoryCache& collective_memory_cache,
+       bool collective_use_minimal_resource);
  
--  absl::Span<const BufferAllocation* absl_nonnull const> GetAllocations()
-+  absl::Span<const BufferAllocation * absl_nonnull const> GetAllocations()
-       const override {
-     return allocation_ptrs_;
-   }
-@@ -422,6 +422,12 @@ class GpuExecutable : public Executable {
+-
+   // The GPU machine code for the computation, targeting GPUs at
+   // compute_capability_.
+   //
+@@ -464,6 +464,12 @@ class GpuExecutable : public Executable {
    // executable is destroyed.
-   absl::flat_hash_map<stream_executor::StreamExecutor*, se::ScopedModuleHandle>
+   absl::flat_hash_map<se::StreamExecutor*, se::ScopedModuleHandle>
        module_handles_ ABSL_GUARDED_BY(module_handle_mutex_);
 +
 +  // Set of executors this executable has been run on. Used in the destructor
 +  // to take reader locks on GetGpuMutex, preventing cuModuleUnload from racing
 +  // with the DelayKernel used during autotuning profiling.
-+  absl::flat_hash_set<stream_executor::StreamExecutor*> executors_
++  absl::flat_hash_set<se::StreamExecutor*> executors_
 +      ABSL_GUARDED_BY(module_handle_mutex_);
    // Cache of constant buffer allocation maps used by `ResolveConstantGlobals`.
-   absl::flat_hash_map<stream_executor::StreamExecutor*,
+   absl::flat_hash_map<se::StreamExecutor*,
                        std::unique_ptr<BufferAllocToDeviceMemoryMap>>
 -- 
-2.53.0
+2.50.1 (Apple Git-155)
 

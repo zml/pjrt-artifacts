@@ -1,25 +1,9 @@
-From 21e82a8cfd4f802c11b140547e4fb89d994f6d3f Mon Sep 17 00:00:00 2001
+From c0057bd93f31dc09c6fdf895ca40262d141bdff4 Mon Sep 17 00:00:00 2001
 From: Benjamin Rabier <benjamin@zml.ai>
-Date: Wed, 29 Apr 2026 07:13:21 +0000
-Subject: [PATCH 7/7] Add host execute buffer uses and disable transfer buffer
+Date: Tue, 16 Jun 2026 10:57:08 +0200
+Subject: [PATCH 6/6] Add host execute buffer uses and disable transfer buffer
  coalescing
 
-Add explicit result buffer uses to `HostExecuteStartThunk` and
-`HostExecuteDoneThunk` so host-execute dependencies are reflected in
-`thunk_sequence.txt` dumps.
-
-Also disable coalescing in `TransferBufferSubAllocator`. Transfer buffers
-are backed by pinned host allocations and are passed directly to D2H/H2D
-copies. Allowing BFC to coalesce adjacent regions can produce transfer
-ranges that do not correspond to a single underlying pinned allocation,
-which can trigger intermittent `CUDA_ERROR_INVALID_VALUE` failures during
-host offloading (`_xla_compute_type=host`).
-
-This matches the CUDA host-allocation documentation, which notes that the
-driver tracks the virtual memory ranges allocated by `cuMemHostAlloc`.
-Keeping each transfer buffer within a single `HostMemoryAllocate` region
-avoids constructing coalesced ranges that were never explicitly allocated
-as one pinned host region.
 ---
  .../gpu_host_offloading_allocator.cc          |  2 +-
  .../gpu/runtime/host_execute_thunk.cc         | 38 ++++++++++++++++++-
@@ -160,10 +144,10 @@ index 6f22b9bc8c..162a046492 100644
  };
  
 diff --git a/xla/backends/gpu/runtime/thunk.proto b/xla/backends/gpu/runtime/thunk.proto
-index f5087202c2..2709183038 100644
+index a16af0d5b9..4a246ec1d8 100644
 --- a/xla/backends/gpu/runtime/thunk.proto
 +++ b/xla/backends/gpu/runtime/thunk.proto
-@@ -171,6 +171,7 @@ message HostExecuteStartThunkProto {
+@@ -175,6 +175,7 @@ message HostExecuteStartThunkProto {
  
  message HostExecuteDoneThunkProto {
    uint64 async_events_unique_id = 1;
@@ -172,10 +156,10 @@ index f5087202c2..2709183038 100644
  
  message DynamicSliceThunkProto {
 diff --git a/xla/service/gpu/thunk_emitter.cc b/xla/service/gpu/thunk_emitter.cc
-index e0b08f78cb..56abde3ab1 100644
+index 40d3db5734..4b36dec03b 100644
 --- a/xla/service/gpu/thunk_emitter.cc
 +++ b/xla/service/gpu/thunk_emitter.cc
-@@ -2486,10 +2486,20 @@ absl::StatusOr<ThunkSequence> ThunkEmitter::EmitAsyncDone(
+@@ -2541,10 +2541,20 @@ absl::StatusOr<ThunkSequence> ThunkEmitter::EmitAsyncDone(
          auto async_events =
              GetInstructionToHostExecuteAsyncEvents().at(custom_call);
  
@@ -198,5 +182,5 @@ index e0b08f78cb..56abde3ab1 100644
        }
        auto it = hlo_async_executions_.find(wrapped);
 -- 
-2.53.0
+2.50.1 (Apple Git-155)
 
