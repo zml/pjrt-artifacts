@@ -1,26 +1,25 @@
-From a7e1aa49dce9da317710c1ec27c346e1fe447aa9 Mon Sep 17 00:00:00 2001
+From ddef7e4f9334addad12baaa18816fe48d5221ee8 Mon Sep 17 00:00:00 2001
 From: loupicaaa <louis@zml.ai>
-Date: Tue, 30 Jun 2026 13:37:43 +0000
-Subject: [PATCH] Replace vectors with inlined vectors. Avoid allocations.
- Raise traced command buffers limit.
+Date: Thu, 2 Jul 2026 19:22:42 +0200
+Subject: [PATCH 7/8] Replace vectors with inlined vectors
 
 ---
  xla/backends/gpu/runtime/command.h            |   5 +-
- .../gpu/runtime/command_buffer_thunk.cc       |  14 +--
+ .../gpu/runtime/command_buffer_thunk.cc       |  15 ++-
  .../gpu/runtime/command_buffer_thunk.h        |   2 +-
- xla/backends/gpu/runtime/command_executor.cc  |  58 ++++++----
+ xla/backends/gpu/runtime/command_executor.cc  |  57 +++++----
  xla/backends/gpu/runtime/command_executor.h   |   4 +
- xla/backends/gpu/runtime/kernel_thunk.cc      |  64 ++++++++---
+ xla/backends/gpu/runtime/kernel_thunk.cc      |  64 +++++++---
  xla/backends/gpu/runtime/kernel_thunk.h       |   6 +-
- xla/backends/gpu/runtime/traced_command.cc    |  11 +-
- .../gpu/runtime/traced_command_buffer.cc      | 106 +++++++++---------
- .../gpu/runtime/traced_command_buffer.h       |  38 ++++++-
+ xla/backends/gpu/runtime/traced_command.cc    |  19 +--
+ .../gpu/runtime/traced_command_buffer.cc      | 117 ++++++++----------
+ .../gpu/runtime/traced_command_buffer.h       |  38 +++++-
  xla/debug_options_flags.cc                    |   2 +-
  xla/stream_executor/kernel_args.h             |  35 ++++--
- 12 files changed, 222 insertions(+), 123 deletions(-)
+ 12 files changed, 226 insertions(+), 138 deletions(-)
 
 diff --git a/xla/backends/gpu/runtime/command.h b/xla/backends/gpu/runtime/command.h
-index f24c6be54f510..64f5ae3eaff90 100644
+index 5b6d55162b..bc9f62e63c 100644
 --- a/xla/backends/gpu/runtime/command.h
 +++ b/xla/backends/gpu/runtime/command.h
 @@ -16,6 +16,7 @@ limitations under the License.
@@ -31,7 +30,7 @@ index f24c6be54f510..64f5ae3eaff90 100644
  #include <memory>
  #include <optional>
  #include <string>
-@@ -145,6 +146,8 @@ class Command : public Thunk {
+@@ -94,6 +95,8 @@ class Command : public Thunk {
    }
  
   public:
@@ -40,7 +39,7 @@ index f24c6be54f510..64f5ae3eaff90 100644
    // Parameters for recording commands into the command buffer.
    struct RecordParams {
      // An external state manager that gives efficient access to per-device state
-@@ -154,7 +157,7 @@ class Command : public Thunk {
+@@ -103,7 +106,7 @@ class Command : public Thunk {
      // Buffer allocations that changed since the last call to `Record`. Buffer
      // allocation indices are sorted. CommandExecutor and individual commands
      // rely on this information to skip unnecessary updates.
@@ -50,11 +49,11 @@ index f24c6be54f510..64f5ae3eaff90 100644
      // A flag indicating whether we record commands at command buffer thunk
      // initialization time.
 diff --git a/xla/backends/gpu/runtime/command_buffer_thunk.cc b/xla/backends/gpu/runtime/command_buffer_thunk.cc
-index b1ec892adc893..702b0932f98ad 100644
+index b4b06ca521..4ad18daf6a 100644
 --- a/xla/backends/gpu/runtime/command_buffer_thunk.cc
 +++ b/xla/backends/gpu/runtime/command_buffer_thunk.cc
-@@ -122,20 +122,17 @@ CommandBufferThunk::CommandBufferThunk(
-   }
+@@ -98,20 +98,18 @@ CommandBufferThunk::CommandBufferThunk(
+   TrackCommandBuffers(state_);
  }
  
 -std::vector<BufferAllocation::Index>
@@ -70,14 +69,15 @@ index b1ec892adc893..702b0932f98ad 100644
    for (BufferAllocation::Index index : commands.allocs_indices()) {
      se::DeviceAddressBase alloc = allocs->GetDeviceAddress(index);
 -
-+    // recorded_allocs is mapping from buffer allocation index to the device memory
++    // recorded_allocs is mapping from buffer allocation index to the device
++    // memory
      if (recorded_allocs.size() <= index) {
        recorded_allocs.resize(index + 1);
 -      updated_allocs.push_back(index);
      }
  
      if (!recorded_allocs[index].IsSameAs(alloc)) {
-@@ -311,13 +308,14 @@ absl::Status CommandBufferThunk::ExecuteOnStream(const ExecuteParams& params) {
+@@ -285,8 +283,6 @@ absl::Status CommandBufferThunk::ExecuteOnStream(const ExecuteParams& params) {
      return absl::OkStatus();
    }
  
@@ -86,8 +86,10 @@ index b1ec892adc893..702b0932f98ad 100644
    // Determine whether to (re-)record the command buffer and whether this is a
    // first-time initialization recording (VA remapping path).
    bool is_first_record =
-       command_buffer_update_mode_ == DebugOptions::NEVER_UPDATE &&
-       cmd_buffer->command_buffer->state() == se::CommandBuffer::State::kCreate;
+@@ -295,6 +291,9 @@ absl::Status CommandBufferThunk::ExecuteOnStream(const ExecuteParams& params) {
+   bool has_commands_requiring_update =
+       command_buffer_update_mode_ != DebugOptions::NEVER_UPDATE &&
+       commands_.requires_update_on_execute();
 +
 +  auto updated_allocs = cmd_buffer->UpdateBufferAllocations(commands_, params);
 +
@@ -95,10 +97,10 @@ index b1ec892adc893..702b0932f98ad 100644
        (command_buffer_update_mode_ == DebugOptions::ALWAYS_UPDATE ||
         command_buffer_update_mode_ == DebugOptions::CAPTURE_CMD_NEVER_UPDATE) &&
 diff --git a/xla/backends/gpu/runtime/command_buffer_thunk.h b/xla/backends/gpu/runtime/command_buffer_thunk.h
-index 385ba201fc4e4..4cefcefa74176 100644
+index 6757676ef1..e8a2d47c2a 100644
 --- a/xla/backends/gpu/runtime/command_buffer_thunk.h
 +++ b/xla/backends/gpu/runtime/command_buffer_thunk.h
-@@ -87,7 +87,7 @@ class CommandBufferThunk : public Thunk {
+@@ -100,7 +100,7 @@ class CommandBufferThunk : public Thunk {
      // buffer allocations passed in `params`. Returns buffer allocations that
      // changed since the last update. Returned buffer allocations are sorted by
      // the buffer allocation index.
@@ -108,7 +110,7 @@ index 385ba201fc4e4..4cefcefa74176 100644
          ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex);
  
 diff --git a/xla/backends/gpu/runtime/command_executor.cc b/xla/backends/gpu/runtime/command_executor.cc
-index 61eaa97d135b2..134f5d28838d0 100644
+index e0e9b6f185..2fcdb0358e 100644
 --- a/xla/backends/gpu/runtime/command_executor.cc
 +++ b/xla/backends/gpu/runtime/command_executor.cc
 @@ -17,7 +17,6 @@ limitations under the License.
@@ -119,13 +121,14 @@ index 61eaa97d135b2..134f5d28838d0 100644
  #include <memory>
  #include <optional>
  #include <string>
-@@ -312,6 +311,17 @@ CommandExecutor::CommandExecutor(
+@@ -315,6 +314,18 @@ CommandExecutor::CommandExecutor(
      cmd_allocs_indices_.emplace_back(cmd_allocs_indices.begin(),
                                       cmd_allocs_indices.end());
    }
 +
-+  // Create a mapping from buffer allocation index to the list of command indices if alloc_indices is not empty
-+  // At update time if alloc is updated, alloc_to_cmds_ used to find the cmds associated
++  // Create a mapping from buffer allocation index to the list of command
++  // indices if alloc_indices is not empty At update time if alloc is updated,
++  // alloc_to_cmds_ used to find the cmds associated
 +  if (!allocs_indices_.empty()) {
 +    alloc_to_cmds_.resize(allocs_indices_.back() + 1);
 +    for (CommandId id = 0; id < cmd_allocs_indices_.size(); ++id) {
@@ -137,7 +140,7 @@ index 61eaa97d135b2..134f5d28838d0 100644
  }
  
  absl::Status CommandExecutor::Prepare(const Thunk::PrepareParams& params) {
-@@ -554,10 +564,28 @@ absl::Status CommandExecutor::RecordUpdate(
+@@ -555,10 +566,28 @@ absl::Status CommandExecutor::RecordUpdate(
      return absl::OkStatus();
    }
  
@@ -169,7 +172,7 @@ index 61eaa97d135b2..134f5d28838d0 100644
    auto skip_command_update = [&](CommandId id) {
      // If we don't know what allocations changed since the last call to
      // `Record` we must always update the command.
-@@ -592,25 +620,10 @@ absl::Status CommandExecutor::RecordUpdate(
+@@ -598,25 +627,10 @@ absl::Status CommandExecutor::RecordUpdate(
        return false;
      }
  
@@ -186,7 +189,7 @@ index 61eaa97d135b2..134f5d28838d0 100644
 -                             *record_params.updated_allocs,
 -                             std::back_inserter(alloc_intersection));
 -    return alloc_intersection.empty();
-+    //Uses the 
++    // Uses the
 +    return command_update_marks != nullptr && !(*command_update_marks)[id];
    };
  
@@ -197,22 +200,19 @@ index 61eaa97d135b2..134f5d28838d0 100644
    // Check this this executor was correctly recorded into the command buffer.
    if (recorded_commands.size() != commands_.size()) {
      return Internal(
-@@ -624,9 +637,8 @@ absl::Status CommandExecutor::RecordUpdate(
-   for (CommandId id = 0; id < commands_.size(); ++id) {
-     Command* command = commands_[id];
+@@ -632,7 +646,6 @@ absl::Status CommandExecutor::RecordUpdate(
  
--    std::optional<tsl::profiler::ScopedAnnotation> annotation =
-+      std::optional<tsl::profiler::ScopedAnnotation> annotation =
+     std::optional<tsl::profiler::ScopedAnnotation> annotation =
          GetKernelAnnotation(command->profile_annotation());
 -
      // Skip updating collective commands if mock collectives are enabled.
-     if (execute_params.mock_collectives && IsCollectiveCommand(*command)) {
+     if (execute_params.mock_collectives && command->IsCollective()) {
        continue;
 diff --git a/xla/backends/gpu/runtime/command_executor.h b/xla/backends/gpu/runtime/command_executor.h
-index 614d06221515b..62365aa7c7e39 100644
+index bc845b1fa6..0b4678e10b 100644
 --- a/xla/backends/gpu/runtime/command_executor.h
 +++ b/xla/backends/gpu/runtime/command_executor.h
-@@ -208,6 +208,7 @@ class CommandExecutor {
+@@ -224,6 +224,7 @@ class CommandExecutor {
      // to values valid during the execution we use a node hash map container.
      using Key = std::pair<const CommandExecutor*, RecordId>;
      absl::node_hash_map<Key, RecordedCommands> recorded_commands;
@@ -220,7 +220,7 @@ index 614d06221515b..62365aa7c7e39 100644
    };
  
    CommandExecutor(SynchronizationMode synchronization_mode,
-@@ -249,6 +250,9 @@ class CommandExecutor {
+@@ -265,6 +266,9 @@ class CommandExecutor {
    // by the command (sorted by the buffer allocation index).
    std::vector<std::vector<BufferAllocation::Index>> cmd_allocs_indices_;
  
@@ -231,10 +231,10 @@ index 614d06221515b..62365aa7c7e39 100644
    // control-dependency tokens from the emitter). Stored so that
    // RenderExecutionGraph() can reproduce the same dependency graph.
 diff --git a/xla/backends/gpu/runtime/kernel_thunk.cc b/xla/backends/gpu/runtime/kernel_thunk.cc
-index 6140ac06158c7..8f6c9f0b1aa36 100644
+index f9a1b04e96..2eca646536 100644
 --- a/xla/backends/gpu/runtime/kernel_thunk.cc
 +++ b/xla/backends/gpu/runtime/kernel_thunk.cc
-@@ -194,21 +194,36 @@ absl::Status KernelThunk::Initialize(const InitializeParams& params) {
+@@ -200,21 +200,36 @@ absl::Status KernelThunk::Initialize(const InitializeParams& params) {
    return absl::OkStatus();
  }
  
@@ -261,7 +261,7 @@ index 6140ac06158c7..8f6c9f0b1aa36 100644
 -      return absl::InternalError(absl::StrFormat(
 -          "Kernel not loaded for executor (Initialize() not called): %s",
 -          kernel_name_));
-+  ASSIGN_OR_RETURN(se::Kernel* kernel, GetKernel(executor));
++  ASSIGN_OR_RETURN(se::Kernel * kernel, GetKernel(executor));
 +  absl::InlinedVector<se::KernelArg, se::kKernelArgsInlineCapacity> kernel_args;
 +  kernel_args.reserve(args_.size());
 +
@@ -281,7 +281,7 @@ index 6140ac06158c7..8f6c9f0b1aa36 100644
    for (int idx = 0; idx < args_.size(); ++idx) {
      se::DeviceAddressBase buf =
          buffer_allocations.GetDeviceAddress(args_[idx].slice);
-@@ -262,22 +277,37 @@ absl::StatusOr<const se::CommandBuffer::Command*> KernelThunk::Record(
+@@ -268,22 +283,37 @@ absl::StatusOr<const se::CommandBuffer::Command*> KernelThunk::Record(
      se::CommandBuffer* command_buffer) {
    se::StreamExecutor* executor = execute_params.stream->parent();
  
@@ -290,7 +290,7 @@ index 6140ac06158c7..8f6c9f0b1aa36 100644
 -      GetKernelAndArgs(*execute_params.buffer_allocations, executor));
 -  auto& [kernel, kernel_args] = kernel_with_args;
 -  auto packed_args = se::PackKernelArgs(kernel_args, shmem_bytes_);
-+  ASSIGN_OR_RETURN(se::Kernel* kernel, GetKernel(executor));
++  ASSIGN_OR_RETURN(se::Kernel * kernel, GetKernel(executor));
 +  se::KernelArgsPackedArray packed_args(args_.size());
 +
 +  if (tma_metadata_.arg_index_to_tma_info.empty()) {
@@ -327,7 +327,7 @@ index 6140ac06158c7..8f6c9f0b1aa36 100644
    }
    return Internal("Invalid record action");
 diff --git a/xla/backends/gpu/runtime/kernel_thunk.h b/xla/backends/gpu/runtime/kernel_thunk.h
-index 56b5ed70400de..e8c0df95eab0b 100644
+index 56b5ed7040..e8c0df95ea 100644
 --- a/xla/backends/gpu/runtime/kernel_thunk.h
 +++ b/xla/backends/gpu/runtime/kernel_thunk.h
 @@ -131,9 +131,13 @@ class KernelThunk : public Command {
@@ -346,13 +346,16 @@ index 56b5ed70400de..e8c0df95eab0b 100644
    // argument vector (handling TMA descriptors). Returns InternalError if
    // Initialize() was not called for this executor.
 diff --git a/xla/backends/gpu/runtime/traced_command.cc b/xla/backends/gpu/runtime/traced_command.cc
-index b2caa6bc73159..be1bd1a838e10 100644
+index 8bfa056583..85188a5e4a 100644
 --- a/xla/backends/gpu/runtime/traced_command.cc
 +++ b/xla/backends/gpu/runtime/traced_command.cc
-@@ -78,13 +78,20 @@ TracedCommand::RecordTracedCommand(
-   VLOG(5) << "Record traced command into command buffer: " << command_buffer;
+@@ -78,19 +78,20 @@ TracedCommand::RecordTracedCommand(
+           execute_params.command_buffer_trace_stream, trace, priority()));
  
    if (auto* create = std::get_if<RecordCreate>(&record_action)) {
+-    VLOG(5) << "Record traced command " << nested_cmd
+-            << " into parent command buffer: " << command_buffer
+-            << " (CreateChildCommand)";
 -    return command_buffer->CreateChildCommand(*nested_cmd,
 -                                              create->dependencies);
 +    TF_ASSIGN_OR_RETURN(
@@ -363,20 +366,24 @@ index b2caa6bc73159..be1bd1a838e10 100644
    }
  
    if (auto* update = std::get_if<RecordUpdate>(&record_action)) {
+-    VLOG(5) << "Record traced command " << nested_cmd
+-            << " into parent command buffer: " << command_buffer
+-            << " (UpdateChildCommand)";
+-    RETURN_IF_ERROR(
 +    if (traced_cmd->RecordedChildIsCurrent(update->command, nested_cmd)) {
 +      return update->command;
 +    }
-     TF_RETURN_IF_ERROR(
++    TF_RETURN_IF_ERROR(
          command_buffer->UpdateChildCommand(update->command, *nested_cmd));
 +    traced_cmd->SetRecordedChild(update->command, nested_cmd);
      return update->command;
    }
  
 diff --git a/xla/backends/gpu/runtime/traced_command_buffer.cc b/xla/backends/gpu/runtime/traced_command_buffer.cc
-index b1dc4495ab2d2..069be57db93cc 100644
+index 307ea3f055..b28fdb7121 100644
 --- a/xla/backends/gpu/runtime/traced_command_buffer.cc
 +++ b/xla/backends/gpu/runtime/traced_command_buffer.cc
-@@ -15,14 +15,13 @@ limitations under the License.
+@@ -15,6 +15,7 @@ limitations under the License.
  
  #include "xla/backends/gpu/runtime/traced_command_buffer.h"
  
@@ -384,15 +391,17 @@ index b1dc4495ab2d2..069be57db93cc 100644
  #include <cstddef>
  #include <cstdint>
  #include <memory>
+@@ -22,9 +23,6 @@ limitations under the License.
  #include <vector>
  
  #include "absl/algorithm/container.h"
+-#include "absl/base/optimization.h"
 -#include "absl/container/flat_hash_set.h"
 -#include "absl/container/inlined_vector.h"
  #include "absl/functional/function_ref.h"
  #include "absl/log/check.h"
  #include "absl/log/log.h"
-@@ -44,15 +43,17 @@ namespace xla::gpu {
+@@ -46,15 +44,17 @@ namespace xla::gpu {
  TracedCommandBuffer::TracedCommandBuffer(const Command* trace_cmd,
                                           Command::BufferUses buffers,
                                           int64_t capacity)
@@ -410,13 +419,13 @@ index b1dc4495ab2d2..069be57db93cc 100644
    }
 -  allocs_indices_.assign(allocs_indices.begin(), allocs_indices.end());
 +  absl::c_sort(allocs_indices_);
-+  allocs_indices_.erase(std::unique(allocs_indices_.begin(),
-+                                    allocs_indices_.end()),
-+                        allocs_indices_.end());
++  allocs_indices_.erase(
++      std::unique(allocs_indices_.begin(), allocs_indices_.end()),
++      allocs_indices_.end());
  }
  
  absl::StatusOr<se::CommandBuffer*> TracedCommandBuffer::GetOrTraceCommandBuffer(
-@@ -60,63 +61,56 @@ absl::StatusOr<se::CommandBuffer*> TracedCommandBuffer::GetOrTraceCommandBuffer(
+@@ -62,70 +62,57 @@ absl::StatusOr<se::CommandBuffer*> TracedCommandBuffer::GetOrTraceCommandBuffer(
      se::Stream* stream, absl::FunctionRef<absl::Status(se::Stream*)> trace,
      se::StreamPriority priority) {
    // Collect memory addresses for relevant allocations.
@@ -434,19 +443,8 @@ index b1dc4495ab2d2..069be57db93cc 100644
 -  auto shift_right = [&](size_t i) -> Entry& {
 -    if (i == 0) {
 -      return entries_[0];
-+  if (auto it = entries_by_key_.find(key);
-+      ABSL_PREDICT_TRUE(it != entries_by_key_.end())) {
-+    auto entry = it->second;
-+    if (capacity_ <= 64) {
-+      entries_.splice(entries_.begin(), entries_, it->second);
-+      it->second = entries_.begin();
-+      entry = entries_.begin();
-     }
-+    VLOG(6) << "Command buffer trace cache hit for command "
-+            << trace_cmd_->ToString(0);
-+    return entry->command_buffer.get();
-+  }
- 
+-    }
+-
 -    Entry entry = std::move(entries_[i]);
 -    do {
 -      entries_[i] = std::move(entries_[i - 1]);
@@ -461,56 +459,76 @@ index b1dc4495ab2d2..069be57db93cc 100644
 -    if (ABSL_PREDICT_TRUE(absl::c_equal(entries_[i].recorded_allocs, allocs) &&
 -                          entries_[i].command_buffer)) {
 -      VLOG(6) << "Command buffer trace cache hit for command "
--              << trace_cmd_->ToString(0);
+-              << trace_cmd_->ToString(0)
+-              << " (buffer: " << entries_[i].command_buffer.get() << ")";
 -      return shift_right(i).command_buffer.get();
--    }
-+  if (entries_.size() == capacity_) {
-+    entries_by_key_.erase(entries_.back().key);
-+    entries_.pop_back();
++  if (auto it = entries_by_key_.find(key);
++      ABSL_PREDICT_TRUE(it != entries_by_key_.end())) {
++    auto entry = it->second;
++    if (capacity_ <= 64) {
++      entries_.splice(entries_.begin(), entries_, it->second);
++      it->second = entries_.begin();
++      entry = entries_.begin();
+     }
++    VLOG(6) << "Command buffer trace cache hit for command "
++            << trace_cmd_->ToString(0);
++    return entry->command_buffer.get();
 +  }
  
 -    // Create a new entry by calling a user-provided tracing function, move it
 -    // to front and return a pointer to cached command buffer.
 -    if (entries_[i].command_buffer == nullptr) {
--      TF_ASSIGN_OR_RETURN(
+-      ASSIGN_OR_RETURN(
 -          entries_[i].command_buffer,
 -          se::TraceCommandBufferFactory::Create(executor, stream, trace));
 -      entries_[i].recorded_allocs.assign(allocs.begin(), allocs.end());
 -      if (priority != se::StreamPriority::Default) {
--        TF_RETURN_IF_ERROR(entries_[i].command_buffer->SetPriority(priority));
+-        RETURN_IF_ERROR(entries_[i].command_buffer->SetPriority(priority));
 -      }
 -      VLOG(6) << "Command buffer trace cache create new item for command "
--              << trace_cmd_->ToString(0);
+-              << trace_cmd_->ToString(0)
+-              << " (buffer: " << entries_[i].command_buffer.get() << ")";
 -      return shift_right(i).command_buffer.get();
 -    }
-+  Entry entry;
-+  entry.key = std::move(key);
-+  TF_ASSIGN_OR_RETURN(entry.command_buffer,
-+                      se::TraceCommandBufferFactory::Create(executor, stream,
-+                                                            trace));
-+  if (priority != se::StreamPriority::Default) {
-+    TF_RETURN_IF_ERROR(entry.command_buffer->SetPriority(priority));
++  if (entries_.size() == capacity_) {
++    entries_by_key_.erase(entries_.back().key);
++    entries_.pop_back();
    }
  
 -  // Create a new entry by calling a user-provided tracing function, replace
 -  // the last entry with it, move it to front and return a pointer to cached
 -  // command buffer.
--  TF_ASSIGN_OR_RETURN(
+-  VLOG(6) << "Command buffer trace cache evicting old command buffer "
+-          << entries_[capacity_ - 1].command_buffer.get()
+-          << " to make room for command " << trace_cmd_->ToString(0);
+-  ASSIGN_OR_RETURN(
 -      entries_[capacity_ - 1].command_buffer,
--      se::TraceCommandBufferFactory::Create(executor, stream, trace));
++  Entry entry;
++  entry.key = std::move(key);
++  TF_ASSIGN_OR_RETURN(
++      entry.command_buffer,
+       se::TraceCommandBufferFactory::Create(executor, stream, trace));
 -  entries_[capacity_ - 1].recorded_allocs.assign(allocs.begin(), allocs.end());
 -  VLOG(6) << "Command buffer trace cache does replacement for command "
+-          << trace_cmd_->ToString(0)
+-          << " (new buffer: " << entries_[capacity_ - 1].command_buffer.get()
+-          << ")";
+-  return shift_right(capacity_ - 1).command_buffer.get();
++  if (priority != se::StreamPriority::Default) {
++    TF_RETURN_IF_ERROR(entry.command_buffer->SetPriority(priority));
++  }
++
 +  entries_.push_front(std::move(entry));
 +  entries_by_key_.emplace(entries_.front().key, entries_.begin());
 +
 +  VLOG(6) << "Command buffer trace cache create new item for command "
-           << trace_cmd_->ToString(0);
--  return shift_right(capacity_ - 1).command_buffer.get();
++          << trace_cmd_->ToString(0);
 +  return entries_.front().command_buffer.get();
 +}
 +
 +bool TracedCommandBuffer::RecordedChildIsCurrent(
-+    const se::CommandBuffer::Command* command, se::CommandBuffer* nested) const {
++    const se::CommandBuffer::Command* command,
++    se::CommandBuffer* nested) const {
 +  auto it = recorded_children_.find(command);
 +  return it != recorded_children_.end() && it->second == nested;
 +}
@@ -522,7 +540,7 @@ index b1dc4495ab2d2..069be57db93cc 100644
  
  }  // namespace xla::gpu
 diff --git a/xla/backends/gpu/runtime/traced_command_buffer.h b/xla/backends/gpu/runtime/traced_command_buffer.h
-index 4ff508fca6379..8953448bfb9bf 100644
+index 4ff508fca6..8953448bfb 100644
 --- a/xla/backends/gpu/runtime/traced_command_buffer.h
 +++ b/xla/backends/gpu/runtime/traced_command_buffer.h
 @@ -17,9 +17,13 @@ limitations under the License.
@@ -588,10 +606,10 @@ index 4ff508fca6379..8953448bfb9bf 100644
  
  }  // namespace xla::gpu
 diff --git a/xla/debug_options_flags.cc b/xla/debug_options_flags.cc
-index 92cfb932f2fb0..1fd1c5c182b4c 100644
+index ae555d3992..78453e05c8 100644
 --- a/xla/debug_options_flags.cc
 +++ b/xla/debug_options_flags.cc
-@@ -255,7 +255,7 @@ DebugOptions DefaultDebugOptionsIgnoringFlags() {
+@@ -266,7 +266,7 @@ DebugOptions DefaultDebugOptionsIgnoringFlags() {
    opts.set_xla_gpu_graph_min_graph_size(5);
    opts.set_xla_gpu_command_buffer_scheduling_mode(DebugOptions::LHS);
    opts.set_xla_gpu_command_buffer_unroll_loops(false);
@@ -601,29 +619,29 @@ index 92cfb932f2fb0..1fd1c5c182b4c 100644
    // Despite the name, fast min/max on GPUs does not seem to be any faster, and
    // adds very counter-intuitive "NaN-swallowing" behavior.
 diff --git a/xla/stream_executor/kernel_args.h b/xla/stream_executor/kernel_args.h
-index ac20638d309aa..ada48f5c7ed34 100644
+index e153504e19..ee11f22f1e 100644
 --- a/xla/stream_executor/kernel_args.h
 +++ b/xla/stream_executor/kernel_args.h
-@@ -42,6 +42,8 @@ limitations under the License.
- 
- namespace stream_executor {
+@@ -49,6 +49,8 @@ struct PackedArgBase {
+   virtual int64_t size() const = 0;
+ };
  
 +inline constexpr size_t kKernelArgsInlineCapacity = 32;
 +
  //===----------------------------------------------------------------------===//
  // Kernel arguments
  //===----------------------------------------------------------------------===//
-@@ -323,7 +325,8 @@ class KernelArgsDeviceAddressArray : public KernelArgs {
-   }
+@@ -383,7 +385,8 @@ class KernelArgsDeviceAddressArray : public KernelArgs,
+   // A storage for packed POD arguments added to this array.
+   absl::InlinedVector<std::unique_ptr<PackedArgBase>, 8> packed_args_;
  
-  private:
 -  absl::InlinedVector<DeviceAddressBase, 4> device_addr_args_;
 +  absl::InlinedVector<DeviceAddressBase, kKernelArgsInlineCapacity>
 +      device_addr_args_;
    size_t shared_memory_bytes_ = 0;
  };
  
-@@ -434,31 +437,30 @@ class KernelArgsPackedArray : public KernelArgsPackedArrayBase {
+@@ -472,31 +475,30 @@ class KernelArgsPackedArray : public KernelArgsPackedArrayBase,
  
   private:
    // A storage for device address arguments added to this array.
@@ -631,7 +649,7 @@ index ac20638d309aa..ada48f5c7ed34 100644
 +  absl::InlinedVector<void*, kKernelArgsInlineCapacity> device_addr_args_;
  
    // A storage for packed POD arguments added to this array.
-   absl::InlinedVector<std::unique_ptr<internal::PackedArgBase>, 8> packed_args_;
+   absl::InlinedVector<std::unique_ptr<PackedArgBase>, 8> packed_args_;
  
    // Pointers to entries `device_addr_args_` or `packed_args_`.
 -  absl::InlinedVector<void*, 8> argument_addresses_;
@@ -663,7 +681,7 @@ index ac20638d309aa..ada48f5c7ed34 100644
    for (const auto& arg : args) {
      std::visit(
          absl::Overload{
-@@ -469,6 +471,19 @@ inline std::unique_ptr<KernelArgsPackedArray> PackKernelArgs(
+@@ -507,6 +509,19 @@ inline std::unique_ptr<KernelArgsPackedArray> PackKernelArgs(
          arg);
    }
    packed->add_shared_bytes(shmem_bytes);
@@ -683,3 +701,6 @@ index ac20638d309aa..ada48f5c7ed34 100644
    return packed;
  }
  
+-- 
+2.50.1 (Apple Git-155)
+
