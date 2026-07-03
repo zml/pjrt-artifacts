@@ -23,7 +23,7 @@ index 92ac368740..ff5dbd9278 100644
  bazel_dep(name = "rules_python", version = "1.8.5")
  bazel_dep(name = "rules_shell", version = "0.6.1")
  bazel_dep(name = "snappy", version = "1.2.1")
-+bazel_dep(name = "llvm", version = "0.7.0")
++bazel_dep(name = "llvm", version = "0.8.11")
  bazel_dep(name = "zlib", version = "1.3.2")
  # go/keep-sorted end
  
