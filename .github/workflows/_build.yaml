@@ -91,7 +91,7 @@ jobs:
             platform: linux-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_cpu_plugin
           - target: oneapi
-            config: "-c opt --config=sycl_hermetic --repo_env=ONEAPI_VERSION=2026.0 --repo_env=OS=ubuntu_24.10"
+            config: "--config=sycl_hermetic -c opt"
             artifact: bazel-bin/xla/pjrt/c/pjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_oneapi.so
             runs_on:
