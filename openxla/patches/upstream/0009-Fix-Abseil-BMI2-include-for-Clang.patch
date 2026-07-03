@@ -1,7 +1,7 @@
 From 5d5aced9913c035e7720af3a864a7bae97bc7faa Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Fri, 3 Jul 2026 09:38:51 +0200
-Subject: [PATCH] Fix Abseil BMI2 include for Clang
+Subject: [PATCH 9/9] Fix Abseil BMI2 include for Clang
 
 ---
  MODULE.bazel                      | 1 +
