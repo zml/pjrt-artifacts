@@ -1,5 +1,6 @@
-build --repo_env=HERMETIC_PYTHON_VERSION=3.11
-build:rocm_ci_hermetic --repo_env="ROCM_VERSION=7.1.1"
+build --repo_env=HERMETIC_PYTHON_VERSION=3.12
+build:rocm_ci_hermetic --repo_env=ROCM_DISTRO_VERSION=rocm_7.13.0_multiarch
+build:rocm_ci_hermetic --repo_env=TF_ROCM_AMDGPU_TARGETS=gfx908,gfx90a,gfx942,gfx950,gfx1010,gfx1011,gfx1012,gfx1030,gfx1031,gfx1032,gfx1033,gfx1034,gfx1035,gfx1036,gfx1100,gfx1101,gfx1102,gfx1103,gfx1150,gfx1151,gfx1152,gfx1200,gfx1201
 
 build --copt -Wno-sign-compare
 build --copt -Wno-gnu-offsetof-extensions
