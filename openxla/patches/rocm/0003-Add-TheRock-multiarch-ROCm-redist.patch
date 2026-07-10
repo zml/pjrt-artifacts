@@ -1,0 +1,70 @@
+diff --git a/MODULE.bazel b/MODULE.bazel
+index 0ded999acc..bac042ce72 100644
+--- a/MODULE.bazel
++++ b/MODULE.bazel
+@@ -48,6 +48,10 @@ archive_override(
+     integrity = "sha256-QJY+S8Ji36mkMUb2EBQK8AaLAjrOjzxQ8XBae1DeCDA=",
+     strip_prefix = "rules_ml_toolchain-cad1047facbac4fb3c1124da68bf2cb36c7eb9ac",
+     urls = ["https://github.com/google-ml-infra/rules_ml_toolchain/archive/cad1047facbac4fb3c1124da68bf2cb36c7eb9ac.tar.gz"],
++    patch_strip = 1,
++    patches = [
++        "//third_party/gpus/rocm:rules_ml_toolchain_rocm_multiarch.patch",
++    ],
+ )
+ 
+ # TODO: Upstream the patch?
+diff --git a/third_party/gpus/rocm/rocm_redist.bzl b/third_party/gpus/rocm/rocm_redist.bzl
+index 5c62b0211b..13c06eda85 100644
+--- a/third_party/gpus/rocm/rocm_redist.bzl
++++ b/third_party/gpus/rocm/rocm_redist.bzl
+@@ -1,4 +1,14 @@
+ rocm_redist = {
++    "rocm_7.13.0_multiarch": struct(
++        packages = [
++            {
++                "url": "https://repo.amd.com/rocm/tarball-multi-arch/therock-dist-linux-multiarch-7.13.0.tar.gz",
++                "sha256": "",
++            },
++        ],
++        required_softlinks = [],
++        rocm_root = "",
++    ),
+     "rocm_7.10.0_gfx90X": struct(
+         packages = [
+             {
+diff --git a/third_party/gpus/rocm/rules_ml_toolchain_rocm_multiarch.patch b/third_party/gpus/rocm/rules_ml_toolchain_rocm_multiarch.patch
+new file mode 100644
+index 0000000000..def8dae05f
+--- /dev/null
++++ b/third_party/gpus/rocm/rules_ml_toolchain_rocm_multiarch.patch
+@@ -0,0 +1,17 @@
++diff --git a/gpu/rocm/rocm_redist.bzl b/gpu/rocm/rocm_redist.bzl
++index d1a6abb..29727a6 100644
++--- a/gpu/rocm/rocm_redist.bzl
+++++ b/gpu/rocm/rocm_redist.bzl
++@@ -16,3 +16,13 @@
++ rocm_redist = {
+++    "rocm_7.13.0_multiarch": struct(
+++        packages = [
+++            {
+++                "url": "https://repo.amd.com/rocm/tarball-multi-arch/therock-dist-linux-multiarch-7.13.0.tar.gz",
+++                "sha256": "",
+++            },
+++        ],
+++        required_softlinks = [],
+++        rocm_root = "",
+++    ),
++     "rocm_7.12.0_gfx94X": struct(
++         packages = [
+diff --git a/workspace3.bzl b/workspace3.bzl
+index a9aa1507a8..844babc07a 100644
+--- a/workspace3.bzl
++++ b/workspace3.bzl
+@@ -52,6 +52,7 @@ def workspace():
+         name = "rules_ml_toolchain",
+         sha256 = "40963e4bc262dfa9a43146f610140af0068b023ace8f3c50f1705a7b50de0830",
+         strip_prefix = "rules_ml_toolchain-cad1047facbac4fb3c1124da68bf2cb36c7eb9ac",
++        patch_file = ["//third_party/gpus/rocm:rules_ml_toolchain_rocm_multiarch.patch"],
+         urls = tf_mirror_urls(
+             "https://github.com/google-ml-infra/rules_ml_toolchain/archive/cad1047facbac4fb3c1124da68bf2cb36c7eb9ac.tar.gz",
+         ),
