@@ -1,7 +1,7 @@
-From 9f4a0a570d96c9c397dcca5a3d51d267cb8dbf44 Mon Sep 17 00:00:00 2001
-From: louis <louis@zml.ai>
-Date: Thu, 2 Jul 2026 19:22:55 +0200
-Subject: [PATCH 8/8] Improve xla host scheduling
+From c8db326c7ab5892a7f53a4c699f3a85f085ec23f Mon Sep 17 00:00:00 2001
+From: Ubuntu <Louis Lechevalier>
+Date: Fri, 3 Jul 2026 11:52:11 +0000
+Subject: [PATCH 08/15] Apply patch 0008-Improve-xla-host-scheduling.patch
 
 ---
  xla/backends/gpu/runtime/all_gather_thunk.cc  | 11 +++--
@@ -19,15 +19,13 @@ Subject: [PATCH 8/8] Improve xla host scheduling
  xla/backends/gpu/runtime/collective_thunk.h   | 39 +++++++++++++++-
  .../gpu/runtime/ragged_all_to_all_thunk.cc    | 12 ++---
  .../gpu/runtime/ragged_all_to_all_thunk.h     |  2 +-
- xla/service/gpu/gpu_executable.cc             |  6 ++-
- xla/service/gpu/gpu_executable.h              |  5 +++
- 17 files changed, 120 insertions(+), 66 deletions(-)
+ 15 files changed, 110 insertions(+), 65 deletions(-)
 
 diff --git a/xla/backends/gpu/runtime/all_gather_thunk.cc b/xla/backends/gpu/runtime/all_gather_thunk.cc
-index 94aa47a87f..3f3764bba3 100644
+index 6695dc8e24..cd61b170e1 100644
 --- a/xla/backends/gpu/runtime/all_gather_thunk.cc
 +++ b/xla/backends/gpu/runtime/all_gather_thunk.cc
-@@ -88,7 +88,7 @@ absl::Status CheckImplementableInst(const HloAllGatherInstruction* inst) {
+@@ -91,7 +91,7 @@ absl::Status CheckImplementableInst(const HloAllGatherInstruction* inst) {
  }  // namespace
  
  static absl::Status RunOneSidedAllGather(
@@ -36,7 +34,7 @@ index 94aa47a87f..3f3764bba3 100644
      const GpuCliqueKey& clique_key, const Thunk::ExecuteParams& params,
      Communicator& comm);
  
-@@ -172,7 +172,7 @@ absl::Status AllGatherThunk::RunCollective(const ExecuteParams& params,
+@@ -174,7 +174,7 @@ absl::Status AllGatherThunk::RunCollective(const ExecuteParams& params,
                                             Communicator& comm) {
    int device_ordinal = stream.parent()->device_ordinal();
  
@@ -44,8 +42,8 @@ index 94aa47a87f..3f3764bba3 100644
 +  ASSIGN_OR_RETURN(DeviceBufferPairs device_buffers,
                     ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
                                            config_.config.operand_element_type));
- 
-@@ -188,9 +188,8 @@ absl::Status AllGatherThunk::RunCollective(const ExecuteParams& params,
+   if (use_symmetric_memory() && clique_key.is_local()) {
+@@ -203,9 +203,8 @@ absl::Status AllGatherThunk::RunCollective(const ExecuteParams& params,
                                  config_.config.use_symmetric_buffer);
  }
  
@@ -57,7 +55,7 @@ index 94aa47a87f..3f3764bba3 100644
    int device_ordinal = stream.parent()->device_ordinal();
    XLA_VLOG_DEVICE(3, device_ordinal) << "Performing all-gather";
    auto* gpu_comm = absl::down_cast<GpuCommunicator*>(&comm);
-@@ -218,7 +217,7 @@ absl::Status RunAllGather(std::vector<DeviceBufferPair>& buffers,
+@@ -233,7 +232,7 @@ absl::Status RunAllGather(std::vector<DeviceBufferPair>& buffers,
  //   3. Put our source chunk into each peer's destination buffer.
  //   4. WaitSignal from all peers for their PutSignals (data has arrived).
  static absl::Status RunOneSidedAllGather(
@@ -67,10 +65,10 @@ index 94aa47a87f..3f3764bba3 100644
      Communicator& comm) {
    int device_ordinal = stream.parent()->device_ordinal();
 diff --git a/xla/backends/gpu/runtime/all_gather_thunk.h b/xla/backends/gpu/runtime/all_gather_thunk.h
-index e678a49240..7b05a24f53 100644
+index cc10d5546f..75efc57bbf 100644
 --- a/xla/backends/gpu/runtime/all_gather_thunk.h
 +++ b/xla/backends/gpu/runtime/all_gather_thunk.h
-@@ -83,8 +83,8 @@ class AllGatherThunk : public CollectiveThunk {
+@@ -87,8 +87,8 @@ class AllGatherThunk : public CollectiveThunk {
    const AllGatherConfig config_;
  };
  
@@ -82,10 +80,10 @@ index e678a49240..7b05a24f53 100644
  
  }  // namespace xla::gpu
 diff --git a/xla/backends/gpu/runtime/all_reduce_thunk.cc b/xla/backends/gpu/runtime/all_reduce_thunk.cc
-index 524c6aeee7..77b891d30e 100644
+index 569b7b7f32..1aa4b6f9ee 100644
 --- a/xla/backends/gpu/runtime/all_reduce_thunk.cc
 +++ b/xla/backends/gpu/runtime/all_reduce_thunk.cc
-@@ -90,9 +90,8 @@ AllReduceConfig GetAllReduceConfigInst(
+@@ -87,9 +87,8 @@ AllReduceConfig GetAllReduceConfigInst(
  }
  
  absl::Status RunAllReduce(ReductionKind reduction_kind,
@@ -97,7 +95,7 @@ index 524c6aeee7..77b891d30e 100644
    int device_ordinal = stream.parent()->device_ordinal();
    XLA_VLOG_DEVICE(3, device_ordinal) << "Performing all-reduce";
    auto* gpu_comm = absl::down_cast<GpuCommunicator*>(&comm);
-@@ -182,7 +181,7 @@ absl::Status AllReduceThunk::RunCollective(const ExecuteParams& params,
+@@ -143,7 +142,7 @@ absl::Status AllReduceThunk::RunCollective(const ExecuteParams& params,
                                             const GpuCliqueKey& clique_key,
                                             se::Stream& stream,
                                             Communicator& comm) {
@@ -106,7 +104,7 @@ index 524c6aeee7..77b891d30e 100644
                     ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
                                            config_.config.operand_element_type));
  
-@@ -348,7 +347,7 @@ absl::Status ReduceScatterThunk::RunCollective(const ExecuteParams& params,
+@@ -261,7 +260,7 @@ absl::Status ReduceScatterThunk::RunCollective(const ExecuteParams& params,
                                                 const GpuCliqueKey& clique_key,
                                                 se::Stream& stream,
                                                 Communicator& comm) {
@@ -115,7 +113,7 @@ index 524c6aeee7..77b891d30e 100644
                     ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
                                            config_.config.operand_element_type));
    return RunReduceScatter(config_.reduction_kind, device_buffers, stream, comm,
-@@ -356,9 +355,8 @@ absl::Status ReduceScatterThunk::RunCollective(const ExecuteParams& params,
+@@ -269,9 +268,8 @@ absl::Status ReduceScatterThunk::RunCollective(const ExecuteParams& params,
  }
  
  absl::Status RunReduceScatter(ReductionKind reduction_kind,
@@ -128,10 +126,10 @@ index 524c6aeee7..77b891d30e 100644
    XLA_VLOG_DEVICE(3, device_ordinal) << "Performing reduce-scatter";
  
 diff --git a/xla/backends/gpu/runtime/all_reduce_thunk.h b/xla/backends/gpu/runtime/all_reduce_thunk.h
-index 3f73ef65c9..7d0d54df51 100644
+index d7d54f807f..4c7eb02854 100644
 --- a/xla/backends/gpu/runtime/all_reduce_thunk.h
 +++ b/xla/backends/gpu/runtime/all_reduce_thunk.h
-@@ -147,13 +147,13 @@ class ReduceScatterThunk : public AllReduceReduceScatterThunkBase {
+@@ -133,13 +133,13 @@ class ReduceScatterThunk : public AllReduceReduceScatterThunkBase {
  // -----------------------------------------------------------------------------
  
  absl::Status RunAllReduce(ReductionKind reduction_kind,
@@ -228,10 +226,10 @@ index 62e2ae3921..28105b2ab6 100644
                                 const GpuCliqueKey& clique_key, RankId rank,
                                 se::Event* event,
 diff --git a/xla/backends/gpu/runtime/collective_broadcast_thunk.cc b/xla/backends/gpu/runtime/collective_broadcast_thunk.cc
-index 5686710be8..4b998e1442 100644
+index 289111389a..a2b10b6464 100644
 --- a/xla/backends/gpu/runtime/collective_broadcast_thunk.cc
 +++ b/xla/backends/gpu/runtime/collective_broadcast_thunk.cc
-@@ -130,7 +130,7 @@ absl::StatusOr<ThunkProto> CollectiveBroadcastThunk::ToProto() const {
+@@ -110,13 +110,13 @@ absl::StatusOr<ThunkProto> CollectiveBroadcastThunk::ToProto() const {
  absl::Status CollectiveBroadcastThunk::RunCollective(
      const ExecuteParams& params, const GpuCliqueKey& clique_key,
      se::Stream& stream, Communicator& comm) {
@@ -239,34 +237,32 @@ index 5686710be8..4b998e1442 100644
 +  ASSIGN_OR_RETURN(DeviceBufferPairs device_buffers,
                     ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
                                            config_.operand_element_type));
-   CollectiveBroadcastMetadata* cb_metadata = nullptr;
-@@ -143,7 +143,7 @@ absl::Status CollectiveBroadcastThunk::RunCollective(
-                                             cb_metadata);
+   return ::xla::gpu::RunCollectiveBroadcast(device_buffers, stream, comm);
  }
  
 -absl::Status RunCollectiveBroadcast(std::vector<DeviceBufferPair>& buffers,
 +absl::Status RunCollectiveBroadcast(DeviceBufferPairs& buffers,
-                                     se::Stream& stream, Communicator& comm,
-                                     CollectiveBroadcastMetadata* cb_metadata,
-                                     bool has_dynamic_root) {
+                                     se::Stream& stream, Communicator& comm) {
+   auto* gpu_comm = absl::down_cast<GpuCommunicator*>(&comm);
+   Future<> future = gpu_comm->GroupExecute([&]() -> absl::Status {
 diff --git a/xla/backends/gpu/runtime/collective_broadcast_thunk.h b/xla/backends/gpu/runtime/collective_broadcast_thunk.h
-index 533ce75e35..44a18f7095 100644
+index 95f1cb2613..d0080a1b9a 100644
 --- a/xla/backends/gpu/runtime/collective_broadcast_thunk.h
 +++ b/xla/backends/gpu/runtime/collective_broadcast_thunk.h
-@@ -90,7 +90,7 @@ class CollectiveBroadcastThunk : public CollectiveThunk {
-   bool has_dynamic_root_;
+@@ -78,7 +78,7 @@ class CollectiveBroadcastThunk : public CollectiveThunk {
+   const CollectiveConfig config_;
  };
  
 -absl::Status RunCollectiveBroadcast(std::vector<DeviceBufferPair>& buffers,
 +absl::Status RunCollectiveBroadcast(DeviceBufferPairs& buffers,
-                                     se::Stream& stream, Communicator& comm,
-                                     CollectiveBroadcastMetadata* cb_metadata,
-                                     bool has_dynamic_root = false);
+                                     se::Stream& stream, Communicator& comm);
+ 
+ }  // namespace xla::gpu
 diff --git a/xla/backends/gpu/runtime/collective_permute_thunk.cc b/xla/backends/gpu/runtime/collective_permute_thunk.cc
-index d2081d7584..8bc2d7c397 100644
+index 7b6ee25cfe..03152bc9c7 100644
 --- a/xla/backends/gpu/runtime/collective_permute_thunk.cc
 +++ b/xla/backends/gpu/runtime/collective_permute_thunk.cc
-@@ -83,12 +83,12 @@ struct Events {
+@@ -84,12 +84,12 @@ struct Events {
  
  static absl::Status RunPeerAccessPermute(
      const P2PConfig::SourceTargetRanks& source_target,
@@ -281,7 +277,7 @@ index d2081d7584..8bc2d7c397 100644
      const GpuCliqueKey& clique_key, const Thunk::ExecuteParams& params,
      Communicator& comm);
  
-@@ -284,7 +284,7 @@ absl::Status CollectivePermuteThunk::RunCollective(
+@@ -282,7 +282,7 @@ absl::Status CollectivePermuteThunk::RunCollective(
    int device_ordinal = stream.parent()->device_ordinal();
  
    ASSIGN_OR_RETURN(
@@ -290,7 +286,7 @@ index d2081d7584..8bc2d7c397 100644
        ConvertToDeviceBuffers(params.buffer_allocations,
                               std::vector<CollectiveThunk::Buffer>(buffers()),
                               config_.config.operand_element_type));
-@@ -335,7 +335,7 @@ absl::Status CollectivePermuteThunk::RunCollective(
+@@ -333,7 +333,7 @@ absl::Status CollectivePermuteThunk::RunCollective(
  }
  
  absl::Status RunCollectivePermute(P2PConfig::SourceTargetRanks source_target,
@@ -299,7 +295,7 @@ index d2081d7584..8bc2d7c397 100644
                                    se::Stream& stream, Communicator& comm,
                                    absl::string_view device_string,
                                    int64_t current_id,
-@@ -409,7 +409,7 @@ absl::Status RunCollectivePermute(P2PConfig::SourceTargetRanks source_target,
+@@ -407,7 +407,7 @@ absl::Status RunCollectivePermute(P2PConfig::SourceTargetRanks source_target,
  // RequestPeerAllocation in PrepareCollective).
  static absl::Status RunPeerAccessPermute(
      const P2PConfig::SourceTargetRanks& source_target,
@@ -308,7 +304,7 @@ index d2081d7584..8bc2d7c397 100644
      const GpuCliqueKey& clique_key, const Thunk::ExecuteParams& params) {
    GlobalDeviceId gid = params.collective_params->global_device_id;
    std::optional<RankId> rank = clique_key.rank(gid);
-@@ -506,7 +506,7 @@ static absl::Status RunPeerAccessPermute(
+@@ -504,7 +504,7 @@ static absl::Status RunPeerAccessPermute(
  // NCCL's cumulative signal counter ensures correct ordering across invocations.
  static absl::Status RunOneSidedPermute(
      const P2PConfig::SourceTargetRanks& source_target,
@@ -331,10 +327,10 @@ index 7e287096e1..aad0048b80 100644
                                    absl::string_view device_string,
                                    int64_t current_id,
 diff --git a/xla/backends/gpu/runtime/collective_thunk.cc b/xla/backends/gpu/runtime/collective_thunk.cc
-index 923d7f1fbb..2b32df4856 100644
+index 095a31e810..ad0aaf5f03 100644
 --- a/xla/backends/gpu/runtime/collective_thunk.cc
 +++ b/xla/backends/gpu/runtime/collective_thunk.cc
-@@ -235,7 +235,7 @@ absl::StatusOr<GpuCliqueKey> GetCollectiveGpuCliqueKey(
+@@ -232,7 +232,7 @@ absl::StatusOr<GpuCliqueKey> GetCollectiveGpuCliqueKey(
                           collective_config.group_mode, communication_id);
  }
  
@@ -343,7 +339,7 @@ index 923d7f1fbb..2b32df4856 100644
      const BufferAllocations* buffer_allocations,
      const std::vector<CollectiveThunk::Buffer>& buffers,
      const std::vector<PrimitiveType>& element_types) {
-@@ -243,7 +243,7 @@ absl::StatusOr<std::vector<DeviceBufferPair>> ConvertToDeviceBuffers(
+@@ -240,7 +240,7 @@ absl::StatusOr<std::vector<DeviceBufferPair>> ConvertToDeviceBuffers(
      return FailedPrecondition("Mismatch in operand buffer counts.");
    }
  
@@ -352,7 +348,7 @@ index 923d7f1fbb..2b32df4856 100644
    device_buffers.reserve(buffers.size());
    for (int i = 0; i < buffers.size(); ++i) {
      device_buffers.emplace_back(DeviceBufferPair{
-@@ -304,10 +304,8 @@ absl::Status CollectiveThunk::Prepare(const PrepareParams& params) {
+@@ -301,10 +301,8 @@ absl::Status CollectiveThunk::Prepare(const PrepareParams& params) {
  
    RETURN_IF_ERROR(device_groups_.status());
  
@@ -365,7 +361,7 @@ index 923d7f1fbb..2b32df4856 100644
  
    RETURN_IF_ERROR(params.collective_clique_requests->RequestClique(
        clique_key, *device_groups_, GetCliqueRequirements(clique_key)));
-@@ -332,13 +330,31 @@ absl::Status CollectiveThunk::Prepare(const PrepareParams& params) {
+@@ -329,13 +327,31 @@ absl::Status CollectiveThunk::Prepare(const PrepareParams& params) {
  }
  
  absl::Status CollectiveThunk::Initialize(const InitializeParams& params) {
@@ -401,7 +397,7 @@ index 923d7f1fbb..2b32df4856 100644
  absl::Status CollectiveThunk::FirstCallRendezvous(
      const ExecuteParams& params, const GpuCliqueKey& clique_key,
      absl::string_view label, RendezvousFlag& flag) {
-@@ -379,10 +395,8 @@ absl::Status CollectiveThunk::FirstCallRendezvous(
+@@ -376,10 +392,8 @@ absl::Status CollectiveThunk::FirstCallRendezvous(
  absl::Status CollectiveThunk::RunWithCommAndRendezvous(
      const ExecuteParams& params,
      absl::FunctionRef<absl::Status(const GpuCliqueKey&, Communicator&)> fn) {
@@ -414,7 +410,7 @@ index 923d7f1fbb..2b32df4856 100644
    ASSIGN_OR_RETURN(Communicator * comm,
                     params.collective_cliques->GetComm(
                         clique_key, params.collective_params->global_device_id));
-@@ -452,8 +466,7 @@ Thunk::BufferUses CollectiveThunk::buffer_uses() const {
+@@ -449,8 +463,7 @@ Thunk::BufferUses CollectiveThunk::buffer_uses() const {
  
  absl::StatusOr<GpuCliqueKey> CollectiveThunk::GetCliqueKey(
      const ExecuteParams& params) const {
@@ -507,10 +503,10 @@ index a9efb52e9f..786e9591b1 100644
      const std::vector<CollectiveThunk::Buffer>& buffers,
      const std::vector<PrimitiveType>& element_types);
 diff --git a/xla/backends/gpu/runtime/ragged_all_to_all_thunk.cc b/xla/backends/gpu/runtime/ragged_all_to_all_thunk.cc
-index 06d92be894..c60c6aff73 100644
+index 75452c4d1f..e9a5d7315b 100644
 --- a/xla/backends/gpu/runtime/ragged_all_to_all_thunk.cc
 +++ b/xla/backends/gpu/runtime/ragged_all_to_all_thunk.cc
-@@ -503,7 +503,7 @@ absl::StatusOr<RaggedAllToAllStreamState*> RaggedAllToAllThunk::InitializeOnce(
+@@ -502,7 +502,7 @@ absl::StatusOr<RaggedAllToAllStreamState*> RaggedAllToAllThunk::InitializeOnce(
          state->barrier_signal_value->address()));
  
      ASSIGN_OR_RETURN(
@@ -519,7 +515,7 @@ index 06d92be894..c60c6aff73 100644
          ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
                                 config_.config.operand_element_type));
    }
-@@ -545,7 +545,7 @@ absl::Status RaggedAllToAllThunk::Initialize(const InitializeParams& params) {
+@@ -544,7 +544,7 @@ absl::Status RaggedAllToAllThunk::Initialize(const InitializeParams& params) {
    } else if (is_local(params.local_device_count)) {
      // Rendezvous - Exchange output pointers and barrier signal buffers.
      ASSIGN_OR_RETURN(
@@ -528,7 +524,7 @@ index 06d92be894..c60c6aff73 100644
          ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
                                 config_.config.operand_element_type));
  
-@@ -639,7 +639,7 @@ absl::StatusOr<const se::CommandBuffer::Command*> RaggedAllToAllThunk::Record(
+@@ -637,7 +637,7 @@ absl::StatusOr<const se::CommandBuffer::Command*> RaggedAllToAllThunk::Record(
        << "Failed to get or create RaggedAllToAllCommandState";
  
    ASSIGN_OR_RETURN(
@@ -537,7 +533,7 @@ index 06d92be894..c60c6aff73 100644
        ConvertToDeviceBuffers(execute_params.buffer_allocations, buffers(),
                               config_.config.operand_element_type));
  
-@@ -756,7 +756,7 @@ absl::Status RaggedAllToAllThunk::RunCollective(const ExecuteParams& params,
+@@ -754,7 +754,7 @@ absl::Status RaggedAllToAllThunk::RunCollective(const ExecuteParams& params,
                                                  const GpuCliqueKey& clique_key,
                                                  se::Stream& stream,
                                                  Communicator& comm) {
@@ -546,7 +542,7 @@ index 06d92be894..c60c6aff73 100644
                     ConvertToDeviceBuffers(params.buffer_allocations, buffers(),
                                            config_.config.operand_element_type));
  
-@@ -894,7 +894,7 @@ absl::Status RaggedAllToAllThunk::PrepareCollective(
+@@ -892,7 +892,7 @@ absl::Status RaggedAllToAllThunk::PrepareCollective(
  
  absl::Status RunRaggedAllToAll(
      int64_t ragged_row_element_size, int64_t num_total_updates,
@@ -555,9 +551,9 @@ index 06d92be894..c60c6aff73 100644
      Communicator& comm, absl::Span<int64_t* const> ragged_metadata_allocs,
      const se::DeviceAddressBase& output_offsets_device_buffer,
      CollectiveThunk::CollectivesMode collectives_mode,
-@@ -904,7 +904,7 @@ absl::Status RunRaggedAllToAll(
-       << "Performing ragged-all-to-all from device ordinal: " << device_ordinal;
-   ASSIGN_OR_RETURN(int32_t num_ranks, comm.NumRanks());
+@@ -915,7 +915,7 @@ absl::Status RunRaggedAllToAll(
+         ragged_row_element_size, num_total_updates, rank);
+   }
  
 -  std::vector<DeviceBufferPair> buffers = original_buffers;
 +  DeviceBufferPairs buffers = original_buffers;
@@ -565,7 +561,7 @@ index 06d92be894..c60c6aff73 100644
    int64_t num_updates_per_replica = num_total_updates / num_ranks;
  
 diff --git a/xla/backends/gpu/runtime/ragged_all_to_all_thunk.h b/xla/backends/gpu/runtime/ragged_all_to_all_thunk.h
-index ad0a3e5a22..dc08dde784 100644
+index 29397a3242..126c24eca1 100644
 --- a/xla/backends/gpu/runtime/ragged_all_to_all_thunk.h
 +++ b/xla/backends/gpu/runtime/ragged_all_to_all_thunk.h
 @@ -236,7 +236,7 @@ RendezvousResources(int device_ordinal, RankId rank,
@@ -577,46 +573,3 @@ index ad0a3e5a22..dc08dde784 100644
      Communicator& comm, absl::Span<int64_t* const> ragged_metadata_allocs,
      const se::DeviceAddressBase& output_offsets_device_buffer,
      CollectiveThunk::CollectivesMode collectives_mode,
-diff --git a/xla/service/gpu/gpu_executable.cc b/xla/service/gpu/gpu_executable.cc
-index 4322fffef5..f465578dab 100644
---- a/xla/service/gpu/gpu_executable.cc
-+++ b/xla/service/gpu/gpu_executable.cc
-@@ -484,6 +484,10 @@ GpuExecutable::GpuExecutable(
-                                                std::move(proto));
-   }
-   set_module_stats(std::move(module_stats));
-+  if (has_module()) {
-+    collective_use_minimal_resource_ =
-+        ShouldCollectiveUseMinimalResource(module());
-+  }
- 
-   DebugOptions::CommandBufferUpdateMode update_mode =
-       has_module()
-@@ -1305,7 +1309,7 @@ absl::Status GpuExecutable::ExecuteThunks(
-   bool collective_use_minimal_resource = false;
-   if (has_module()) {
-     ASSIGN_OR_RETURN(collective_use_minimal_resource,
--                     ShouldCollectiveUseMinimalResource(module()));
-+                     collective_use_minimal_resource_);
-   }
-   RETURN_IF_ERROR(ExecuteThunksImpl(
-       has_module() ? &module_config().debug_options() : nullptr, module_name_,
-diff --git a/xla/service/gpu/gpu_executable.h b/xla/service/gpu/gpu_executable.h
-index a4a552baed..f1dbcb0e51 100644
---- a/xla/service/gpu/gpu_executable.h
-+++ b/xla/service/gpu/gpu_executable.h
-@@ -384,6 +384,11 @@ class GpuExecutable : public Executable {
-     return ModuleAnnotations(module_name_);
-   }();
- 
-+  // Cached result of scanning the HLO module for synchronous/asynchronous
-+  // collective size heuristics. The module is immutable after construction,
-+  // so this does not need to be recomputed for every execution.
-+  absl::StatusOr<bool> collective_use_minimal_resource_ = false;
-+
-   int64_t debug_buffer_assignment_show_max_;
- 
-   // Set of executors this executable has been run on. Used in the destructor
--- 
-2.50.1 (Apple Git-155)
-

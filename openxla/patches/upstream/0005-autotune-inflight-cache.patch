@@ -1,7 +1,7 @@
-From aafc7323c23340089c311d659192c47c6a5fde0f Mon Sep 17 00:00:00 2001
+From 7e65d01cb3f281e95755e6504b18b93921cc1f0b Mon Sep 17 00:00:00 2001
 From: Benjamin Rabier <benjamin@zml.ai>
 Date: Thu, 2 Jul 2026 19:22:25 +0200
-Subject: [PATCH 5/8] autotune inflight cache
+Subject: [PATCH 05/15] autotune inflight cache
 
 ---
  xla/backends/autotuner/BUILD              |   3 +
@@ -10,10 +10,10 @@ Subject: [PATCH 5/8] autotune inflight cache
  3 files changed, 140 insertions(+), 13 deletions(-)
 
 diff --git a/xla/backends/autotuner/BUILD b/xla/backends/autotuner/BUILD
-index 98b12a8f20..784ed42de7 100644
+index 9a24dffdfb..35f6fbad62 100644
 --- a/xla/backends/autotuner/BUILD
 +++ b/xla/backends/autotuner/BUILD
-@@ -145,7 +145,9 @@ cc_library(
+@@ -164,7 +164,9 @@ cc_library(
          "//xla/tsl/platform:errors",
          "//xla/tsl/platform:status_macros",
          "@com_google_absl//absl/algorithm:container",
@@ -23,7 +23,7 @@ index 98b12a8f20..784ed42de7 100644
          "@com_google_absl//absl/log",
          "@com_google_absl//absl/log:check",
          "@com_google_absl//absl/log:vlog_is_on",
-@@ -154,6 +156,7 @@ cc_library(
+@@ -173,6 +175,7 @@ cc_library(
          "@com_google_absl//absl/status:statusor",
          "@com_google_absl//absl/strings",
          "@com_google_absl//absl/strings:str_format",
@@ -32,10 +32,10 @@ index 98b12a8f20..784ed42de7 100644
          "@com_google_absl//absl/types:span",
          "@com_google_protobuf//:protobuf",
 diff --git a/xla/backends/autotuner/config_assigner.cc b/xla/backends/autotuner/config_assigner.cc
-index 4fc97aabe0..c1b0c6b00a 100644
+index 576e579395..333c4a0610 100644
 --- a/xla/backends/autotuner/config_assigner.cc
 +++ b/xla/backends/autotuner/config_assigner.cc
-@@ -63,8 +63,24 @@ limitations under the License.
+@@ -65,8 +65,24 @@ limitations under the License.
  #include "tsl/platform/fingerprint.h"
  
  namespace xla {
@@ -60,7 +60,7 @@ index 4fc97aabe0..c1b0c6b00a 100644
  // It is important to fingerprint the entire module not just the autotuning
  // candidates, to avoid collisions in the key-value store when several
  // distinct modules have the same fusions, and are compiled at different
-@@ -113,7 +129,12 @@ absl::StatusOr<std::unique_ptr<ConfigAssigner>> ConfigAssigner::Create(
+@@ -115,7 +131,12 @@ absl::StatusOr<std::unique_ptr<ConfigAssigner>> ConfigAssigner::Create(
      Options options,
      std::unique_ptr<AutotunerCacheInterface> absl_nonnull cache,
      std::unique_ptr<CodegenOrchestrator> absl_nonnull orchestrator,
@@ -74,7 +74,7 @@ index 4fc97aabe0..c1b0c6b00a 100644
    std::unique_ptr<ConfigRunner> config_runner = nullptr;
    if (profiler != nullptr) {
      ConfigRunner::CorrectnessCheckOptions correctness_check_options;
-@@ -124,9 +145,9 @@ absl::StatusOr<std::unique_ptr<ConfigAssigner>> ConfigAssigner::Create(
+@@ -126,9 +147,9 @@ absl::StatusOr<std::unique_ptr<ConfigAssigner>> ConfigAssigner::Create(
          config_runner,
          ConfigRunner::Create(std::move(profiler), correctness_check_options));
    }
@@ -87,7 +87,7 @@ index 4fc97aabe0..c1b0c6b00a 100644
  }
  
  absl::Status ConfigAssigner::AssignConfigs(
-@@ -343,12 +364,85 @@ tsl::Future<ConfigAssigner::Config> ConfigAssigner::GetConfig(
+@@ -345,12 +366,85 @@ tsl::Future<ConfigAssigner::Config> ConfigAssigner::GetConfig(
    TF_RET_CHECK(config_runner_ != nullptr)
        << "Cannot autotune HLO: " << instr->ToString()
        << ". ConfigRunner is not initialized.";
@@ -180,7 +180,7 @@ index 4fc97aabe0..c1b0c6b00a 100644
  
  // TODO(b/444398084): Use Autouner::GetTunedConfig when the cache is migrated
 diff --git a/xla/backends/autotuner/config_assigner.h b/xla/backends/autotuner/config_assigner.h
-index b80d422eb4..1478a0773c 100644
+index ca10d85673..effcbc0c57 100644
 --- a/xla/backends/autotuner/config_assigner.h
 +++ b/xla/backends/autotuner/config_assigner.h
 @@ -23,8 +23,11 @@ limitations under the License.
@@ -193,9 +193,9 @@ index b80d422eb4..1478a0773c 100644
  #include "absl/status/statusor.h"
 +#include "absl/synchronization/mutex.h"
  #include "absl/types/span.h"
+ #include "xla/autotune_results.pb.h"
  #include "xla/backends/autotuner/autotuner_cache_interface.h"
- #include "xla/backends/autotuner/codegen_orchestrator.h"
-@@ -35,9 +38,32 @@ limitations under the License.
+@@ -36,9 +39,32 @@ limitations under the License.
  #include "xla/hlo/ir/hlo_module.h"
  #include "xla/pjrt/distributed/key_value_store_interface.h"
  #include "xla/tsl/concurrency/future.h"
@@ -228,7 +228,7 @@ index b80d422eb4..1478a0773c 100644
  // ConfigAssigner is responsible for assigning a config to requested HLO
  // instructions. The configs could be cached, default, first-supported, or
  // tuned.
-@@ -72,7 +98,8 @@ class ConfigAssigner {
+@@ -73,7 +99,8 @@ class ConfigAssigner {
        std::unique_ptr<AutotunerCacheInterface> absl_nonnull
        optimal_config_cache,
        std::unique_ptr<CodegenOrchestrator> absl_nonnull orchestrator,
@@ -238,7 +238,7 @@ index b80d422eb4..1478a0773c 100644
  
    // Online module-level entry point.
    absl::Status AssignConfigs(HloModule* module,
-@@ -92,11 +119,13 @@ class ConfigAssigner {
+@@ -93,11 +120,13 @@ class ConfigAssigner {
    ConfigAssigner(Options options,
                   std::unique_ptr<AutotunerCacheInterface> absl_nonnull cache,
                   std::unique_ptr<CodegenOrchestrator> absl_nonnull orchestrator,
@@ -254,7 +254,7 @@ index b80d422eb4..1478a0773c 100644
  
    using InstructionGroup = std::vector<HloInstruction*>;
  
-@@ -140,6 +169,7 @@ class ConfigAssigner {
+@@ -141,6 +170,7 @@ class ConfigAssigner {
    std::unique_ptr<AutotunerCacheInterface> absl_nonnull optimal_config_cache_;
    std::unique_ptr<CodegenOrchestrator> absl_nonnull orchestrator_;
    std::unique_ptr<ConfigRunner> absl_nullable config_runner_;
@@ -262,6 +262,3 @@ index b80d422eb4..1478a0773c 100644
    AutotuningLogs logs_;
    int dump_counter_ = 0;
  };
--- 
-2.50.1 (Apple Git-155)
-

@@ -1,14 +1,14 @@
-From 634c8fb59b38059fcc4071431f6da46e7c4664da Mon Sep 17 00:00:00 2001
+From 92a1f66688882ea680a8fc82ddcdc384e0fed3de Mon Sep 17 00:00:00 2001
 From: Corentin Kerisit <corentin.kerisit@gmail.com>
 Date: Thu, 2 Jul 2026 19:21:45 +0200
-Subject: [PATCH 3/8] Hermetic cc toolchain
+Subject: [PATCH 03/15] Hermetic cc toolchain
 
 ---
  MODULE.bazel | 14 ++++++++++++++
  1 file changed, 14 insertions(+)
 
 diff --git a/MODULE.bazel b/MODULE.bazel
-index 92ac368740..ff5dbd9278 100644
+index e54d3a3189..84358b6231 100644
 --- a/MODULE.bazel
 +++ b/MODULE.bazel
 @@ -6,6 +6,7 @@ module(name = "xla")
@@ -34,7 +34,7 @@ index 92ac368740..ff5dbd9278 100644
  # Only for compatibility, not directly used, change repo_name to None after upgrading Bazel to latest 7.x
  bazel_dep(name = "eigen", version = "4.0.0-20241125.bcr.3", repo_name = "DO_NOT_USE_eigen")
  bazel_dep(name = "grpc-java", version = "1.75.0", repo_name = "DO_NOT_USE_grpc_java")
-@@ -214,6 +220,14 @@ use_repo(tsl_extension, "tsl")
+@@ -215,6 +221,14 @@ use_repo(tsl_extension, "tsl")
  llvm = use_extension("//third_party/extensions:llvm.bzl", "llvm_extension")
  use_repo(llvm, "llvm-project")
  
@@ -49,6 +49,3 @@ index 92ac368740..ff5dbd9278 100644
  ### pybind
  pybind11_internal_configure = use_extension(
      "@pybind11_bazel//:internal_configure.bzl",
--- 
-2.50.1 (Apple Git-155)
-

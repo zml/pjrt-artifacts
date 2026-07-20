@@ -1,0 +1,78 @@
+From aaa44f059bbfac9a4bf5f9fb09cfa77ed7d59345 Mon Sep 17 00:00:00 2001
+From: Louis Lechevalier <louis@zml.ai>
+Date: Mon, 20 Jul 2026 17:49:31 +0200
+Subject: [PATCH 10/15] Make GPU initialization rendezvous conditional
+
+---
+ xla/backends/gpu/runtime/command_buffer_thunk.cc |  3 +++
+ xla/backends/gpu/runtime/thunk.h                 |  5 +++++
+ xla/service/gpu/gpu_executable.cc                | 15 ++++++++-------
+ 3 files changed, 16 insertions(+), 7 deletions(-)
+
+diff --git a/xla/backends/gpu/runtime/command_buffer_thunk.cc b/xla/backends/gpu/runtime/command_buffer_thunk.cc
+index 803f1f5b5e..b2abd04583 100644
+--- a/xla/backends/gpu/runtime/command_buffer_thunk.cc
++++ b/xla/backends/gpu/runtime/command_buffer_thunk.cc
+@@ -254,6 +254,9 @@ absl::Status CommandBufferThunk::Initialize(const InitializeParams& params) {
+       (!cmd_buffer->persistent_allocs_info_was_valid &&
+        persistent_allocs_info_is_valid) ||
+       (has_dynamic_allocations && commands_.requires_update_on_initialize())) {
++    if (params.requires_initialization_rendezvous != nullptr) {
++      *params.requires_initialization_rendezvous = true;
++    }
+     VLOG(3) << "Initialize command buffer on device #"
+             << params.executor->device_ordinal()
+             << " by recoding command buffer cmd sequence"
+diff --git a/xla/backends/gpu/runtime/thunk.h b/xla/backends/gpu/runtime/thunk.h
+index bbfb289777..74c1814280 100644
+--- a/xla/backends/gpu/runtime/thunk.h
++++ b/xla/backends/gpu/runtime/thunk.h
+@@ -274,6 +274,11 @@ class Thunk {
+     // rely on this invariant without revalidating the vector on each step.
+     std::optional<absl::Span<const BufferAllocation::Index>>
+         persistent_alloc_indices = std::nullopt;
++
++    // Set by thunks when initialization instantiated or updated on-device
++    // control state that must be observed by all local participants before
++    // execution starts.
++    bool* requires_initialization_rendezvous = nullptr;
+   };
+ 
+   //===--------------------------------------------------------------------===//
+diff --git a/xla/service/gpu/gpu_executable.cc b/xla/service/gpu/gpu_executable.cc
+index 1eae5693bd..93ae65b3e6 100644
+--- a/xla/service/gpu/gpu_executable.cc
++++ b/xla/service/gpu/gpu_executable.cc
+@@ -809,6 +809,7 @@ absl::Status GpuExecutable::ExecuteThunksImpl(
+                    AcquireCollectiveMemory(
+                        collective_params, collective_cliques,
+                        collective_memory_requests, collective_memory_cache));
++  bool requires_initialization_rendezvous = false;
+   {  // Initialize thunks using prepared resources before execution.
+     Thunk::InitializeParams initialize_params{
+         executor,
+@@ -823,17 +824,17 @@ absl::Status GpuExecutable::ExecuteThunksImpl(
+         run_options->local_device_count(),
+         &execution_scoped_state};
+     initialize_params.persistent_alloc_indices = persistent_alloc_indices;
+-
++    initialize_params.requires_initialization_rendezvous =
++        &requires_initialization_rendezvous;
+     tsl::profiler::TraceMe trace_initialize("Thunks::Initialize");
+     RETURN_IF_ERROR(thunk_executor.Initialize(initialize_params));
+   }
+ 
+-  // Join a round of rendezvous after thunk initialization. We do this only in
+-  // presence of newly acquired collective cliques which means that we have
+-  // collective operations and clique initialization is famous for introducing
+-  // deadlocks if we try to execute it concurrently with other potentially
+-  // memory-allocating operations.
+-  if (!collective_cliques.empty()) {
++  // Join a round of rendezvous after thunk initialization if it instantiated
++  // on-device control state. This keeps CUDA graph initialization ordered with
++  // respect to collective execution, while avoiding the rendezvous on steady
++  // state executions that only reuse already initialized state.
++  if (requires_initialization_rendezvous && !collective_cliques.empty()) {
+     RETURN_IF_ERROR(RendezvousAfterInitialization(*run_options, debug_options));
+   }
+ 
