@@ -4,20 +4,22 @@ Date: Wed, 5 Nov 2025 14:45:51 +0100
 Subject: [PATCH 2/3] Use hermetic cc toolchain for Linux CPU (use glibc 2.31)
 
 ---
- WORKSPACE | 22 ++++++++++++++++++++++
- 1 file changed, 22 insertions(+)
+ WORKSPACE | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
 diff --git a/WORKSPACE b/WORKSPACE
-index 8d7f1384d8..8cd8df86a0 100644
+index 944b1dd9c6..f13e3983bf 100644
 --- a/WORKSPACE
 +++ b/WORKSPACE
-@@ -33,6 +33,28 @@ register_toolchains("@rules_ml_toolchain//cc:linux_aarch64_linux_aarch64")
+@@ -33,6 +33,30 @@ register_toolchains("@rules_ml_toolchain//cc:linux_aarch64_linux_aarch64")
  
  register_toolchains("@rules_ml_toolchain//cc:linux_aarch64_linux_aarch64_cuda")
  
++load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
++
 +HERMETIC_CC_TOOLCHAIN_VERSION = "v3.1.1"
 +
-+tf_http_archive(
++http_archive(
 +    name = "hermetic_cc_toolchain",
 +    sha256 = "907745bf91555f77e8234c0b953371e6cac5ba715d1cf12ff641496dd1bce9d1",
 +    urls = [
@@ -37,9 +39,8 @@ index 8d7f1384d8..8cd8df86a0 100644
 +    "@zig_sdk//toolchain:linux_amd64_gnu.2.31",
 +)
 +
- # Initialize the XLA repository and all dependencies.
- #
- # The cascade of load() statements and xla_workspace?() calls works around the
+ # Initialize hermetic Python
+ load("//third_party/py:python_init_rules.bzl", "python_init_rules")
+ 
 -- 
 2.50.1 (Apple Git-155)
-
