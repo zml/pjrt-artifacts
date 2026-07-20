@@ -51,7 +51,7 @@ jobs:
             platform: linux-arm64
             bazel_target: //xla/pjrt/c:pjrt_c_api_gpu_plugin
           - target: rocm
-            config: "--spawn_strategy=local --disk_cache=/home/runner/.cache/bazel-disk --config=rocm_ci --config=baseline_x86_64"
+            config: "--spawn_strategy=local --config=rocm_ci_hermetic --config=baseline_x86_64"
             artifact: bazel-bin/xla/pjrt/c/libpjrt_c_api_gpu_plugin.so
             renamed_artifact: libpjrt_rocm.so
             runs_on:
@@ -149,17 +149,6 @@ jobs:
       - name: TMP fix for the mount user
         if: matrix.pjrt.target != 'cpu'
         run: sudo chown -R runner:runner /home/runner/.cache/
-
-      - name: Download ROCm toolchain (not fully hermetic)
-        if: matrix.pjrt.target == 'rocm'
-        run: |
-          export DEBIAN_FRONTEND=noninteractive
-          sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" -- 18
-          sudo apt update -y
-          sudo apt install llvm-18 lld-18 clang-18 libnuma-dev -y
-          wget https://repo.radeon.com/amdgpu-install/7.2.1/ubuntu/jammy/amdgpu-install_7.2.1.70201-1_all.deb
-          sudo apt install ./amdgpu-install_7.2.1.70201-1_all.deb -y
-          sudo amdgpu-install --usecase=rocm,rocmdev,hiplibsdk -y --no-dkms
 
       - uses: bazel-contrib/setup-bazel@0.15.0
         with:
