@@ -1,7 +1,7 @@
-From 5d5aced9913c035e7720af3a864a7bae97bc7faa Mon Sep 17 00:00:00 2001
+From dff2a6f22f24a4e41eff8d2172ddbc926a49322f Mon Sep 17 00:00:00 2001
 From: Hugo Mano <hugo@zml.ai>
 Date: Fri, 3 Jul 2026 09:38:51 +0200
-Subject: [PATCH 9/9] Fix Abseil BMI2 include for Clang
+Subject: [PATCH 09/15] Fix Abseil BMI2 include for Clang
 
 ---
  MODULE.bazel                      | 1 +
@@ -11,7 +11,7 @@ Subject: [PATCH 9/9] Fix Abseil BMI2 include for Clang
  create mode 100644 third_party/absl/bmi2intrin.patch
 
 diff --git a/MODULE.bazel b/MODULE.bazel
-index 00bbc0e620..24faf6bc1b 100644
+index 84358b6231..7825dd2444 100644
 --- a/MODULE.bazel
 +++ b/MODULE.bazel
 @@ -75,6 +75,7 @@ single_version_override(
@@ -48,6 +48,3 @@ index cf6a25b136..e7dc3c59eb 100644
          ],
          repo_mapping = {
              "@google_benchmark": "@com_google_benchmark",
--- 
-2.50.1 (Apple Git-155)
-

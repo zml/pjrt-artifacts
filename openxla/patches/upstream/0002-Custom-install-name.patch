@@ -1,14 +1,14 @@
-From bdaeb8ebe56ab21d8e3395cee850e1019b74ac39 Mon Sep 17 00:00:00 2001
+From dda33379129702e9e5bb01e18fe4e31197f91600 Mon Sep 17 00:00:00 2001
 From: Corentin Kerisit <corentin.kerisit@gmail.com>
 Date: Thu, 2 Jul 2026 19:21:35 +0200
-Subject: [PATCH 2/8] Custom install name
+Subject: [PATCH 02/15] Custom install name
 
 ---
  xla/pjrt/c/BUILD | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/xla/pjrt/c/BUILD b/xla/pjrt/c/BUILD
-index 4675f05dd3..862ed96c42 100644
+index 4fc08743e5..f59ba81f25 100644
 --- a/xla/pjrt/c/BUILD
 +++ b/xla/pjrt/c/BUILD
 @@ -610,7 +610,7 @@ xla_cc_binary(
@@ -20,6 +20,3 @@ index 4675f05dd3..862ed96c42 100644
              "-Wl,-undefined,error",
          ],
          [
--- 
-2.50.1 (Apple Git-155)
-
