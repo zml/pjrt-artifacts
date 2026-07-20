@@ -19,10 +19,10 @@ index 5c62b0211b..13c06eda85 100644
 +++ b/third_party/gpus/rocm/rocm_redist.bzl
 @@ -1,4 +1,14 @@
  rocm_redist = {
-+    "rocm_7.13.0_multiarch": struct(
++    "rocm_7.14.0_multiarch": struct(
 +        packages = [
-+            {
-+                "url": "https://repo.amd.com/rocm/tarball-multi-arch/therock-dist-linux-multiarch-7.13.0.tar.gz",
++             {
++                "url": "https://repo.amd.com/rocm/tarball-multi-arch/therock-dist-linux-multiarch-7.14.0.tar.gz",
 +                "sha256": "",
 +            },
 +        ],
@@ -37,17 +37,17 @@ new file mode 100644
 index 0000000000..def8dae05f
 --- /dev/null
 +++ b/third_party/gpus/rocm/rules_ml_toolchain_rocm_multiarch.patch
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,19 @@
 +diff --git a/gpu/rocm/rocm_redist.bzl b/gpu/rocm/rocm_redist.bzl
-+index d1a6abb..29727a6 100644
++index 7b53bb2..8f7de61 100644
 +--- a/gpu/rocm/rocm_redist.bzl
 ++++ b/gpu/rocm/rocm_redist.bzl
-+@@ -16,3 +16,13 @@
++@@ -16,4 +16,14 @@
 + rocm_redist = {
-++    "rocm_7.13.0_multiarch": struct(
+++    "rocm_7.14.0_multiarch": struct(
 ++        packages = [
 ++            {
-++                "url": "https://repo.amd.com/rocm/tarball-multi-arch/therock-dist-linux-multiarch-7.13.0.tar.gz",
+++                "url": "https://repo.amd.com/rocm/tarball-multi-arch/therock-dist-linux-multiarch-7.14.0.tar.gz",
 ++                "sha256": "",
 ++            },
 ++        ],
@@ -56,6 +56,7 @@ index 0000000000..def8dae05f
 ++    ),
 +     "rocm_7.12.0_gfx94X": struct(
 +         packages = [
++             {
 diff --git a/workspace3.bzl b/workspace3.bzl
 index a9aa1507a8..844babc07a 100644
 --- a/workspace3.bzl
