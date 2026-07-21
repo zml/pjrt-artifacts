@@ -12,6 +12,9 @@ on:
       rocm_xla_commit:
         required: false
         type: string
+      rocm_hrx_xla_commit:
+        required: false
+        type: string
       oneapi_xla_commit:
         required: false
         type: string
@@ -28,6 +31,12 @@ on:
       rocm_xla_commit:
         description: "Resolved ROCm/xla commit"
         value: ${{ jobs.resolve-commits.outputs.rocm_xla_commit }}
+      rocm_hrx_xla_branch:
+        description: "Resolved zml/xla ROCm HRX branch"
+        value: ${{ jobs.resolve-commits.outputs.rocm_hrx_xla_branch }}
+      rocm_hrx_xla_commit:
+        description: "Resolved zml/xla ROCm HRX commit"
+        value: ${{ jobs.resolve-commits.outputs.rocm_hrx_xla_commit }}
       oneapi_xla_branch:
         description: "Resolved zml/xla oneAPI branch"
         value: ${{ jobs.resolve-commits.outputs.oneapi_xla_branch }}
@@ -43,6 +52,8 @@ jobs:
       xla_commit: ${{ steps.resolve.outputs.xla_commit }}
       rocm_xla_branch: ${{ steps.resolve.outputs.rocm_xla_branch }}
       rocm_xla_commit: ${{ steps.resolve.outputs.rocm_xla_commit }}
+      rocm_hrx_xla_branch: ${{ steps.resolve.outputs.rocm_hrx_xla_branch }}
+      rocm_hrx_xla_commit: ${{ steps.resolve.outputs.rocm_hrx_xla_commit }}
       oneapi_xla_branch: ${{ steps.resolve.outputs.oneapi_xla_branch }}
       oneapi_xla_commit: ${{ steps.resolve.outputs.oneapi_xla_commit }}
     steps:
@@ -58,13 +69,14 @@ jobs:
           SOURCE: ${{ inputs.source }}
           INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
           INPUT_ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
+          INPUT_ROCM_HRX_XLA_COMMIT: ${{ inputs.rocm_hrx_xla_commit }}
           INPUT_ONEAPI_XLA_COMMIT: ${{ inputs.oneapi_xla_commit }}
           GH_TOKEN: ${{ github.token }}
         working-directory: ./pjrt-artifacts
         run: |
-          if [ -n "$INPUT_XLA_COMMIT" ] || [ -n "$INPUT_ROCM_XLA_COMMIT" ] || [ -n "$INPUT_ONEAPI_XLA_COMMIT" ]; then
-            if [ -z "$INPUT_XLA_COMMIT" ] || [ -z "$INPUT_ROCM_XLA_COMMIT" ] || [ -z "$INPUT_ONEAPI_XLA_COMMIT" ]; then
-              echo "xla_commit, rocm_xla_commit, and oneapi_xla_commit must be provided together" >&2
+          if [ -n "$INPUT_XLA_COMMIT" ] || [ -n "$INPUT_ROCM_XLA_COMMIT" ] || [ -n "$INPUT_ROCM_HRX_XLA_COMMIT" ] || [ -n "$INPUT_ONEAPI_XLA_COMMIT" ]; then
+            if [ -z "$INPUT_XLA_COMMIT" ] || [ -z "$INPUT_ROCM_XLA_COMMIT" ] || [ -z "$INPUT_ROCM_HRX_XLA_COMMIT" ] || [ -z "$INPUT_ONEAPI_XLA_COMMIT" ]; then
+              echo "xla_commit, rocm_xla_commit, rocm_hrx_xla_commit, and oneapi_xla_commit must be provided together" >&2
               exit 1
             fi
 
@@ -72,6 +84,8 @@ jobs:
             XLA_COMMIT="$INPUT_XLA_COMMIT"
             ROCM_XLA_BRANCH=""
             ROCM_XLA_COMMIT="$INPUT_ROCM_XLA_COMMIT"
+            ROCM_HRX_XLA_BRANCH=""
+            ROCM_HRX_XLA_COMMIT="$INPUT_ROCM_HRX_XLA_COMMIT"
             ONEAPI_XLA_BRANCH=""
             ONEAPI_XLA_COMMIT="$INPUT_ONEAPI_XLA_COMMIT"
           else
@@ -79,6 +93,7 @@ jobs:
               pinned)
                 XLA_BRANCH=""
                 ROCM_XLA_BRANCH=""
+                ROCM_HRX_XLA_BRANCH=""
                 set -a
                 source openxla/commits.env
                 set +a
@@ -97,5 +112,7 @@ jobs:
           echo "xla_commit=$XLA_COMMIT" >> "$GITHUB_OUTPUT"
           echo "rocm_xla_branch=$ROCM_XLA_BRANCH" >> "$GITHUB_OUTPUT"
           echo "rocm_xla_commit=$ROCM_XLA_COMMIT" >> "$GITHUB_OUTPUT"
+          echo "rocm_hrx_xla_branch=$ROCM_HRX_XLA_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "rocm_hrx_xla_commit=$ROCM_HRX_XLA_COMMIT" >> "$GITHUB_OUTPUT"
           echo "oneapi_xla_branch=$ONEAPI_XLA_BRANCH" >> "$GITHUB_OUTPUT"
           echo "oneapi_xla_commit=$ONEAPI_XLA_COMMIT" >> "$GITHUB_OUTPUT"

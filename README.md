@@ -14,6 +14,12 @@ This repo mirrors the GitHub Actions workflow for OpenXLA builds. Use the setup 
 	./setup.sh --fork rocm
 	```
 
+	For ROCm with the HRX HIP overlay:
+
+	```bash
+	./setup.sh --fork rocm_hrx
+	```
+
 	For oneAPI:
 
 	```bash
