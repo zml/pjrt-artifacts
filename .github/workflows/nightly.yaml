@@ -11,6 +11,10 @@ on:
         description: "Explicit ROCm/xla commit to build"
         required: false
         type: string
+      rocm_hrx_xla_commit:
+        description: "Explicit zml/xla ROCm HRX commit to build"
+        required: false
+        type: string
       oneapi_xla_commit:
         description: "Explicit zml/xla oneAPI commit to build"
         required: false
@@ -32,6 +36,7 @@ jobs:
       source: head
       xla_commit: ${{ inputs.xla_commit }}
       rocm_xla_commit: ${{ inputs.rocm_xla_commit }}
+      rocm_hrx_xla_commit: ${{ inputs.rocm_hrx_xla_commit }}
       oneapi_xla_commit: ${{ inputs.oneapi_xla_commit }}
 
   nightly-pjrt-artifacts:
@@ -40,6 +45,7 @@ jobs:
     with:
       xla_commit: ${{ needs.resolve-commits.outputs.xla_commit }}
       rocm_xla_commit: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
+      rocm_hrx_xla_commit: ${{ needs.resolve-commits.outputs.rocm_hrx_xla_commit }}
       oneapi_xla_commit: ${{ needs.resolve-commits.outputs.oneapi_xla_commit }}
       # bazel_extra_args: "--config=dbg"
     secrets:
@@ -72,6 +78,7 @@ jobs:
           INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
           XLA_COMMIT: ${{ needs.resolve-commits.outputs.xla_commit }}
           ROCM_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
+          ROCM_HRX_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_hrx_xla_commit }}
           ONEAPI_XLA_COMMIT: ${{ needs.resolve-commits.outputs.oneapi_xla_commit }}
         shell: bash
         run: |
@@ -89,6 +96,7 @@ jobs:
           cat > openxla/commits.env <<EOF
           XLA_COMMIT=$XLA_COMMIT
           ROCM_XLA_COMMIT=$ROCM_XLA_COMMIT
+          ROCM_HRX_XLA_COMMIT=$ROCM_HRX_XLA_COMMIT
           ONEAPI_XLA_COMMIT=$ONEAPI_XLA_COMMIT
           EOF
           git add openxla/commits.env
@@ -123,6 +131,8 @@ jobs:
           XLA_COMMIT: ${{ needs.resolve-commits.outputs.xla_commit }}
           ROCM_XLA_BRANCH: ${{ needs.resolve-commits.outputs.rocm_xla_branch }}
           ROCM_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
+          ROCM_HRX_XLA_BRANCH: ${{ needs.resolve-commits.outputs.rocm_hrx_xla_branch }}
+          ROCM_HRX_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_hrx_xla_commit }}
           ONEAPI_XLA_BRANCH: ${{ needs.resolve-commits.outputs.oneapi_xla_branch }}
           ONEAPI_XLA_COMMIT: ${{ needs.resolve-commits.outputs.oneapi_xla_commit }}
         run: |
@@ -138,6 +148,12 @@ jobs:
             rocm_xla_line="- ROCm/xla: $ROCM_XLA_COMMIT"
           fi
 
+          if [ -n "$ROCM_HRX_XLA_BRANCH" ]; then
+            rocm_hrx_xla_line="- zml/xla ROCm HRX: $ROCM_HRX_XLA_BRANCH @ $ROCM_HRX_XLA_COMMIT"
+          else
+            rocm_hrx_xla_line="- zml/xla ROCm HRX: $ROCM_HRX_XLA_COMMIT"
+          fi
+
           if [ -n "$ONEAPI_XLA_BRANCH" ]; then
             oneapi_xla_line="- zml/xla oneAPI: $ONEAPI_XLA_BRANCH @ $ONEAPI_XLA_COMMIT"
           else
@@ -150,6 +166,7 @@ jobs:
             echo
             echo "$xla_line"
             echo "$rocm_xla_line"
+            echo "$rocm_hrx_xla_line"
             echo "$oneapi_xla_line"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
