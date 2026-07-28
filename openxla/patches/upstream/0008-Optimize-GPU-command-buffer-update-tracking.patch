@@ -1,14 +1,31 @@
-From 4196163b7f969050e3592416d12ed35561fb01df Mon Sep 17 00:00:00 2001
+From 5c2a403da57cecd2311c701d51a64997766f3419 Mon Sep 17 00:00:00 2001
 From: Louis Lechevalier <louis@zml.ai>
-Date: Thu, 23 Jul 2026 11:51:22 +0200
-Subject: [PATCH 08/11] Use reverse alloc-to-command index to avoid
- intersection search
+Date: Tue, 28 Jul 2026 11:06:00 +0200
+Subject: [PATCH 8/9] Optimize GPU command-buffer update tracking
 
 ---
- xla/backends/gpu/runtime/command_executor.cc | 50 +++++++++++++-------
- xla/backends/gpu/runtime/command_executor.h  |  4 ++
- 2 files changed, 37 insertions(+), 17 deletions(-)
+ .../gpu/runtime/command_buffer_thunk.cc       |  4 +-
+ xla/backends/gpu/runtime/command_executor.cc  | 50 ++++++++++++-------
+ xla/backends/gpu/runtime/command_executor.h   |  4 ++
+ 3 files changed, 39 insertions(+), 19 deletions(-)
 
+diff --git a/xla/backends/gpu/runtime/command_buffer_thunk.cc b/xla/backends/gpu/runtime/command_buffer_thunk.cc
+index 655a7d6588..0d9919f220 100644
+--- a/xla/backends/gpu/runtime/command_buffer_thunk.cc
++++ b/xla/backends/gpu/runtime/command_buffer_thunk.cc
+@@ -132,10 +132,10 @@ CommandBufferThunk::ExecutorCommandBuffer::UpdateBufferAllocations(
+   // leave every other entry default initialized (nullptr device memory).
+   for (BufferAllocation::Index index : allocs_to_check) {
+     se::DeviceAddressBase alloc = allocs->GetDeviceAddress(index);
+-
++    // recorded_allocs is mapping from buffer allocation index to the device
++    // memory
+     if (recorded_allocs.size() <= index) {
+       recorded_allocs.resize(index + 1);
+-      updated_allocs.push_back(index);
+     }
+ 
+     if (!recorded_allocs[index].IsSameAs(alloc)) {
 diff --git a/xla/backends/gpu/runtime/command_executor.cc b/xla/backends/gpu/runtime/command_executor.cc
 index 7c3cfc1b6d..842a0821ed 100644
 --- a/xla/backends/gpu/runtime/command_executor.cc

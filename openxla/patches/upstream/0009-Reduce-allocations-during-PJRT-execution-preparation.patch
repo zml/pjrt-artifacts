@@ -1,12 +1,12 @@
-From 1bde2031c7c1a3e7bea471b5649c5db1d4f81d27 Mon Sep 17 00:00:00 2001
+From 3554957caafede312b2252c55b18d711bcb67e48 Mon Sep 17 00:00:00 2001
 From: Louis Lechevalier <louis@zml.ai>
-Date: Thu, 23 Jul 2026 11:54:58 +0200
-Subject: [PATCH 09/11] deduplicate execution event inferior to 4 without heap
- allocation
+Date: Tue, 28 Jul 2026 11:06:12 +0200
+Subject: [PATCH 9/9] Reduce allocations during PJRT execution preparation
 
 ---
- xla/pjrt/common_pjrt_client.cc | 36 +++++++++++++++++++++++++++++-----
- 1 file changed, 31 insertions(+), 5 deletions(-)
+ xla/pjrt/common_pjrt_client.cc             | 36 +++++++++++++++++++---
+ xla/pjrt/se/pjrt_stream_executor_client.cc |  6 ++--
+ 2 files changed, 35 insertions(+), 7 deletions(-)
 
 diff --git a/xla/pjrt/common_pjrt_client.cc b/xla/pjrt/common_pjrt_client.cc
 index 05550123ea..07c65afb92 100644
@@ -76,6 +76,23 @@ index 05550123ea..07c65afb92 100644
              control_deps.push_back(ev);
            }
          }
+diff --git a/xla/pjrt/se/pjrt_stream_executor_client.cc b/xla/pjrt/se/pjrt_stream_executor_client.cc
+index 49fb578651..76fd8c7154 100644
+--- a/xla/pjrt/se/pjrt_stream_executor_client.cc
++++ b/xla/pjrt/se/pjrt_stream_executor_client.cc
+@@ -1619,8 +1619,10 @@ PjRtStreamExecutorRawLoadedExecutable::Execute(
+        compute_reservation = std::move(compute_reservation),
+        send_device_memory = std::move(send_device_memory),
+        recv_device_memory = std::move(recv_device_memory),
+-       inputs = std::vector<PjRtRawBufferRef>(inputs.begin(), inputs.end()),
+-       results = std::vector<PjRtRawBufferRef>(results.begin(), results.end()),
++       inputs = absl::InlinedVector<PjRtRawBufferRef, 8>(inputs.begin(),
++                                                         inputs.end()),
++       results = absl::InlinedVector<PjRtRawBufferRef, 8>(results.begin(),
++                                                          results.end()),
+        device_ordinal, executable = executable_,
+        execution_profile = options.execution_profile, is_predetermined_error,
+        parameter_is_tupled_arguments = parameter_is_tupled_arguments_,
 -- 
 2.43.0
 
