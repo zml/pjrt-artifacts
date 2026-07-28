@@ -1,0 +1,29 @@
+From 53d42966244e20e04ba744d0a90d5cb1dd8b55ac Mon Sep 17 00:00:00 2001
+From: Louis Lechevalier <louis@zml.ai>
+Date: Thu, 23 Jul 2026 11:58:21 +0200
+Subject: [PATCH 10/11] Inline storage of Raw Pjrt buffers during execution
+
+---
+ xla/pjrt/se/pjrt_stream_executor_client.cc | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/xla/pjrt/se/pjrt_stream_executor_client.cc b/xla/pjrt/se/pjrt_stream_executor_client.cc
+index 49fb578651..76fd8c7154 100644
+--- a/xla/pjrt/se/pjrt_stream_executor_client.cc
++++ b/xla/pjrt/se/pjrt_stream_executor_client.cc
+@@ -1619,8 +1619,10 @@ PjRtStreamExecutorRawLoadedExecutable::Execute(
+        compute_reservation = std::move(compute_reservation),
+        send_device_memory = std::move(send_device_memory),
+        recv_device_memory = std::move(recv_device_memory),
+-       inputs = std::vector<PjRtRawBufferRef>(inputs.begin(), inputs.end()),
+-       results = std::vector<PjRtRawBufferRef>(results.begin(), results.end()),
++       inputs = absl::InlinedVector<PjRtRawBufferRef, 8>(inputs.begin(),
++                                                         inputs.end()),
++       results = absl::InlinedVector<PjRtRawBufferRef, 8>(results.begin(),
++                                                          results.end()),
+        device_ordinal, executable = executable_,
+        execution_profile = options.execution_profile, is_predetermined_error,
+        parameter_is_tupled_arguments = parameter_is_tupled_arguments_,
+-- 
+2.43.0
+

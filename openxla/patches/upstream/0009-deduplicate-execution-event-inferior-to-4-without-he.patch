@@ -1,0 +1,81 @@
+From 1bde2031c7c1a3e7bea471b5649c5db1d4f81d27 Mon Sep 17 00:00:00 2001
+From: Louis Lechevalier <louis@zml.ai>
+Date: Thu, 23 Jul 2026 11:54:58 +0200
+Subject: [PATCH 09/11] deduplicate execution event inferior to 4 without heap
+ allocation
+
+---
+ xla/pjrt/common_pjrt_client.cc | 36 +++++++++++++++++++++++++++++-----
+ 1 file changed, 31 insertions(+), 5 deletions(-)
+
+diff --git a/xla/pjrt/common_pjrt_client.cc b/xla/pjrt/common_pjrt_client.cc
+index 05550123ea..07c65afb92 100644
+--- a/xla/pjrt/common_pjrt_client.cc
++++ b/xla/pjrt/common_pjrt_client.cc
+@@ -91,6 +91,33 @@ limitations under the License.
+ 
+ namespace xla {
+ 
++namespace {
++
++class SmallEventDeduplicator {
++ public:
++  bool Insert(void* event) {
++    if (large_seen_.has_value()) {
++      return large_seen_->insert(event).second;
++    }
++    if (absl::c_linear_search(small_seen_, event)) {
++      return false;
++    }
++    if (small_seen_.size() < small_seen_.capacity()) {
++      small_seen_.push_back(event);
++      return true;
++    }
++    large_seen_.emplace(small_seen_.begin(), small_seen_.end());
++    small_seen_.clear();
++    return large_seen_->insert(event).second;
++  }
++
++ private:
++  absl::InlinedVector<void*, 4> small_seen_;
++  std::optional<absl::flat_hash_set<void*>> large_seen_;
++};
++
++}  // namespace
++
+ void CommonPjRtClient::TrackFuture(PjRtMemorySpace* memory_space,
+                                    absl::string_view debug_info,
+                                    const Future<>& future) {}
+@@ -1102,8 +1129,8 @@ absl::Status CommonPjRtClient::PrepareArguments(
+     PjRtDevice* device, int replica, int partition,
+     absl::Span<const Shape> parameter_device_shapes, bool& is_error,
+     bool allow_fallback_for_donation) {
+-  absl::flat_hash_set<void*> extra_deps_seen;
+-  absl::flat_hash_set<void*> control_deps_seen;
++  SmallEventDeduplicator extra_deps_seen;
++  SmallEventDeduplicator control_deps_seen;
+   if (argument_handles.size() != parameter_device_shapes.size()) {
+     return InvalidArgument(
+         "Execution supplied %d arguments but compiled program expected %d",
+@@ -1196,8 +1223,7 @@ absl::Status CommonPjRtClient::PrepareArguments(
+                     is_error = true;
+                     ABSL_FALLTHROUGH_INTENDED;
+                   case PJRT_DeviceEvent_State_Unavailable:
+-                    if (extra_deps_seen.insert(ev.ptr().ToC().device_event)
+-                            .second) {
++                    if (extra_deps_seen.Insert(ev.ptr().ToC().device_event)) {
+                       extra_deps.push_back(ev);
+                     }
+                     break;
+@@ -1291,7 +1317,7 @@ absl::Status CommonPjRtClient::PrepareArguments(
+           if (ev.ptr().state() == PJRT_DeviceEvent_State_Ready) {
+             continue;
+           }
+-          if (control_deps_seen.insert(ev.ptr().ToC().device_event).second) {
++          if (control_deps_seen.Insert(ev.ptr().ToC().device_event)) {
+             control_deps.push_back(ev);
+           }
+         }
+-- 
+2.43.0
+
