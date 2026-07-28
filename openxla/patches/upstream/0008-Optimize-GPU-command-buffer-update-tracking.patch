@@ -1,0 +1,142 @@
+From 5c2a403da57cecd2311c701d51a64997766f3419 Mon Sep 17 00:00:00 2001
+From: Louis Lechevalier <louis@zml.ai>
+Date: Tue, 28 Jul 2026 11:06:00 +0200
+Subject: [PATCH 8/9] Optimize GPU command-buffer update tracking
+
+---
+ .../gpu/runtime/command_buffer_thunk.cc       |  4 +-
+ xla/backends/gpu/runtime/command_executor.cc  | 50 ++++++++++++-------
+ xla/backends/gpu/runtime/command_executor.h   |  4 ++
+ 3 files changed, 39 insertions(+), 19 deletions(-)
+
+diff --git a/xla/backends/gpu/runtime/command_buffer_thunk.cc b/xla/backends/gpu/runtime/command_buffer_thunk.cc
+index 655a7d6588..0d9919f220 100644
+--- a/xla/backends/gpu/runtime/command_buffer_thunk.cc
++++ b/xla/backends/gpu/runtime/command_buffer_thunk.cc
+@@ -132,10 +132,10 @@ CommandBufferThunk::ExecutorCommandBuffer::UpdateBufferAllocations(
+   // leave every other entry default initialized (nullptr device memory).
+   for (BufferAllocation::Index index : allocs_to_check) {
+     se::DeviceAddressBase alloc = allocs->GetDeviceAddress(index);
+-
++    // recorded_allocs is mapping from buffer allocation index to the device
++    // memory
+     if (recorded_allocs.size() <= index) {
+       recorded_allocs.resize(index + 1);
+-      updated_allocs.push_back(index);
+     }
+ 
+     if (!recorded_allocs[index].IsSameAs(alloc)) {
+diff --git a/xla/backends/gpu/runtime/command_executor.cc b/xla/backends/gpu/runtime/command_executor.cc
+index 7c3cfc1b6d..842a0821ed 100644
+--- a/xla/backends/gpu/runtime/command_executor.cc
++++ b/xla/backends/gpu/runtime/command_executor.cc
+@@ -17,7 +17,6 @@ limitations under the License.
+ 
+ #include <cstddef>
+ #include <cstdint>
+-#include <iterator>
+ #include <memory>
+ #include <optional>
+ #include <string>
+@@ -317,6 +316,18 @@ CommandExecutor::CommandExecutor(
+     cmd_allocs_indices_.emplace_back(cmd_allocs_indices.begin(),
+                                      cmd_allocs_indices.end());
+   }
++
++  // Create a mapping from buffer allocation index to the list of command
++  // indices if alloc_indices is not empty At update time if alloc is updated,
++  // alloc_to_cmds_ used to find the cmds associated
++  if (!allocs_indices_.empty()) {
++    alloc_to_cmds_.resize(allocs_indices_.back() + 1);
++    for (CommandId id = 0; id < cmd_allocs_indices_.size(); ++id) {
++      for (BufferAllocation::Index index : cmd_allocs_indices_[id]) {
++        alloc_to_cmds_[index].push_back(id);
++      }
++    }
++  }
+ }
+ 
+ absl::Status CommandExecutor::Prepare(const Thunk::PrepareParams& params) {
+@@ -561,6 +572,24 @@ absl::Status CommandExecutor::RecordUpdate(
+   CommandExecutorsState::Key key = std::make_pair(this, record_id);
+   RecordedCommands& recorded_commands = state->recorded_commands[key];
+ 
++  std::vector<uint8_t>* command_update_marks = nullptr;
++  if (record_params.updated_allocs) {
++    std::vector<uint8_t>& marks = state->command_update_marks[key];
++    marks.assign(commands_.size(), 0);
++
++    for (BufferAllocation::Index index : *record_params.updated_allocs) {
++      if (index >= alloc_to_cmds_.size()) {
++        continue;
++      }
++
++      for (CommandId command_id : alloc_to_cmds_[index]) {
++        marks[command_id] = 1;
++      }
++    }
++
++    command_update_marks = &marks;
++  }
++
+   if (execute_params.persistent_alloc_indices.has_value()) {
+     DCHECK(absl::c_is_sorted(*execute_params.persistent_alloc_indices))
+         << "Persistent allocs must be sorted: "
+@@ -568,9 +597,7 @@ absl::Status CommandExecutor::RecordUpdate(
+   }
+ 
+   // Check if command `id` has to be updated based on the buffer allocations
+-  // that changed since the last call to `Record`. We keep intersection vector
+-  // outside of a lambda to avoid repeated heap allocations on every call.
+-  std::vector<BufferAllocation::Index> alloc_intersection;
++  // that changed since the last call to `Record`.
+   auto skip_command_update = [&](CommandId id) {
+     // If we don't know what allocations changed since the last call to
+     // `Record` we must always update the command.
+@@ -606,19 +633,8 @@ absl::Status CommandExecutor::RecordUpdate(
+       return false;
+     }
+ 
+-    DCHECK(absl::c_is_sorted(*record_params.updated_allocs))
+-        << "Updated allocs must be sorted: "
+-        << absl::StrJoin(*record_params.updated_allocs, ", ");
+-
+-    DCHECK(absl::c_is_sorted(cmd_allocs_indices_[id]))
+-        << "Command allocs must be sorted: "
+-        << absl::StrJoin(cmd_allocs_indices_[id], ", ");
+-
+-    alloc_intersection.clear();
+-    absl::c_set_intersection(cmd_allocs_indices_[id],
+-                             *record_params.updated_allocs,
+-                             std::back_inserter(alloc_intersection));
+-    return alloc_intersection.empty();
++    return command_update_marks != nullptr &&
++           !(*command_update_marks)[id];
+   };
+ 
+   // Check this this executor was correctly recorded into the command buffer.
+diff --git a/xla/backends/gpu/runtime/command_executor.h b/xla/backends/gpu/runtime/command_executor.h
+index c6cfb64b56..c3f62c5971 100644
+--- a/xla/backends/gpu/runtime/command_executor.h
++++ b/xla/backends/gpu/runtime/command_executor.h
+@@ -216,6 +216,7 @@ class CommandExecutor {
+     // to values valid during the execution we use a node hash map container.
+     using Key = std::pair<const CommandExecutor*, RecordId>;
+     absl::node_hash_map<Key, RecordedCommands> recorded_commands;
++    absl::node_hash_map<Key, std::vector<uint8_t>> command_update_marks;
+   };
+ 
+   CommandExecutor(SynchronizationMode synchronization_mode,
+@@ -265,6 +266,9 @@ class CommandExecutor {
+   // by the command (sorted by the buffer allocation index).
+   std::vector<std::vector<BufferAllocation::Index>> cmd_allocs_indices_;
+ 
++  // A mapping from buffer allocation index to command ids that reference it.
++  std::vector<std::vector<CommandId>> alloc_to_cmds_;
++
+   // Per-command extra resource uses passed at construction time (e.g.
+   // control-dependency tokens from the emitter). Stored so that
+   // RenderExecutionGraph() can reproduce the same dependency graph.
+-- 
+2.43.0
+
