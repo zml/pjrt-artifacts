@@ -8,6 +8,12 @@ This repo mirrors the GitHub Actions workflow for OpenXLA builds. Use the setup 
 	./setup.sh --fork upstream
 	```
 
+	For CUDA (zml/xla `cuda` branch):
+
+	```bash
+	./setup.sh --fork cuda
+	```
+
 	For ROCm:
 
 	```bash

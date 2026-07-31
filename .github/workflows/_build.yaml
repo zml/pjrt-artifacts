@@ -9,6 +9,9 @@ on:
       xla_commit:
         required: true
         type: string
+      cuda_xla_commit:
+        required: true
+        type: string
       rocm_xla_commit:
         required: true
         type: string
@@ -31,6 +34,7 @@ jobs:
     runs-on: ${{ matrix.pjrt.runs_on }}
     env:
       XLA_COMMIT: ${{ inputs.xla_commit }}
+      CUDA_XLA_COMMIT: ${{ inputs.cuda_xla_commit }}
       ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
       ROCM_HRX_XLA_COMMIT: ${{ inputs.rocm_hrx_xla_commit }}
       ONEAPI_XLA_COMMIT: ${{ inputs.oneapi_xla_commit }}
@@ -121,8 +125,8 @@ jobs:
       - name: "Checking out openxla repository"
         uses: actions/checkout@v4
         with:
-          ref: ${{ matrix.pjrt.target == 'rocm' && env.ROCM_XLA_COMMIT || matrix.pjrt.target == 'rocm_hrx' && env.ROCM_HRX_XLA_COMMIT || matrix.pjrt.target == 'oneapi' && env.ONEAPI_XLA_COMMIT || env.XLA_COMMIT }}
-          repository: ${{ matrix.pjrt.target == 'rocm' && 'ROCm/xla' || matrix.pjrt.target == 'rocm_hrx' && 'zml/xla' || matrix.pjrt.target == 'oneapi' && 'zml/xla' || 'openxla/xla' }}
+          ref: ${{ matrix.pjrt.target == 'cuda' && env.CUDA_XLA_COMMIT || matrix.pjrt.target == 'rocm' && env.ROCM_XLA_COMMIT || matrix.pjrt.target == 'rocm_hrx' && env.ROCM_HRX_XLA_COMMIT || matrix.pjrt.target == 'oneapi' && env.ONEAPI_XLA_COMMIT || env.XLA_COMMIT }}
+          repository: ${{ matrix.pjrt.target == 'cuda' && 'zml/xla' || matrix.pjrt.target == 'rocm' && 'ROCm/xla' || matrix.pjrt.target == 'rocm_hrx' && 'zml/xla' || matrix.pjrt.target == 'oneapi' && 'zml/xla' || 'openxla/xla' }}
           path: "xla"
 
       - name: Apply patches to openxla
@@ -133,7 +137,7 @@ jobs:
         run: |
           xla_commit=$(git rev-parse HEAD)
           echo "XLA_COMMIT_ID=$xla_commit" >> $GITHUB_OUTPUT
-          if [ "${{ matrix.pjrt.target }}" = "oneapi" ] || [ "${{ matrix.pjrt.target }}" = "rocm_hrx" ]; then
+          if [ "${{ matrix.pjrt.target }}" = "oneapi" ] || [ "${{ matrix.pjrt.target }}" = "rocm_hrx" ] || [ "${{ matrix.pjrt.target }}" = "cuda" ]; then
             echo ::notice::Using zml/xla ${{ matrix.pjrt.target }} $xla_commit without pjrt-artifacts patches
           elif compgen -G "../pjrt-artifacts/openxla/patches/$PATCH_DIRECTORY/*.patch" > /dev/null; then
             echo ::notice::Applying patches to openxla $xla_commit
@@ -172,7 +176,7 @@ jobs:
             common --show_timestamps
 
       - name: "Setup bazelrc for openxla"
-        if: matrix.pjrt.target != 'oneapi' && matrix.pjrt.target != 'rocm_hrx'
+        if: matrix.pjrt.target != 'oneapi' && matrix.pjrt.target != 'rocm_hrx' && matrix.pjrt.target != 'cuda'
         env:
           BAZERLC_DIRECTORY: ${{ matrix.pjrt.target == 'rocm' && 'rocm' || 'upstream' }}
         run: |

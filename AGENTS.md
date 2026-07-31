@@ -9,12 +9,13 @@ When CI breaks because upstream changes invalidate our pinned commit or patches,
 - Custom patches live under `openxla/patches/{upstream,rocm}` and are applied before every build.
 
 ## 2. Checking and Fixing nightly builds
-Nightly runs are defined in `.github/workflows/nightly.yaml`. Always read that file first—its matrix specifies the authoritative OpenXLA (`XLA_COMMIT`) and ROCm (`ROCM_XLA_COMMIT`) SHAs that nightly builds expect. When fixing nightly failures, validate both repos at those exact SHAs unless the task explicitly asks to move them forward.
+Nightly runs are defined in `.github/workflows/nightly.yaml`. Always read that file first—its matrix and `openxla/commits.env` specify the authoritative pins (`XLA_COMMIT`, `CUDA_XLA_COMMIT`, `ROCM_XLA_COMMIT`, …). When fixing nightly failures, validate the relevant repos at those exact SHAs unless the task explicitly asks to move them forward.
 1. Confirm the listed SHAs build:
-   - Clone `openxla/xla` at `XLA_COMMIT` and apply `openxla/patches/upstream/*.patch`.
+   - Clone `openxla/xla` at `XLA_COMMIT` and apply `openxla/patches/upstream/*.patch` (CPU).
+   - Clone `zml/xla` at `CUDA_XLA_COMMIT` (branch `cuda`) with no pjrt-artifacts patches (CUDA, like oneAPI).
    - Clone `ROCm/xla` at `ROCM_XLA_COMMIT` and apply `openxla/patches/rocm/*.patch` when debugging ROCm nightly failures.
-2. Only update the commit values in `_build.yaml`/`nightly.yaml` after verifying both the upstream checkout and `bazel` commands succeed.
-3. When you do update them, always write the exact SHA (not branch names) and mirror those SHAs in `.github/workflows/_build.yaml`'s `XLA_COMMIT`/`ROCM_XLA_COMMIT` so the reusable `_build` workflow matches nightly.
+2. Only update the commit values in `openxla/commits.env` after verifying both the checkout and `bazel` commands succeed.
+3. When you do update them, always write the exact SHA (not branch names) in `openxla/commits.env`.
 
 ## 3. Updating to a new OpenXLA commit
 1. **Clone upstream via SSH**

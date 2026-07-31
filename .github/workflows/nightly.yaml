@@ -7,6 +7,10 @@ on:
         description: "Explicit openxla/xla commit to build"
         required: false
         type: string
+      cuda_xla_commit:
+        description: "Explicit zml/xla CUDA commit to build"
+        required: false
+        type: string
       rocm_xla_commit:
         description: "Explicit ROCm/xla commit to build"
         required: false
@@ -35,6 +39,7 @@ jobs:
     with:
       source: head
       xla_commit: ${{ inputs.xla_commit }}
+      cuda_xla_commit: ${{ inputs.cuda_xla_commit }}
       rocm_xla_commit: ${{ inputs.rocm_xla_commit }}
       rocm_hrx_xla_commit: ${{ inputs.rocm_hrx_xla_commit }}
       oneapi_xla_commit: ${{ inputs.oneapi_xla_commit }}
@@ -44,6 +49,7 @@ jobs:
     uses: ./.github/workflows/_build.yaml
     with:
       xla_commit: ${{ needs.resolve-commits.outputs.xla_commit }}
+      cuda_xla_commit: ${{ needs.resolve-commits.outputs.cuda_xla_commit }}
       rocm_xla_commit: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
       rocm_hrx_xla_commit: ${{ needs.resolve-commits.outputs.rocm_hrx_xla_commit }}
       oneapi_xla_commit: ${{ needs.resolve-commits.outputs.oneapi_xla_commit }}
@@ -77,6 +83,7 @@ jobs:
           BASE_REF: ${{ github.ref_name }}
           INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
           XLA_COMMIT: ${{ needs.resolve-commits.outputs.xla_commit }}
+          CUDA_XLA_COMMIT: ${{ needs.resolve-commits.outputs.cuda_xla_commit }}
           ROCM_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
           ROCM_HRX_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_hrx_xla_commit }}
           ONEAPI_XLA_COMMIT: ${{ needs.resolve-commits.outputs.oneapi_xla_commit }}
@@ -95,6 +102,7 @@ jobs:
 
           cat > openxla/commits.env <<EOF
           XLA_COMMIT=$XLA_COMMIT
+          CUDA_XLA_COMMIT=$CUDA_XLA_COMMIT
           ROCM_XLA_COMMIT=$ROCM_XLA_COMMIT
           ROCM_HRX_XLA_COMMIT=$ROCM_HRX_XLA_COMMIT
           ONEAPI_XLA_COMMIT=$ONEAPI_XLA_COMMIT
@@ -129,6 +137,8 @@ jobs:
         env:
           XLA_BRANCH: ${{ needs.resolve-commits.outputs.xla_branch }}
           XLA_COMMIT: ${{ needs.resolve-commits.outputs.xla_commit }}
+          CUDA_XLA_BRANCH: ${{ needs.resolve-commits.outputs.cuda_xla_branch }}
+          CUDA_XLA_COMMIT: ${{ needs.resolve-commits.outputs.cuda_xla_commit }}
           ROCM_XLA_BRANCH: ${{ needs.resolve-commits.outputs.rocm_xla_branch }}
           ROCM_XLA_COMMIT: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
           ROCM_HRX_XLA_BRANCH: ${{ needs.resolve-commits.outputs.rocm_hrx_xla_branch }}
@@ -140,6 +150,12 @@ jobs:
             xla_line="- openxla/xla: $XLA_BRANCH @ $XLA_COMMIT"
           else
             xla_line="- openxla/xla: $XLA_COMMIT"
+          fi
+
+          if [ -n "$CUDA_XLA_BRANCH" ]; then
+            cuda_xla_line="- zml/xla CUDA: $CUDA_XLA_BRANCH @ $CUDA_XLA_COMMIT"
+          else
+            cuda_xla_line="- zml/xla CUDA: $CUDA_XLA_COMMIT"
           fi
 
           if [ -n "$ROCM_XLA_BRANCH" ]; then
@@ -165,6 +181,7 @@ jobs:
             echo "OpenXLA commits used for this nightly:"
             echo
             echo "$xla_line"
+            echo "$cuda_xla_line"
             echo "$rocm_xla_line"
             echo "$rocm_hrx_xla_line"
             echo "$oneapi_xla_line"

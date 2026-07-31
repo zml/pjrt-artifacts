@@ -17,6 +17,7 @@ jobs:
     uses: ./.github/workflows/_build.yaml
     with:
       xla_commit: ${{ needs.resolve-commits.outputs.xla_commit }}
+      cuda_xla_commit: ${{ needs.resolve-commits.outputs.cuda_xla_commit }}
       rocm_xla_commit: ${{ needs.resolve-commits.outputs.rocm_xla_commit }}
       rocm_hrx_xla_commit: ${{ needs.resolve-commits.outputs.rocm_hrx_xla_commit }}
       oneapi_xla_commit: ${{ needs.resolve-commits.outputs.oneapi_xla_commit }}

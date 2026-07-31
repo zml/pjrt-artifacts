@@ -15,7 +15,7 @@ TARGET_FILTER=""
 
 usage() {
   cat <<'USAGE'
-Usage: setup.sh [--fork upstream|rocm|rocm_hrx|oneapi] [--ref <git-ref-or-sha>] [--dir <clone-dir>] [--target cpu|cuda|rocm|rocm_hrx|oneapi]
+Usage: setup.sh [--fork upstream|cuda|rocm|rocm_hrx|oneapi] [--ref <git-ref-or-sha>] [--dir <clone-dir>] [--target cpu|cuda|rocm|rocm_hrx|oneapi]
 
 Clones the requested OpenXLA fork, checks out the pinned commit (or --ref),
 applies patches, and prints build commands from the workflow matrix.
@@ -120,6 +120,12 @@ case "$FORK" in
     PATCH_DIR="upstream"
     DEFAULT_REF="${XLA_COMMIT:-}"
     ;;
+  cuda)
+    REPO="git@github.com:zml/xla.git"
+    PATCH_DIR=""
+    DEFAULT_REF="${CUDA_XLA_COMMIT:-}"
+    TARGET_FILTER="${TARGET_FILTER:-cuda}"
+    ;;
   rocm)
     REPO="git@github.com:ROCm/xla.git"
     PATCH_DIR="rocm"
@@ -138,7 +144,7 @@ case "$FORK" in
     TARGET_FILTER="${TARGET_FILTER:-oneapi}"
     ;;
   *)
-    echo "Invalid --fork value: $FORK (expected upstream|rocm|rocm_hrx|oneapi)" >&2
+    echo "Invalid --fork value: $FORK (expected upstream|cuda|rocm|rocm_hrx|oneapi)" >&2
     exit 2
     ;;
  esac
@@ -196,7 +202,7 @@ if [[ "$FORK" == "rocm" ]]; then
   bazelrc_dir="rocm"
 fi
 
-if [[ "$FORK" != "oneapi" && "$FORK" != "rocm_hrx" ]]; then
+if [[ "$FORK" != "oneapi" && "$FORK" != "rocm_hrx" && "$FORK" != "cuda" ]]; then
   echo "Copying bazelrc files from $ROOT_DIR/openxla/bazelrc/$bazelrc_dir"
   if [ -f "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}/.bazelrc" ]; then
     cp -v "$ROOT_DIR/openxla/bazelrc/${bazelrc_dir}/.bazelrc" "$CLONE_DIR/"
@@ -216,6 +222,9 @@ while IFS=$'\t' read -r target platform config bazel_target; do
   if [[ -n "$TARGET_FILTER" && "$target" != "$TARGET_FILTER" ]]; then
     continue
   fi
+  if [[ "$FORK" == "cuda" && "$target" != "cuda" ]]; then
+    continue
+  fi
   if [[ "$FORK" == "rocm" && "$target" != "rocm" ]]; then
     continue
   fi
@@ -223,6 +232,9 @@ while IFS=$'\t' read -r target platform config bazel_target; do
     continue
   fi
   if [[ "$FORK" == "oneapi" && "$target" != "oneapi" ]]; then
+    continue
+  fi
+  if [[ "$FORK" == "upstream" && "$target" == "cuda" ]]; then
     continue
   fi
   if [[ "$FORK" == "upstream" && "$target" == "rocm" ]]; then
@@ -242,7 +254,9 @@ while IFS=$'\t' read -r target platform config bazel_target; do
   fi
 
   echo ""
-  if [[ "$target" == "rocm" ]]; then
+  if [[ "$target" == "cuda" ]]; then
+    echo "# Target: $target | Platform: $platform | Fork: cuda"
+  elif [[ "$target" == "rocm" ]]; then
     echo "# Target: $target | Platform: $platform | Fork: rocm"
   elif [[ "$target" == "rocm_hrx" ]]; then
     echo "# Target: $target | Platform: $platform | Fork: rocm_hrx"
