@@ -9,6 +9,9 @@ on:
       xla_commit:
         required: false
         type: string
+      cuda_xla_commit:
+        required: false
+        type: string
       rocm_xla_commit:
         required: false
         type: string
@@ -25,6 +28,12 @@ on:
       xla_commit:
         description: "Resolved openxla/xla commit"
         value: ${{ jobs.resolve-commits.outputs.xla_commit }}
+      cuda_xla_branch:
+        description: "Resolved zml/xla CUDA branch"
+        value: ${{ jobs.resolve-commits.outputs.cuda_xla_branch }}
+      cuda_xla_commit:
+        description: "Resolved zml/xla CUDA commit"
+        value: ${{ jobs.resolve-commits.outputs.cuda_xla_commit }}
       rocm_xla_branch:
         description: "Resolved ROCm/xla branch"
         value: ${{ jobs.resolve-commits.outputs.rocm_xla_branch }}
@@ -50,6 +59,8 @@ jobs:
     outputs:
       xla_branch: ${{ steps.resolve.outputs.xla_branch }}
       xla_commit: ${{ steps.resolve.outputs.xla_commit }}
+      cuda_xla_branch: ${{ steps.resolve.outputs.cuda_xla_branch }}
+      cuda_xla_commit: ${{ steps.resolve.outputs.cuda_xla_commit }}
       rocm_xla_branch: ${{ steps.resolve.outputs.rocm_xla_branch }}
       rocm_xla_commit: ${{ steps.resolve.outputs.rocm_xla_commit }}
       rocm_hrx_xla_branch: ${{ steps.resolve.outputs.rocm_hrx_xla_branch }}
@@ -68,20 +79,23 @@ jobs:
         env:
           SOURCE: ${{ inputs.source }}
           INPUT_XLA_COMMIT: ${{ inputs.xla_commit }}
+          INPUT_CUDA_XLA_COMMIT: ${{ inputs.cuda_xla_commit }}
           INPUT_ROCM_XLA_COMMIT: ${{ inputs.rocm_xla_commit }}
           INPUT_ROCM_HRX_XLA_COMMIT: ${{ inputs.rocm_hrx_xla_commit }}
           INPUT_ONEAPI_XLA_COMMIT: ${{ inputs.oneapi_xla_commit }}
           GH_TOKEN: ${{ github.token }}
         working-directory: ./pjrt-artifacts
         run: |
-          if [ -n "$INPUT_XLA_COMMIT" ] || [ -n "$INPUT_ROCM_XLA_COMMIT" ] || [ -n "$INPUT_ROCM_HRX_XLA_COMMIT" ] || [ -n "$INPUT_ONEAPI_XLA_COMMIT" ]; then
-            if [ -z "$INPUT_XLA_COMMIT" ] || [ -z "$INPUT_ROCM_XLA_COMMIT" ] || [ -z "$INPUT_ROCM_HRX_XLA_COMMIT" ] || [ -z "$INPUT_ONEAPI_XLA_COMMIT" ]; then
-              echo "xla_commit, rocm_xla_commit, rocm_hrx_xla_commit, and oneapi_xla_commit must be provided together" >&2
+          if [ -n "$INPUT_XLA_COMMIT" ] || [ -n "$INPUT_CUDA_XLA_COMMIT" ] || [ -n "$INPUT_ROCM_XLA_COMMIT" ] || [ -n "$INPUT_ROCM_HRX_XLA_COMMIT" ] || [ -n "$INPUT_ONEAPI_XLA_COMMIT" ]; then
+            if [ -z "$INPUT_XLA_COMMIT" ] || [ -z "$INPUT_CUDA_XLA_COMMIT" ] || [ -z "$INPUT_ROCM_XLA_COMMIT" ] || [ -z "$INPUT_ROCM_HRX_XLA_COMMIT" ] || [ -z "$INPUT_ONEAPI_XLA_COMMIT" ]; then
+              echo "xla_commit, cuda_xla_commit, rocm_xla_commit, rocm_hrx_xla_commit, and oneapi_xla_commit must be provided together" >&2
               exit 1
             fi
 
             XLA_BRANCH=""
             XLA_COMMIT="$INPUT_XLA_COMMIT"
+            CUDA_XLA_BRANCH=""
+            CUDA_XLA_COMMIT="$INPUT_CUDA_XLA_COMMIT"
             ROCM_XLA_BRANCH=""
             ROCM_XLA_COMMIT="$INPUT_ROCM_XLA_COMMIT"
             ROCM_HRX_XLA_BRANCH=""
@@ -92,6 +106,7 @@ jobs:
             case "$SOURCE" in
               pinned)
                 XLA_BRANCH=""
+                CUDA_XLA_BRANCH=""
                 ROCM_XLA_BRANCH=""
                 ROCM_HRX_XLA_BRANCH=""
                 set -a
@@ -110,6 +125,8 @@ jobs:
 
           echo "xla_branch=$XLA_BRANCH" >> "$GITHUB_OUTPUT"
           echo "xla_commit=$XLA_COMMIT" >> "$GITHUB_OUTPUT"
+          echo "cuda_xla_branch=$CUDA_XLA_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "cuda_xla_commit=$CUDA_XLA_COMMIT" >> "$GITHUB_OUTPUT"
           echo "rocm_xla_branch=$ROCM_XLA_BRANCH" >> "$GITHUB_OUTPUT"
           echo "rocm_xla_commit=$ROCM_XLA_COMMIT" >> "$GITHUB_OUTPUT"
           echo "rocm_hrx_xla_branch=$ROCM_HRX_XLA_BRANCH" >> "$GITHUB_OUTPUT"
