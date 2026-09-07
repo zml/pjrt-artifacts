@@ -126,7 +126,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ matrix.pjrt.target == 'cuda' && env.CUDA_XLA_COMMIT || matrix.pjrt.target == 'rocm' && env.ROCM_XLA_COMMIT || matrix.pjrt.target == 'rocm_hrx' && env.ROCM_HRX_XLA_COMMIT || matrix.pjrt.target == 'oneapi' && env.ONEAPI_XLA_COMMIT || env.XLA_COMMIT }}
-          repository: ${{ matrix.pjrt.target == 'cuda' && 'zml/xla' || matrix.pjrt.target == 'rocm' && 'ROCm/xla' || matrix.pjrt.target == 'rocm_hrx' && 'zml/xla' || matrix.pjrt.target == 'oneapi' && 'zml/xla' || 'openxla/xla' }}
+          repository: ${{ matrix.pjrt.target == 'cuda' && 'zml/xla' || matrix.pjrt.target == 'rocm' && 'zml/xla' || matrix.pjrt.target == 'rocm_hrx' && 'zml/xla' || matrix.pjrt.target == 'oneapi' && 'zml/xla' || 'openxla/xla' }}
           path: "xla"
 
       - name: Apply patches to openxla
